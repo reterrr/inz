@@ -1,0 +1,46 @@
+starting_token_value: 10
+keywords:
+  INT: "int"
+  BIGINT: "bigint"
+  MAGICINT: "magicint"
+
+  DOUBLE: "double"
+
+  BOOL: "bool"
+
+  VOID: "void"
+
+  STRING: "string"
+  WHILE: "while"
+  DO: "do"
+  MUT: "mut"
+  IF: "if"
+operators:
+  PLUS: "+"
+  MINUS: "-"
+  SLASH: "/"
+  STAR: "*"
+
+  EQUAL: "=="
+  NOT_EQUAL: "!="
+  LESS: "<"
+  GREATER: ">"
+  LESS_EQUAL: "<="
+  GREATER_EQUAL: ">="
+  NEGATION: "!"
+
+  ASSIGN: "="
+  PLUS_ASSIGN: "+="
+  MIN_ASSIGN: "-="
+  DIV_ASSIGN: "/="
+  MUL_ASSIGN: "*="
+delimiters:
+  LPAR: "("
+  RPAR: ")"
+  LCBRA: "{"
+  RCBRA: "}"
+  SMCLN: ";"
+
+  DOT: "."
+
+

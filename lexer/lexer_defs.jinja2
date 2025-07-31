@@ -1,0 +1,199 @@
+// Auto-generated token.hpp
+#ifndef TOKEN_HPP
+#define TOKEN_HPP
+
+#include <string>
+#include <cstdint>
+#include "../semantic_value.hpp"
+
+namespace Token {
+    enum Type {
+        TOK_UNKNOWN = 0,
+
+        {% set nc = namespace(val=starting_token_value) %}
+        {% for name, lit in keywords.items() %}
+        TOK_{{ name }} = {{ nc.val }},  // {{ lit }}
+        {% set nc.val = nc.val + 1 %}
+        {% endfor %}
+        {% for name, lit in operators.items() %}
+        TOK_{{ name }} = {{ nc.val }},  // {{ lit }}
+        {% set nc.val = nc.val + 1 %}
+        {% endfor %}
+        {% for name, lit in delimiters.items() %}
+        TOK_{{ name }} = {{ nc.val }},  // {{ lit }}
+        {% set nc.val = nc.val + 1 %}
+        {% endfor %}
+
+        TOK_IDENTIFIER = 1,
+        TOK_INT_LITERAL = 2,
+        TOK_FLOAT_LITERAL = 3,
+        TOK_STRING_LITERAL = 4,
+        TOK_END = 5
+    };
+}
+
+namespace Token {
+    class Value final {
+        Type type_{};
+        SemanticValue value_{};
+        std::string symbol_{};
+        uint64_t line_{};
+        uint64_t column_{};
+        uint64_t offset_{};
+        uint64_t end_offset_{};
+
+    public:
+        Value(Type type, const std::string_view &symbol, SemanticValue value, uint64_t line, uint64_t column,
+              uint64_t offset, uint64_t end_offset) noexcept;
+
+        Value() = default;
+
+        Value &operator=(const Value &other) = default;
+
+        [[nodiscard]] const std::string& get_symbol() const {
+            return symbol_;
+        }
+    };
+}
+
+#endif // TOKEN_HPP
+
+%%LEXER_RULES%%
+
+%{
+ #include "generated/token.hpp"
+ #include "lexer.hpp"
+ #include "semantic_value.hpp"
+
+ uint64_t offset = 0;
+ uint64_t column = 1;
+%}
+
+
+%option c++
+%option yyclass="Scanner"
+%option noyywrap
+%option yylineno
+
+%%
+
+{% for name, lit in keywords.items() %}
+"{{ lit }}"   {
+                 uint64_t start_offset = offset;
+                 offset += yyleng;
+                 uint64_t end_offset = offset - 1;
+                 uint64_t start_column = column;
+                 column = yyleng;
+                 auto token = Token::Value(Token::Type::TOK_{{ name }}, std::string(yytext, yyleng),
+                                                           std::monostate{}, yylineno, start_column,
+                                                           start_offset, end_offset);
+                 static_cast<Scanner*>(this)->setCurrentToken(token);
+
+                 return Token::Type::TOK_{{ name }};
+              }
+{% endfor %}
+
+{% for name, lit in operators.items() %}
+"{{ lit|replace('"','\"') }}"   {
+                                     uint64_t start_offset = offset;
+                                     offset += yyleng;
+                                     uint64_t end_offset = offset - 1;
+                                     uint64_t start_column = column;
+                                     column = yyleng;
+                                     auto token = Token::Value(Token::Type::TOK_{{ name }}, "{{ lit|replace('"','\"') }}",
+                                                               std::string(yytext, yyleng), yylineno, start_column,
+                                                               start_offset, end_offset);
+
+                                    static_cast<Scanner*>(this)->setCurrentToken(token);
+
+                                     return Token::Type::TOK_{{ name }};
+                                 }
+{% endfor %}
+
+{% for name, lit in delimiters.items() %}
+"{{ lit|replace('"','\"') }}"   {
+                                  uint64_t start_offset = offset;
+                                  offset += yyleng;
+                                  uint64_t end_offset = offset - 1;
+                                  uint64_t start_column = column;
+                                  column = yyleng;
+                                  auto token = Token::Value(Token::Type::TOK_{{ name }}, std::string(yytext, yyleng),
+                                                                            std::monostate{}, yylineno, start_column,
+                                                                            start_offset, end_offset);
+                                  static_cast<Scanner*>(this)->setCurrentToken(token);
+
+                                  return Token::Type::TOK_{{ name }};
+                                 }
+{% endfor %}
+
+
+[a-zA-Z_][a-zA-Z0-9_]*   {
+                               uint64_t start_offset = offset;
+                               offset += yyleng;
+                               uint64_t end_offset = offset - 1;
+                               uint64_t start_column = column;
+                               column += yyleng;
+                               auto token = Token::Value(Token::Type::TOK_IDENTIFIER, std::string(yytext, yyleng),
+                                                        std::string(yytext, yyleng), yylineno, start_column,
+                                                        start_offset, end_offset);
+                               static_cast<Scanner*>(this)->setCurrentToken(token);
+
+                               return Token::Type::TOK_IDENTIFIER;
+                         }
+
+\"([^\\\"]|\\.)*\"       {
+                                uint64_t start_offset = offset;
+                                offset += yyleng;
+                                uint64_t end_offset = offset - 1;
+                                uint64_t start_column = column;
+                                column += yyleng;
+                                auto token = Token::Value(Token::Type::TOK_STRING_LITERAL, std::string(yytext, yyleng),
+                                                         std::string(yytext, yyleng), yylineno, start_column,
+                                                         start_offset, end_offset);
+                                static_cast<Scanner*>(this)->setCurrentToken(token);
+
+                                return Token::Type::TOK_STRING_LITERAL;
+                         }
+
+[0-9]+[.][0-9]+          {
+                               uint64_t start_offset = offset;
+                               offset += yyleng;
+                               uint64_t end_offset = offset - 1;
+                               uint64_t start_column = column;
+                               column += yyleng;
+                               auto token = Token::Value(Token::Type::TOK_INT_LITERAL, std::string(yytext, yyleng),
+                                                        std::string(yytext, yyleng), yylineno, start_column,
+                                                        start_offset, end_offset);
+                               static_cast<Scanner*>(this)->setCurrentToken(token);
+
+                               return Token::Type::TOK_INT_LITERAL;
+                         }
+
+[0-9]+(?:\.[0-9]+)?      {
+                               uint64_t start_offset = offset;
+                               offset += yyleng;
+                               uint64_t end_offset = offset - 1;
+                               uint64_t start_column = column;
+                               column += yyleng;
+                               auto token = Token::Value(Token::Type::TOK_FLOAT_LITERAL, std::string(yytext, yyleng),
+                                                        std::string(yytext, yyleng), yylineno, start_column,
+                                                        start_offset, end_offset);
+                               static_cast<Scanner*>(this)->setCurrentToken(token);
+
+                               return Token::Type::TOK_FLOAT_LITERAL;
+                         }
+
+[ \t]+            { offset += yyleng; column += yyleng; /* skip spaces and tabs */ }
+\n                { offset += yyleng; column = 1; /* reset column on newline */ }
+
+\r                { /* ignore carriage returns */ }
+.                 { /* ignore */ }
+
+<<EOF>>           {
+                      auto token = Token::Value(Token::Type::TOK_END, std::string("", 0), std::monostate{},
+                                               yylineno, column, offset, offset);
+                      static_cast<Scanner*>(this)->setCurrentToken(token);
+
+                      return Token::Type::TOK_END;
+                  }
+%%
