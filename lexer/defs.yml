@@ -8,6 +8,9 @@ keywords:
 
   BOOL: "bool"
 
+  STRUCT: "struct"
+  TRAIT: "trait"
+
   VOID: "void"
 
   STRING: "string"

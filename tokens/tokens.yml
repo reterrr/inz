@@ -1,0 +1,127 @@
+starting_token_value: 1
+
+conventions:
+  precedence:
+    higher_is_tighter: true
+  assoc_values: [ left, right, none ]
+
+tokens:
+  keywords:
+    control_flow:
+      IF: "if"
+      WHILE: "while"
+      DO: "do"
+      ELSE: "else"
+    declarations:
+      STRUCT: "struct"
+      TRAIT: "trait"
+      ENUM: "enum"
+      FN: "fn"
+      TYPE: "type"
+      LET: "let"
+      RETURN: "return"
+      MUT: "mut"
+    type_kw:
+      INT: "int"
+      BIGINT: "bigint"
+      MAGICINT: "magicint"
+      DOUBLE: "double"
+      BOOL: "bool"
+      VOID: "void"
+      STRING: "string"
+    misc_flow:
+      BREAK: "break"
+      CONTINUE: "continue"
+    modules:
+      IMPORT: "import"
+      EXPORT: "export"
+      PACKAGE: "package"
+      AS: "as"
+
+  identifiers:
+    IDENTIFIER: ~
+
+  literals:
+    INT_LITERAL: ~
+    FLOAT_LITERAL: ~
+    STRING_LITERAL: ~
+    BOOL_LITERAL: ~
+
+  punct:
+    delimiters:
+      LPAR: "("
+      RPAR: ")"
+      LBRACK: "["
+      RBRACK: "]"
+      LCBRA: "{"
+      RCBRA: "}"
+    separators:
+      COMMA: ","
+      SMCLN: ";"
+      COLON: ":"
+    misc:
+      DOT: "."
+      QUESTION: "?"
+      ARROW: "->"
+
+  pairs:
+    LPAR: RPAR
+    LBRACK: RBRACK
+    LCBRA: RCBRA
+
+  operators:
+    INC:
+      lit: "++"
+      precedence: 90
+      assoc: left
+      arity: 1
+      fixity: postfix
+    DEC:
+      lit: "--"
+      precedence: 90
+      assoc: left
+      arity: 1
+      fixity: postfix
+
+    NEGATION:
+      lit: "!"
+      precedence: 80
+      assoc: right
+      arity: 1
+      fixity: prefix
+    NEG:
+      lit: "-"
+      precedence: 80
+      assoc: right
+      arity: 1
+      fixity: prefix
+
+    STAR: { lit: "*", precedence: 70, assoc: left,  arity: 2 }
+    SLASH: { lit: "/", precedence: 70, assoc: left,  arity: 2 }
+    MODULO: { lit: "%", precedence: 70, assoc: left,  arity: 2 }
+
+    PLUS: { lit: "+", precedence: 60, assoc: left,  arity: 2 }
+    MINUS: { lit: "-", precedence: 60, assoc: left,  arity: 2 }
+
+    LESS: { lit: "<",  precedence: 50, assoc: left, arity: 2 }
+    LEQ: { lit: "<=", precedence: 50, assoc: left, arity: 2 }
+    GREATER: { lit: ">",  precedence: 50, assoc: left, arity: 2 }
+    GEQ: { lit: ">=", precedence: 50, assoc: left, arity: 2 }
+
+    EQUAL: { lit: "==", precedence: 45, assoc: left, arity: 2 }
+    NEQUAL: { lit: "!=", precedence: 45, assoc: left, arity: 2 }
+
+    BOOL_AND: { lit: "&&", precedence: 40, assoc: left, arity: 2 }
+    BOOL_OR: { lit: "||", precedence: 35, assoc: left, arity: 2 }
+
+#    TERNARY:
+#      tokens: [ QUESTION, COLON ]
+#      precedence: 30
+#      assoc: right
+#      arity: 3
+
+    ASSIGN: { lit: "=",  precedence: 20, assoc: right, arity: 2, is_assign: true }
+    PLUS_ASSIGN: { lit: "+=", precedence: 20, assoc: right, arity: 2, is_assign: true }
+    MIN_ASSIGN: { lit: "-=", precedence: 20, assoc: right, arity: 2, is_assign: true }
+    MUL_ASSIGN: { lit: "*=", precedence: 20, assoc: right, arity: 2, is_assign: true }
+    DIV_ASSIGN: { lit: "/=", precedence: 20, assoc: right, arity: 2, is_assign: true }

@@ -1,0 +1,73 @@
+// Auto-generated token.hpp
+#ifndef TOKEN_HPP
+#define TOKEN_HPP
+#include <cstdint>
+
+namespace lex {
+    enum Type {
+        TOK_UNKNOWN = 0,
+        {% set nc = namespace(val=starting_token_value) %}
+        {% for _, group in tokens.keywords.items() %}
+        {% for name, lit in group.items() %}
+        TOK_{{ name }} = {{ nc.val }}, // {{ lit }}
+        {% set nc.val = nc.val + 1 %}
+        {% endfor %}
+        {% endfor %}
+        {% for name, info in tokens.operators.items() %}
+        TOK_{{ name }} = {{ nc.val }}, // {{ info.lit }}
+        {% set nc.val = nc.val + 1 %}
+        {% endfor %}
+        {% for _, group in tokens.punct.items() %}
+        {% for name, lit in group.items() %}
+        TOK_{{ name }} = {{ nc.val }}, // {{ lit }}
+        {% set nc.val = nc.val + 1 %}
+        {% endfor %}
+        {% endfor %}
+        TOK_IDENTIFIER = {{ nc.val }},
+        {% set nc.val = nc.val + 1 %}
+        TOK_INT_LITERAL = {{ nc.val }},
+        {% set nc.val = nc.val + 1 %}
+        TOK_FLOAT_LITERAL = {{ nc.val }},
+        {% set nc.val = nc.val + 1 %}
+        TOK_STRING_LITERAL = {{ nc.val }},
+        {% set nc.val = nc.val + 1 %}
+        TOK_END = {{ nc.val }}
+    };
+
+   struct Pos final {
+       uint32_t line = 1;
+       uint32_t column = 1;
+       uint64_t offset = 0;
+   };
+
+   struct Loc final {
+       Pos begin;
+       Pos end;
+   };
+
+   inline Loc &operator+=(Loc &a, const Loc &b) {
+       a.end = b.end;
+       return a;
+   }
+
+   inline Loc operator+(Loc a, const Loc &b) {
+       a += b;
+       return a;
+   }
+
+   using SymId = uint32_t;
+
+   struct Token final {
+           Type type_;
+           Loc loc_;
+
+           union {
+               int64_t i64;
+               double f64;
+               SymId sym;
+           } u_{};
+   };
+}
+
+
+#endif // TOKEN_HPP

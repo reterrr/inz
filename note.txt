@@ -1,0 +1,129 @@
+
+Celem pracy jest zaprojektowanie i implementację rdzenia interpretera, który pozwoli na przetwarzanie i wykonywanie
+podstawowych operacji matematycznych. Parser ma obsługiwać podstawowe operacje algebraiczne oraz działania na
+macierzach. Projekt ma być modularny umożliwiający przyszłe rozszerzenia, np. o moduł wizualizacji wyników, moduł rozwiązywania równań.
+
+
+
+
+
+
+Architektura interpreteru
+
+Projekt będzie miał charakter modułowy i rozszerzalny. Główne komponenty to parser, AST (drzewo składniowe), system typów, generator kodu LLVM IR oraz egzekutor (JIT).
+
+Parser i AST. Parser (czytnik składni) analizuje tekstowy kod źródłowy skryptu i tworzy drzewo abstrakcyjnej składni (AST). Struktura AST reprezentuje poszczególne konstrukcje języka (literały liczbowe, operacje, wywołania funkcji, przypisania, itp.) jako obiekty w C++. Na przykład można wykorzystać klasy NumberExprAST dla literałów liczbowych, BinaryExprAST dla wyrażeń binarnych, CallExprAST dla wywołań funkcji oraz inne, co ilustruje oficjalny tutorial LLVM «Kaleidoscope»
+
+. Parser najlepiej zbudować jako parser typu recursive descent z obsługą priorytetów operatorów (np. algorytm Shunting-yard dla wyrażeń) oraz specjalną obsługą definicji funkcji. W efekcie AST wiernie odzwierciedli strukturę programu/skryptu bez uwzględniania szczegółów składniowych.
+
+System typów i kontrola. W AST lub osobnej warstwie implementujemy system typów, który sprawdza poprawność operacji (np. dodawanie macierzy o zgodnych wymiarach, skalarnych typów liczbowych itd.). Można zastosować typowanie statyczne (znane w czasie kompilacji AST) lub dynamiczne (sprawdzane w czasie wykonania). Typy mogą obejmować scalaŕne liczby całkowite i rzeczywiste, macierze o rozmiarach, a także typ funkcji. System typów służy do weryfikacji programu i może też wpływać na generowany kod LLVM (np. rozkładając mnożenie macierzy czy skalarną operację na poziomie typów).
+
+Generowanie kodu LLVM IR. Z AST generujemy kod pośredni w LLVM IR. Każdy węzeł AST będzie mieć metodę codegen(), która emituje odpowiednie instrukcje IR, tworząc obiekty LLVM typu Value. LLVM udostępnia obiekt IRBuilder, LLVMContext i Module, które ułatwiają programistyczne generowanie IR
+Źródło ➔ Tokeny ➔ AST
+
+    Najpierw skaner dzieli Twój kod na tokeny (słowa kluczowe, identyfikatory, literały),
+
+    potem parser łączy je w drzewo składniowe (AST), które dokładnie odwzorowuje strukturę programu.
+
+Po utworzeniu AST mamy przynajmniej trzy główne drogi:
+
+    Tree-walk interpreter
+    – bezpośrednio „przechodzimy” po węzłach AST i wykonujemy instrukcje w locie,
+
+    Transpilacja
+    – AST jest przekształcane w kod w innym wysokopoziomowym języku (np. z TypeScriptu do JavaScriptu),
+
+    Kompilacja z IR
+
+        AST ➔ Reprezentacja Pośrednia (IR)
+        – wspólny, uogólniony format ułatwiający optymalizację,
+
+        Optymalizacja IR
+        – analiza przepływu danych, eliminacja zbędnych instrukcji, łączenie operacji itp.,
+
+        Generowanie kodu docelowego
+
+            Bytecode (np. JVM, CPython) ➔ wykonanie przez maszynę wirtualną
+
+            Kod maszynowy ➔ bezpośrednie uruchomienie na procesorze
+
+Dodatkowe warianty
+
+    Niektóre kompilatory pozwalają na linkowanie wielu modułów przed wygenerowaniem finalnego kodu maszynowego,
+
+    inne stosują jit-kompilację (Just-In-Time), czyli łączą pośrednią interpretację i kompilację w trakcie działania programu.
+
+Efekt końcowy
+– W zależności od wybranej ścieżki otrzymujesz albo bytecode, który działa na VM, albo gotowy kod maszynowy zoptymalizowany pod konkretną architekturę.
+. Proces ten jest stosunkowo prosty – jak zauważa tutorial LLVM, transformacja AST na LLVM IR „jest dużo prostsza niż budowa parsera”
+llvm.org
+. Na przykład wyrażenie liczbowy generuje stałą typu ConstantFP, a wyrażenie binarne generuje odpowiednią instrukcję arytmetyczną. Dzięki LLVM IR można skorzystać z zaawansowanych optymalizacji oraz JIT-owania.
+
+Wykonawca (JIT). Wygenerowany LLVM IR jest przekazywany do warstwy wykonawczej (np. LLVM’s MCJIT lub nowocześniejszy ORCv2), która kompiluje kod pośredni do natywnych instrukcji procesora w czasie działania programu (just-in-time) lub wykonuje go bezpośrednio. Taka metoda pozwala łączyć interaktywność interpretowaną z wydajnością kompilowanych języków – dzięki JIT-owaniu koszt interpretacji jest zminimalizowany
+. Przykładem podobnego podejścia jest Cling – interaktywny interpreter C++ (oparty na LLVM), który umożliwia szybki prototyp i „szybkie iteracje” kodu, JIT-ując fragmenty na bieżąco
+
+
+
+
+Parser składni (lexer+parser) – moduł analizujący tekstowy kod źródłowy skryptu i budujący strukturę AST.
+Silnik AST – zestaw klas węzłów AST (literały, operatory, wywołania funkcji, definicje funkcji itp.) reprezentujących program.
+
+Generator kodu LLVM IR – komponent tłumaczący AST na LLVM IR (klasy kodujące metody codegen() do generowania instrukcji IR).
+
+Wykonawca (JIT) LLVM – moduł wykonujący wygenerowany LLVM IR, kompilujący go JIT-em do kodu maszynowego i uruchamiający.
+
+Loader bibliotek zewnętrznych – mechanizm dynamicznego ładowania bibliotek współdzielonych (SO/DLL) przy użyciu dlopen/LoadLibrary.
+
+Rejestr ABI/ funkcji – centralny rejestr (mapa) mapujący nazwy funkcji na adresy (wskaźniki).
+ Dodawanie nowych funkcji polega na rejestracji ich nazw i wskaźników w tym rejestrze – interpreter podczas wykonania odwołuje się do niego, aby znaleźć implementację funkcji
+API interfejsu wtyczek (ABI) – zbiór konwencji i protokołów definiujący,
+jak rozszerzenia natywne eksportują funkcje do języka (konwencja C, struktury danych, rejestracja funkcji).
+
+
+wspólnie działający mechanizm,
+który umożliwia dynamiczne
+ładowanie zewnętrznych modułów,
+rejestrowanie ich sygnatur
+i adresów funkcji oraz definiowanie
+standardowego interfejsu wymiany danych
+i wywołań między rdzeniem aplikacji a wtyczkami.
+
+
+
+
+Źródło ➔ Tokeny ➔ AST
+
+    Najpierw skaner dzieli Twój kod na tokeny (słowa kluczowe, identyfikatory, literały),
+
+    potem parser łączy je w drzewo składniowe (AST), które dokładnie odwzorowuje strukturę programu.
+
+Po utworzeniu AST mamy przynajmniej trzy główne drogi:
+
+    Tree-walk interpreter
+    – bezpośrednio „przechodzimy” po węzłach AST i wykonujemy instrukcje w locie,
+
+    Transpilacja
+    – AST jest przekształcane w kod w innym wysokopoziomowym języku (np. z TypeScriptu do JavaScriptu),
+
+    Kompilacja z IR
+
+        AST ➔ Reprezentacja Pośrednia (IR)
+        – wspólny, uogólniony format ułatwiający optymalizację,
+
+        Optymalizacja IR
+        – analiza przepływu danych, eliminacja zbędnych instrukcji, łączenie operacji itp.,
+
+        Generowanie kodu docelowego
+
+            Bytecode (np. JVM, CPython) ➔ wykonanie przez maszynę wirtualną
+
+            Kod maszynowy ➔ bezpośrednie uruchomienie na procesorze
+
+Dodatkowe warianty
+
+    Niektóre kompilatory pozwalają na linkowanie wielu modułów przed wygenerowaniem finalnego kodu maszynowego,
+
+    inne stosują jit-kompilację (Just-In-Time), czyli łączą pośrednią interpretację i kompilację w trakcie działania programu.
+
+Efekt końcowy
+– W zależności od wybranej ścieżki otrzymujesz albo bytecode, który działa na VM, albo gotowy kod maszynowy zoptymalizowany pod konkretną architekturę.

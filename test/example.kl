@@ -1,0 +1,120 @@
+module my;
+import std.{sin, cos};
+import test-std.*;
+
+interface KO {
+  func some(int... args) -> bool;        // required
+  default func helper(int x) -> int { return x * x; }
+}
+
+const double PI = 3.141592653589793;      // compile-time constant
+
+static func max(int a, int b) -> int {
+    return (a > b) ? a : b;
+}
+
+struct S {
+  int a, b;
+  double c, d;
+  char g;
+  string str;
+  mutable array<string> arr;
+
+  private bool f;
+}
+
+impl KO for S {
+  func some(ref mutable this, int... args) -> bool {
+    // example: check if sum of args is even
+    int sum = 0;
+    for (int i = 0; i < args.length; ++i) {
+        sum += args[i];
+    }
+
+    return (sum % 2) == 0;
+  }
+}
+
+impl S {
+  func compute(ref this, double x) -> double {
+    // example: do-while loop
+    double t = x;
+    do {
+      t = t * c + sin(t);
+    } while (t < d);
+
+    // example: inline if-expression
+    return (t > PI) ? t : -t;
+  }
+}
+
+// a function that transforms a fixed-size input to a fixed-size output
+func s_ss(ref const array<int, 100> s) -> array<int, 50> {
+  array<int, 50> out;
+  for (int i = 0; i < 50; ++i) {
+    // use match expression to pick even/odd behavior
+    match (s[i]) {
+      case x if (x % 2) == 0:
+        out[i] = x / 2;
+      default:
+        out[i] = x * 3 + 1;
+    }
+  }
+  return out;
+}
+
+func s_fun(ref const S s) -> void {
+  // while loop example
+  int i = 0;
+  while (i < s.arr.length) {
+    print("arr[", i, "] = ", s.arr[i]);
+    ++i;
+  }
+
+  // if/else example
+  if (s.f) {
+    print("flag is true");
+  } else {
+    print("flag is false");
+  }
+}
+
+func main(string[] args) -> void {
+  // demonstrate for-each
+  for (string name in args) {
+    print("Arg: ", name);
+  }
+
+  S obj = {
+    a = 1, b = 2,
+    c = 0.5, d = 10.0,
+    g = 'x',
+    str = "hello",
+    arr = new array<string>(args.length),
+    f = false
+  };
+
+  // fill arr
+  for (int i = 0; i < args.length; ++i) {
+    obj.arr[i] = args[i];
+  }
+
+  // call methods
+  bool even = obj.some(1, 2, 3, 4);
+  print("some(...) returned even? ", even);
+
+  double result = obj.compute(2.0);
+  print("compute(2.0) = ", result);
+
+  // call free functions & const
+  print("PI = ", PI, ", max(4,7) = ", max(4,7));
+
+  // call s_ss
+  array<int,100> data100 = new array<int,100>(100);
+  for (int i = 0; i < 100; ++i) { data100[i] = i; }
+  array<int,50> data50 = s_ss(data100);
+  print("s_ss produced first element: ", data50[0]);
+
+  // call s_fun
+  s_fun(&mutable obj);
+}

@@ -51,7 +51,10 @@ def main(config_path):
         # Everything after '%%LEXER_RULES%%'
         lexf.write(output.split('%%LEXER_RULES%%')[1])
 
-    print("Generated token.hpp and lexer_rules.l")
+    with open('parser_rules.y', 'w') as parsf:
+        parsf.write(output.split('%%PARSER_RULES%%')[1])
+
+    print("Generated token.hpp, lexer_rules.l and parser_rules.y")
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:

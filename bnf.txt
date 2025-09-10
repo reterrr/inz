@@ -1,0 +1,96 @@
+<Program>         ::= { <ModuleDecl> | <ImportDecl> | <InterfaceDecl>
+                      | <DefineDecl> | <FuncDecl> | <StaticFuncDecl>
+                      | <StructDecl> | <ImplDecl> }
+
+<ModuleDecl>      ::= "module" <Identifier> ";"
+
+<ImportDecl>      ::= "import" <ModulePath> ";"
+<ModulePath>      ::= <Identifier> { "." <Identifier> }
+                   |  <Identifier> "-" <Identifier> { "-" <Identifier> }
+                   |  <ModulePath> "." <Identifier>
+                   |  <ModulePath> "-" <Identifier>
+
+<InterfaceDecl>   ::= "interface" <Identifier> "{" { <MethodSig> } "}" ";"
+<MethodSig>       ::= "func" <Identifier> "(" [ <ParamList> ] ")"
+                      "->" <Type> [ "{" <Block> "}" | ";" ]
+
+<DefineDecl>      ::= "define" <Type> <Identifier> "=" <Expr> ";"
+
+<StaticFuncDecl>  ::= "static" "func" <Identifier> "(" [ <ParamList> ] ")"
+                      "->" <Type> <Block>
+
+<FuncDecl>        ::= "func" <Identifier> "(" [ <ParamList> ] ")"
+                      "->" <Type> <Block>
+
+<StructDecl>      ::= "struct" <Identifier> "{" { <FieldDecl> } "}" ";"
+<FieldDecl>       ::= [ "mutable" ] <Type> <Identifier> ";"
+                   |  "private" [ "mutable" ] <Type> <Identifier> ";"
+
+<ImplDecl>        ::= "impl" <Identifier> [ "for" <Identifier> ] "{" { <FuncDecl> } "}" ";"
+
+<ParamList>       ::= <Param> { "," <Param> }
+<Param>           ::= [ <ParamQual> ] <Type> [ "..." ] <Identifier>
+<ParamQual>       ::= "ref" | "ref" "mutable"
+
+<Type>            ::= <SimpleType> | <GenericType>
+<SimpleType>      ::= "int" | "double" | "char" | "bool" | "string" | <Identifier>
+<GenericType>     ::= <Identifier> "<" <Type> [ "," <Expr> ] ">"
+
+<Block>           ::= "{" { <Decl> | <Stmt> } "}"
+<Stmt>            ::= <VarDecl> ";"
+                   |  <Expr> ";"
+                   |  <IfStmt>
+                   |  <ForStmt>
+                   |  <WhileStmt>
+                   |  <DoWhileStmt>
+                   |  <MatchStmt>
+                   |  <Block>
+
+<VarDecl>         ::= [ "ref" ] [ "mutable" ] <Type> <Identifier> [ "=" <Expr> ]
+
+<IfStmt>          ::= "if" "(" <Expr> ")" <Block> [ "else" <Block> ]
+
+<ForStmt>         ::= "for" "(" <ForInit> ";" <Expr> ";" <ForIter> ")" <Block>
+<ForInit>         ::= <VarDecl> | <Expr> |
+<ForIter>         ::= <Expr> |
+
+<WhileStmt>       ::= "while" "(" <Expr> ")" <Block>
+
+<DoWhileStmt>     ::= "do" <Block> "while" "(" <Expr> ")" ";"
+
+<MatchStmt>       ::= "match" "(" <Expr> ")" "{" { <MatchCase> } "}"
+<MatchCase>       ::= "case" <Pattern> [ "if" <Expr> ] ":" <StmtList>
+                   |  "default" ":" <StmtList>
+<Pattern>         ::= <Identifier> | <Literal>
+
+<StmtList>        ::= { <Stmt> }
+
+<Expr>            ::= <Literal>
+                   |  <Identifier>
+                   |  <Expr> "." <Identifier>
+                   |  <Expr> "[" <Expr> "]"
+                   |  <Expr> "(" [ <ArgList> ] ")"
+                   |  <Expr> <BinOp> <Expr>
+                   |  <UnOp> <Expr>
+                   |  "(" <Expr> ")"
+                   |  "new" <GenericType> "(" <Expr> ")"
+<ArgList>         ::= <Expr> { "," <Expr> }
+
+<BinOp>           ::= "+" | "-" | "*" | "/" | "%"
+                   |  "==" | "!=" | "<" | "<=" | ">" | ">="
+                   |  "&&" | "||" | "=" | "+=" | "-=" | "*=" | "/="
+                   |  "?" ":"       // ternary as part of Expr
+
+<UnOp>            ::= "!" | "-" | "+"
+
+<Literal>         ::= <Number> | <Char> | <String> | <Bool>
+
+<Identifier>      ::= <Letter> { <Letter> | <Digit> | "_" }
+<Number>          ::= <Digit> { <Digit> } [ "." <Digit> { <Digit> } ]
+<Char>            ::= "'" <AnyChar> "'"
+<String>          ::= `"` { <AnyChar> } `"`
+<Bool>            ::= "true" | "false"
+
+<Letter>          ::= "A" … "Z" | "a" … "z"
+<Digit>           ::= "0" … "9"
+<AnyChar>         ::= any character except control or quote
