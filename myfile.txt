@@ -1,0 +1,23 @@
+package lublyu.dyvnu.veroniku;
+
+import veronichka;
+import so;
+//люблю Вероніку
+
+/* love Veronika */
+
+struct K {}
+struct a;
+
+fn s(int c, int b, int d) -> int
+{
+    int a = 10;
+    magicint l = 100;
+
+    return a;
+}
+
+
+int a = 10, b = 10;
+
+string p = "pp";
