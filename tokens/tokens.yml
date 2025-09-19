@@ -21,6 +21,7 @@ tokens:
       LET: "let"
       RETURN: "return"
       MUT: "mut"
+      PUB: "pub"
     type_kw:
       INT: "int"
       BIGINT: "bigint"
