@@ -20,17 +20,22 @@ set(GEN_DIR ${CMAKE_SOURCE_DIR}/generated)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O1")
 set(CMAKE_BUILD_TYPE DEBUG)
 
-include_directories(generated)
-
-add_subdirectory(lexer)
-add_subdirectory(parser)
+include_directories(
+        generated
+        ast
+        ast/nodes
+        parser
+        lexer
+        lexer/generated
+)
 
 add_executable(inz main.cpp
-        parser/main.cpp
-        "ast/node_type .hpp"
+        lexer/lexer.cpp
+        generated/lexer/lexer.yy.cpp
+        parser/parser.cpp
+        ast/node_type.hpp
         ast/node.hpp
         ast/nodes/type/type.hpp
-        ast/qual.cpp
         ast/nodes/expr/expr.hpp
         ast/nodes/visit/visitable.hpp
         ast/nodes/visit/expr_visitor.hpp
@@ -40,7 +45,7 @@ add_executable(inz main.cpp
         ast/nodes/expr/binary_op_exression_kind.hpp
         ast/nodes/expr/unary_op_expr.hpp
         ast/nodes/expr/binary_op_expr.hpp
-        test.cpp
+        #test.cpp
         ast/ast.hpp
         ast/allocator.hpp
         ast/nodes/expr/type_node.hpp
@@ -77,6 +82,27 @@ add_executable(inz main.cpp
         ast/nodes/expr/init_declarator_expr.hpp
         ast/nodes/expr/call_expr.hpp
         ast/nodes/expr/index_expr.hpp
+        ast/ast_dumper.hpp
+        ast/ast_iterator.hpp
+        ast/nodes/project.hpp
+        ast/nodes/visit/dump_visitor.hpp
+        ast/nodes/decl/struct_decl.hpp
+        ast/nodes/decl/field_decl.hpp
 )
 
-target_link_libraries(inz PRIVATE parser_obj lexer_obj)
+target_include_directories(inz PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/lexer
+        ${CMAKE_CURRENT_SOURCE_DIR}/parser
+        ${CMAKE_CURRENT_SOURCE_DIR}/lexer/generated
+        ${CMAKE_CURRENT_SOURCE_DIR}/generated
+        ${CMAKE_CURRENT_SOURCE_DIR}/ast
+        ${CMAKE_CURRENT_SOURCE_DIR}/ast/nodes
+        ${CMAKE_CURRENT_SOURCE_DIR}/ast/nodes/decl
+        ${LLVM_INCLUDE_DIRS}
+)
+add_definitions(${LLVM_DEFINITIONS})
+
+
+#target_link_libraries(inz PRIVATE parser_obj lexer_obj)
+target_link_libraries(inz PRIVATE LLVMSupport)

@@ -17,6 +17,7 @@
 #include "nodes/decl/decl.hpp"
 
 // Include concrete nodes used by factory
+#include "nodes/project.hpp"
 #include "nodes/expr/int_expr.hpp"
 #include "nodes/expr/bool_expr.hpp"
 #include "nodes/expr/string_expr.hpp"
@@ -53,6 +54,9 @@
 #include "nodes/decl/param_decl.hpp"
 #include "nodes/decl/function_decl.hpp"
 #include "nodes/decl/var_decl.hpp"
+#include "nodes/decl/type_alias_decl.hpp"
+#include "nodes/decl/struct_decl.hpp"
+#include "nodes/decl/field_decl.hpp"
 
 #include "nodes/module/import_decl.hpp"
 #include "nodes/module/module.hpp"
@@ -71,16 +75,18 @@ namespace ast {
     // ====================================================
 
     class AST final {
+        llvm::BumpPtrAllocator alloc_{};
+        Project *project = nullptr;
+
         std::size_t expr_count_ = 0;
         std::size_t stmt_count_ = 0;
         std::size_t decl_count_ = 0;
         std::size_t module_count_ = 0;
 
-        llvm::BumpPtrAllocator alloc_{};
-
         template<typename T, typename... Args>
         T *make(Args &&... args) {
             void *mem = alloc_.Allocate<T>();
+
             T *obj = ::new(mem) T(std::forward<Args>(args)...);
 
             if constexpr (std::is_base_of_v<Expr, T>) ++expr_count_;
@@ -92,9 +98,17 @@ namespace ast {
         }
 
     public:
-        AST() = default;
+        AST()
+            : project(mk_project(std::vector<ModulePtr>{}, lex::Loc{})) {
+        }
 
         ~AST() = default;
+
+        [[nodiscard]] Project *get_project() const { return project; }
+
+        void project_add_module(ModulePtr module) const;
+
+        Project *mk_project(std::vector<ModulePtr> &&modules, const lex::Loc &l);
 
         // ========= Expressions =========
         IntLiteralExpr *mk_int_literal_expr(kl_int v, const lex::Loc &loc);
@@ -123,7 +137,7 @@ namespace ast {
 
         InitDeclarator *mk_var_declarator_expr(lex::SymId name, ExprPtr init, const lex::Loc &loc);
 
-        IndexExpr* mk_index(ExprPtr base, ExprPtr idx, const lex::Loc& loc);
+        IndexExpr *mk_index(ExprPtr base, ExprPtr idx, const lex::Loc &loc);
 
         // ========= Statements =========
         BlockStatement *mk_block_stmt(std::vector<StatementPtr> &&stmts, const lex::Loc &loc);
@@ -169,6 +183,10 @@ namespace ast {
                                  BlockStatement *body, // nullptr => prototype
                                  const lex::Loc &loc);
 
+        FieldDecl *mk_field_decl(lex::SymId name, Type *type, TypeSpecifier spec, bool is_public, const lex::Loc &loc);
+
+        StructDecl* mk_struct_decl(lex::SymId name, std::vector<FieldDecl *> &&fields, const lex::Loc &loc);
+
         Module *mk_module(std::vector<lex::SymId> &&package_path,
                           std::vector<ImportDecl *> &&imports,
                           std::vector<Decl *> &&decls,
@@ -190,11 +208,13 @@ namespace ast {
 
         BuiltinType *mk_builtin_type(BuiltinTy type, const lex::Loc &loc);
 
-        FixedArrayType *mk_fixed_array_type(Type* type, std::uint64_t length, const lex::Loc& loc);
+        FixedArrayType *mk_fixed_array_type(Type *type, std::uint64_t length, const lex::Loc &loc);
 
-        PathType* mk_type_path_single(lex::SymId segment, const lex::Loc& loc);
-        PathType* mk_type_path_append(PathType* base, lex::SymId segment, const lex::Loc& loc);
-        Type*     mk_type_from_path(PathType* path, const lex::Loc& loc);
+        PathType *mk_type_path_single(lex::SymId segment, const lex::Loc &loc);
+
+        PathType *mk_type_path_append(PathType *base, lex::SymId segment, const lex::Loc &loc);
+
+        Type *mk_type_from_path(PathType *path, const lex::Loc &loc);
 
 
         // ======== Introspection (optional) ========

@@ -8,8 +8,7 @@
 namespace ast::visitor {
     template<typename T>
     struct VisitSlot {
-        virtual void visit(T &) {
-        }
+        virtual void visit(T &) = 0;
     };
 
     template<typename... Ts>

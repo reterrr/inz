@@ -4,10 +4,10 @@
 
 #ifndef PARAM_DECL_HPP
 #define PARAM_DECL_HPP
+
 #include "decl.hpp"
 #include "../type/type.hpp"
 #include "../visit/decl_visitor.hpp"
-
 
 namespace ast {
     struct ParamDecl final : Decl {

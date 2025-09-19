@@ -25,7 +25,9 @@ class Scanner final : public yyFlexLexer {
     std::map<std::string_view, lex::SymId> ident_ids_;
 
 public:
-    using yyFlexLexer::yyFlexLexer;
+    explicit Scanner(std::istream *in = &std::cin, std::ostream *out = &std::cout)
+        : yyFlexLexer(in, out) {
+    }
 
     int yylex() override;
 

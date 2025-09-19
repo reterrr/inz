@@ -5,6 +5,14 @@ using namespace ast;
 
 // ========= Expressions =========
 
+void AST::project_add_module(ModulePtr module) const {
+    project->modules.push_back(module);
+}
+
+Project *AST::mk_project(std::vector<ModulePtr> &&modules, const lex::Loc &l) {
+    return make<Project>(std::move(modules), l);
+}
+
 IntLiteralExpr *AST::mk_int_literal_expr(kl_int v, const lex::Loc &loc) {
     return make<IntLiteralExpr>(v, loc);
 }
@@ -90,6 +98,14 @@ FunctionDecl *AST::mk_fn_decl(lex::SymId name,
                               BlockStatement *body,
                               const lex::Loc &loc) {
     return make<FunctionDecl>(name, type, std::move(params), ret, body, loc);
+}
+
+FieldDecl *AST::mk_field_decl(lex::SymId name, Type *type, TypeSpecifier spec, bool is_public, const lex::Loc &loc) {
+    return make<FieldDecl>(name, type, spec, is_public, loc);
+}
+
+StructDecl *AST::mk_struct_decl(lex::SymId name, std::vector<FieldDecl *> &&fields, const lex::Loc &loc) {
+    return make<StructDecl>(name, std::move(fields), loc);
 }
 
 Module *AST::mk_module(std::vector<lex::SymId> &&package_path, std::vector<ImportDecl *> &&imports,

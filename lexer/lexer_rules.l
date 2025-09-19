@@ -259,7 +259,7 @@ static inline void bump_pos_for_text(const char* s, size_t n, int& yylineno_ref)
     Loc loc = make_loc(yylineno, g_column, 0, g_offset);
     Token t{}; t.type_ = Type::TOK_END; t.loc_ = loc;
     self->setCurrentToken(t);
-    return static_cast<int>(Type::TOK_END);
+    return 0;
 }
 
 %%

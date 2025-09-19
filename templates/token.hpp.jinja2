@@ -5,7 +5,7 @@
 
 namespace lex {
     enum Type {
-        TOK_UNKNOWN = 0,
+        TOK_END = 0,
         {% set nc = namespace(val=starting_token_value) %}
         {% for _, group in tokens.keywords.items() %}
         {% for name, lit in group.items() %}
@@ -31,7 +31,7 @@ namespace lex {
         {% set nc.val = nc.val + 1 %}
         TOK_STRING_LITERAL = {{ nc.val }},
         {% set nc.val = nc.val + 1 %}
-        TOK_END = {{ nc.val }}
+        TOK_UNKNOWN = {{ nc.val }}
     };
 
    struct Pos final {

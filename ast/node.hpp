@@ -4,9 +4,10 @@
 
 #ifndef NODE_HPP
 #define NODE_HPP
+
 #include <token.hpp>
 
-#include "node_type .hpp"
+#include "node_type.hpp"
 
 namespace ast {
     struct Node;
@@ -16,7 +17,10 @@ namespace ast {
         virtual ~Node() = default;
 
         Node(const NodeKind nodeType, const lex::Loc &loc) :
-            nodeType_(nodeType), location_(loc) {}
+            nodeType_(nodeType), location_(loc) {
+
+
+        }
 
         NodeKind nodeType_;
         lex::Loc location_;

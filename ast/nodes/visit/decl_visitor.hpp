@@ -14,6 +14,8 @@ namespace ast {
     struct TypeAliasDecl;
     struct ImportDecl;
     struct VarDecl;
+    struct StructDecl;
+    struct FieldDecl;
 }
 
 namespace ast::visitor {
@@ -22,7 +24,9 @@ namespace ast::visitor {
                 FunctionDecl,
                 TypeAliasDecl,
                 ImportDecl,
-                VarDecl> {
+                VarDecl,
+                StructDecl,
+                FieldDecl> {
     };
 }
 

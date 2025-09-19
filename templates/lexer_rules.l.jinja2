@@ -1,9 +1,9 @@
 %{
-
-
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+
+#include "parser/parser.hpp"
 
 #include "generated/token.hpp"
 #include "lexer.hpp"
@@ -11,84 +11,82 @@
 using lex::Type;
 using lex::Token;
 using lex::Loc;
+using lex::Pos;
 
-// Running position
-static uint32_t g_column = 1;
-static uint64_t g_offset = 0;
+#define YY_DECL int Scanner::yylex()
 
-// Build a Loc for a token that does not span newlines
-static inline Loc make_loc(uint32_t line, uint32_t start_col, uint32_t len, uint64_t start_off) {
-    Loc L;
-    L.line = line; L.end_line = line;
-    L.column = start_col;
-    L.end_column = start_col + (len ? (len - 1) : 0);
-    L.begin_off = start_off;
-    L.end_off = start_off + (len ? (len - 1) : 0);
-    return L;
+
+static Pos cur;  // { line=1, column=1, offset=0 } by default
+
+
+inline void advance(Pos& p, const char* text, size_t n) {
+  for (size_t i = 0; i < n; ++i) {
+    unsigned char c = static_cast<unsigned char>(text[i]);
+    ++p.offset;
+    if (c == '\n') { ++p.line; p.column = 1; }
+    else           { ++p.column; }
+  }
 }
 
-// Advance counters for arbitrary text (used in comments/newlines)
-static inline void bump_pos_for_text(const char* s, size_t n, int& yylineno_ref) {
-    for (size_t i = 0; i < n; ++i) {
-        if (s[i] == '\n') { ++yylineno_ref; g_column = 1; }
-        else { ++g_column; }
-        ++g_offset;
-    }
+static inline Loc token_loc_and_advance(const char* text, size_t n) {
+  Loc L{};
+  L.begin = cur;
+  if (n) {
+    L.end        = cur;
+    L.end.column += static_cast<uint32_t>(n - 1);
+    L.end.offset += static_cast<uint64_t>(n - 1);
+  } else {
+    L.end = cur;
+  }
+  advance(cur, text, n);   // finally move the global cursor
+  return L;
 }
 
-#define EMIT_SIMPLE(KIND) do { \
-    auto* self = static_cast<Scanner*>(this); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    Token t{}; t.type_ = KIND; t.loc_ = loc; \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(KIND); \
+#define EMIT_KIND(KIND) do { \
+  auto* self = static_cast<Scanner*>(this); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = (KIND); t.loc_ = loc; \
+  self->setCurrentToken(t); \
+  return static_cast<int>(KIND); \
 } while(0)
 
 #define EMIT_INT() do { \
-    auto* self = static_cast<Scanner*>(this); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    Token t{}; t.type_ = Type::TOK_INT_LITERAL; t.loc_ = loc; \
-    /* simple strtoll; you can add base/underscores later */ \
-    t.u_.i64 = strtoll(yytext, nullptr, 10); \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(Type::TOK_INT_LITERAL); \
+  auto* self = static_cast<Scanner*>(this); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_INT_LITERAL; t.loc_ = loc; \
+  t.u_.i64 = strtoll(yytext, nullptr, 10); \
+  self->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_INT_LITERAL); \
 } while(0)
 
 #define EMIT_FLOAT() do { \
-    auto* self = static_cast<Scanner*>(this); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    Token t{}; t.type_ = Type::TOK_FLOAT_LITERAL; t.loc_ = loc; \
-    t.u_.f64 = strtod(yytext, nullptr); \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(Type::TOK_FLOAT_LITERAL); \
+  auto* self = static_cast<Scanner*>(this); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_FLOAT_LITERAL; t.loc_ = loc; \
+  t.u_.f64 = strtod(yytext, nullptr); \
+  self->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_FLOAT_LITERAL); \
 } while(0)
 
 #define EMIT_STRING() do { \
-    auto* self = static_cast<Scanner*>(this); \
-    /* strip surrounding quotes; assume no newlines in rule */ \
-    const char* payload = yytext + 1; size_t n = (size_t)yyleng >= 2 ? (size_t)yyleng - 2 : 0; \
-    /* NOTE: implement unescape inside internString if you support escapes */ \
-    lex::SymId sym = self->internString(payload, n); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    Token t{}; t.type_ = Type::TOK_STRING_LITERAL; t.loc_ = loc; \
-    t.u_.sym = sym; \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(Type::TOK_STRING_LITERAL); \
+  auto* self = static_cast<Scanner*>(this); \
+  const char* payload = yytext + 1; size_t n = (size_t)yyleng >= 2 ? (size_t)yyleng - 2 : 0; \
+  lex::SymId sym = self->internString(payload, n); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_STRING_LITERAL; t.loc_ = loc; \
+  t.u_.sym = sym; \
+  self->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_STRING_LITERAL); \
 } while(0)
 
 #define EMIT_IDENT() do { \
-    auto* self = static_cast<Scanner*>(this); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    lex::SymId sym = self->internIdent(yytext, (size_t)yyleng); \
-    Token t{}; t.type_ = Type::TOK_IDENTIFIER; t.loc_ = loc; \
-    t.u_.sym = sym; \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(Type::TOK_IDENTIFIER); \
+  auto* self = static_cast<Scanner*>(this); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  lex::SymId sym = self->internIdent(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_IDENTIFIER; t.loc_ = loc; \
+  t.u_.sym = sym; \
+  self->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_IDENTIFIER); \
 } while(0)
 
 %}
@@ -96,88 +94,49 @@ static inline void bump_pos_for_text(const char* s, size_t n, int& yylineno_ref)
 %option c++
 %option yyclass="Scanner"
 %option noyywrap
-%option yylineno
 %option nounput noinput
-
 
 %%
 
-{% for _, group in tokens.keywords.items() %}
-{% for token, lit in group.items() %}
-"{{ lit }}"  {
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
+{% for _, group in tokens.keywords.items() -%}
+{% for token, lit in group.items() -%}
+"{{ lit }}" { EMIT_KIND(Type::TOK_{{ token }}); }
+{% endfor -%}
+{% endfor -%}
 
-                  t.type_ = Type::TOK_{{ token }};
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
+{% for _, group in tokens.punct.items() -%}
+{% for token, lit in group.items() -%}
+"{{ lit }}" { EMIT_KIND(Type::TOK_{{ token }}); }
+{% endfor -%}
+{% endfor -%}
 
-                  return static_cast<int>(Type::TOK_{{ token }});
-             }
-{% endfor %}
-{% endfor %}
+{% for token, info in tokens.operators.items() -%}
+"{{ info.lit | replace('\\', '\\\\') | replace('"','\\"') }}" { EMIT_KIND(Type::TOK_{{ token }}); }
+{% endfor -%}
 
-{% for _, group in tokens.punct.items() %}
-{% for token, lit in group.items() %}
-"{{ lit }}"  {
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
+\"([^\\\n"]|\\.)*\"             { EMIT_STRING(); }
 
-                  t.type_ = Type::TOK_{{ token }};
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
+[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?  { EMIT_FLOAT(); }
+\.[0-9]+([eE][+-]?[0-9]+)?        { EMIT_FLOAT(); }
+[0-9]+([eE][+-]?[0-9]+)           { EMIT_FLOAT(); }
 
-                  return static_cast<int>(Type::TOK_{{ token }});
-             }
-{% endfor %}
-{% endfor %}
+[0-9]+                             { EMIT_INT(); }
 
-{% for token, info in tokens.operators.items() %}
-"{{ info.lit | replace('\\', '\\\\') | replace('"','\\"') }}" {
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
+[a-zA-Z_][a-zA-Z0-9_]*             { EMIT_IDENT(); }
 
-                  t.type_ = Type::TOK_{{ token }};
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
+[ \t]+                              { advance(cur, yytext, (size_t)yyleng); }
+(\r\n|\r|\n)+                       { advance(cur, yytext, (size_t)yyleng); }
+"//"[^\r\n]*                        { advance(cur, yytext, (size_t)yyleng); }
+"/*"([^*]|\*+[^*/])*"*/"            { advance(cur, yytext, (size_t)yyleng); }
 
-                  return static_cast<int>(Type::TOK_{{ token }});
-                 }
-{% endfor %}
+.                                   { advance(cur, yytext, (size_t)yyleng); }
 
-\"([^\\\n"]|\\.)*\"                                       { EMIT_STRING(); }
-
-[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?                         { EMIT_FLOAT(); }
-\.[0-9]+([eE][+-]?[0-9]+)?                               { EMIT_FLOAT(); }
-[0-9]+([eE][+-]?[0-9]+)                                  { EMIT_FLOAT(); }
-
-[0-9]+                                                   { EMIT_INT(); }
-
-[a-zA-Z_][a-zA-Z0-9_]*                                    { EMIT_IDENT(); }
-
-[ \t]+            { g_offset += yyleng; g_column += yyleng; }
-
-(\r\n|\r|\n)+     { bump_pos_for_text(yytext, (size_t)yyleng, yylineno); }
-
-"//".*            { bump_pos_for_text(yytext, (size_t)yyleng, yylineno); }
-
-"/*"([^*]|\*+[^*/])*"\*/"  { bump_pos_for_text(yytext, (size_t)yyleng, yylineno); }
-
-.                 { bump_pos_for_text(yytext, (size_t)yyleng, yylineno); }
-
-[/][*][^*]*[*]+([^*/][^*]*[*]+)*[/] {  }
-"//".* {  }
-[/][*] {  } //TODO: fatal error
-
-<<EOF>>           {
-    auto* self = static_cast<Scanner*>(this);
-    Loc loc = make_loc(yylineno, g_column, 0, g_offset);
-    Token t{}; t.type_ = Type::TOK_END; t.loc_ = loc;
-    self->setCurrentToken(t);
-    return static_cast<int>(Type::TOK_END);
+<<EOF>> {
+  auto* self = static_cast<Scanner*>(this);
+  Loc loc{}; loc.begin = cur; loc.end = cur;  /* zero-length at end */
+  Token t{}; t.type_ = Type::TOK_END; t.loc_ = loc;
+  self->setCurrentToken(t);
+  return 0;   /* Bison EOF */
 }
 
 %%

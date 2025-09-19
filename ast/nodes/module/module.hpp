@@ -34,6 +34,8 @@ namespace ast {
     inline void Module::accept(visitor::ModuleVisitor &v) {
         v.visit(*this);
     }
+
+    typedef Module *ModulePtr;
 }
 
 #endif //MODULE_HPP

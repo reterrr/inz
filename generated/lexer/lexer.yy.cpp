@@ -171,27 +171,8 @@ extern int yyleng;
 #define EOB_ACT_END_OF_FILE 1
 #define EOB_ACT_LAST_MATCH 2
     
-    /* Note: We specifically omit the test for yy_rule_can_match_eol because it requires
-     *       access to the local variable yy_act. Since yyless() is a macro, it would break
-     *       existing scanners that call yyless() from OUTSIDE yylex.
-     *       One obvious solution it to make yy_act a global. I tried that, and saw
-     *       a 5% performance hit in a non-yylineno scanner, because yy_act is
-     *       normally declared as a register variable-- so it is not worth it.
-     */
-    #define  YY_LESS_LINENO(n) \
-            do { \
-                int yyl;\
-                for ( yyl = n; yyl < yyleng; ++yyl )\
-                    if ( yytext[yyl] == '\n' )\
-                        --yylineno;\
-            }while(0)
-    #define YY_LINENO_REWIND_TO(dst) \
-            do {\
-                const char *p;\
-                for ( p = yy_cp-1; p >= (dst); --p)\
-                    if ( *p == '\n' )\
-                        --yylineno;\
-            }while(0)
+    #define YY_LESS_LINENO(n)
+    #define YY_LINENO_REWIND_TO(ptr)
     
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
@@ -340,8 +321,8 @@ int yyFlexLexer::yylex()
 	(yy_hold_char) = *yy_cp; \
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
-#define YY_NUM_RULES 74
-#define YY_END_OF_BUFFER 75
+#define YY_NUM_RULES 72
+#define YY_END_OF_BUFFER 73
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -349,28 +330,27 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static const flex_int16_t yy_accept[184] =
+static const flex_int16_t yy_accept[181] =
     {   0,
-        0,    0,   75,   70,   66,   67,   67,   40,   70,   44,
-       70,   26,   27,   42,   45,   32,   41,   35,   43,   64,
-       34,   33,   47,   55,   49,   36,   65,   28,   29,   65,
-       65,   65,   65,   65,   65,   65,   65,   65,   65,   65,
-       65,   65,   65,   65,   30,   70,   31,   66,   67,   67,
-       67,   52,    0,   60,    0,   53,   58,   38,   56,   39,
-       57,   37,   62,   73,   68,   59,   61,   64,    0,   48,
-       51,   50,   65,   25,   65,   65,   65,   65,    3,   65,
-       65,   65,    8,    1,   65,   65,   65,   65,   65,   65,
-       65,   65,   65,   65,   65,   65,   54,    0,    0,    0,
+        0,    0,   73,   71,   67,   68,   68,   41,   71,   45,
+       71,   27,   28,   43,   46,   33,   42,   36,   44,   65,
+       35,   34,   48,   56,   50,   37,   66,   29,   30,   66,
+       66,   66,   66,   66,   66,   66,   66,   66,   66,   66,
+       66,   66,   66,   66,   31,   71,   32,   67,   68,   68,
+       68,   53,    0,   61,    0,   54,   59,   39,   57,   40,
+       58,   38,   63,    0,   69,   60,   62,   65,    0,   49,
+       52,   51,   66,   26,   66,   66,   66,   66,    3,   66,
+       66,   66,    8,    1,   66,   66,   66,   66,   66,   66,
+       66,   66,   66,   66,   66,   66,   66,   55,    0,    0,
 
-       68,   61,    0,    0,   63,   65,   65,   65,   65,   65,
-       65,   65,   65,   65,   13,   10,   65,   12,   65,   65,
-       65,   65,   65,   65,   65,    0,   62,    0,    0,   69,
-        0,   61,   65,   17,   65,   65,   65,    4,    7,   65,
-       65,   65,   65,   65,   65,   65,   65,    9,   18,   65,
-        0,    0,   71,   65,   20,   65,   65,   65,   65,   65,
-       65,   65,   65,   65,    6,    2,    0,   14,   65,   16,
-       23,   22,   65,   65,   11,   19,    5,   65,   65,   24,
-       21,   15,    0
+        0,   69,   62,    0,    0,   64,   66,   66,   66,   66,
+       66,   66,   66,   66,   66,   14,   10,   66,   12,   66,
+       13,   66,   66,   66,   66,   66,   66,    0,   63,    0,
+       70,    0,   62,   66,   18,   66,   66,   66,    4,    7,
+       66,   66,   66,   66,   66,   66,   66,   66,    9,   19,
+       66,   66,   21,   66,   66,   66,   66,   66,   66,   66,
+       66,   66,    6,    2,   15,   66,   17,   24,   23,   66,
+       66,   11,   20,    5,   66,   66,   25,   22,   16,    0
     } ;
 
 static const YY_CHAR yy_ec[256] =
@@ -407,63 +387,63 @@ static const YY_CHAR yy_ec[256] =
 
 static const YY_CHAR yy_meta[55] =
     {   0,
-        1,    1,    2,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1,    1,    1,    3,    1,    1,    1,
-        1,    1,    1,    3,    3,    1,    1,    1,    3,    3,
-        3,    3,    3,    3,    3,    3,    3,    3,    3,    3,
-        3,    3,    3,    3,    3,    3,    3,    3,    3,    3,
-        3,    1,    1,    1
+        1,    1,    2,    3,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    4,    1,    1,    1,
+        1,    1,    1,    4,    4,    1,    1,    1,    4,    4,
+        4,    4,    4,    4,    4,    4,    4,    4,    4,    4,
+        4,    4,    4,    4,    4,    4,    4,    4,    4,    4,
+        4,    1,    1,    1
     } ;
 
-static const flex_int16_t yy_base[190] =
+static const flex_int16_t yy_base[185] =
     {   0,
-        0,    0,  234,  235,  231,   52,   54,  211,   53,  235,
-      223,  235,  235,  209,   48,  235,   49,  212,   51,   49,
-      235,  235,  207,  206,  205,  235,    0,  235,  235,  180,
-       31,  182,  181,   37,  181,   43,  188,   32,  191,  186,
-      172,   37,  175,  180,  235,  162,  235,  212,   82,   86,
-       88,  235,   87,  235,    0,  235,  235,  235,  235,  235,
-      235,  235,   77,  202,    0,  235,   78,   82,   84,  235,
-      235,  235,    0,    0,  177,  169,  177,  168,  161,  162,
-      159,  162,    0,    0,  161,  157,  156,  166,  154,  168,
-      152,  153,  167,  152,  157,  156,  235,   92,  181,   89,
+        0,    0,  226,  227,  223,   52,   54,  203,   53,  227,
+      215,  227,  227,  201,   48,  227,   49,  204,   51,   49,
+      227,  227,  199,  198,  197,  227,    0,  227,  227,  172,
+       31,  174,  173,   37,  173,   43,  180,   32,   52,  179,
+      165,   41,  168,  173,  227,  155,  227,  205,   85,   87,
+       90,  227,   59,  227,    0,  227,  227,  227,  227,  227,
+      227,  227,   78,  195,    0,  227,   79,   83,   93,  227,
+      227,  227,    0,    0,  170,  162,  170,  161,  154,  155,
+      152,  155,    0,    0,  154,  150,  149,  159,  147,  161,
+      161,  144,  145,  159,  144,  149,  148,  227,  101,  173,
 
-        0,   91,  105,  174,  173,  152,  149,  158,  140,  155,
-      151,  143,  140,  139,    0,    0,  143,    0,  141,  131,
-       76,  140,  143,  143,  135,  156,  155,  160,  109,  235,
-      153,  152,  127,    0,  129,  129,  126,    0,    0,  120,
-      119,  131,  132,  116,  118,  127,  111,    0,    0,  123,
-      144,  110,  235,  108,    0,  112,  119,  105,  104,  112,
-      113,   99,   99,   85,    0,    0,  116,    0,   83,    0,
-        0,    0,   88,   95,    0,    0,    0,   85,   66,    0,
-        0,    0,  235,  132,   62,  135,  138,  141,  144
+       86,    0,   84,  107,  166,  165,  144,  141,  150,  132,
+      147,  143,  135,  132,  131,    0,    0,  135,    0,  133,
+        0,  123,   83,  132,  135,  135,  127,  148,  147,  111,
+      227,  146,  145,  120,    0,  122,  122,  119,    0,    0,
+      113,  112,  124,  125,  109,  111,  120,  104,    0,    0,
+      116,  102,    0,  106,  113,   99,   98,  106,  106,   99,
+       97,   83,    0,    0,    0,   81,    0,    0,    0,   85,
+       92,    0,    0,    0,   90,   68,    0,    0,    0,  227,
+      130,  102,  134,  138
     } ;
 
-static const flex_int16_t yy_def[190] =
+static const flex_int16_t yy_def[185] =
     {   0,
-      183,    1,  183,  183,  183,  183,  183,  183,  184,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  185,  183,  183,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  183,  183,  183,  183,  183,  183,
-      183,  183,  184,  183,  184,  183,  183,  183,  183,  183,
-      183,  183,  183,  186,  187,  183,  183,  183,  183,  183,
-      183,  183,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  183,  183,  186,  188,
+      180,    1,  180,  180,  180,  180,  180,  180,  181,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  182,  180,  180,  182,
+      182,  182,  182,  182,  182,  182,  182,  182,  182,  182,
+      182,  182,  182,  182,  180,  180,  180,  180,  180,  180,
+      180,  180,  181,  180,  181,  180,  180,  180,  180,  180,
+      180,  180,  180,  183,  184,  180,  180,  180,  180,  180,
+      180,  180,  182,  182,  182,  182,  182,  182,  182,  182,
+      182,  182,  182,  182,  182,  182,  182,  182,  182,  182,
+      182,  182,  182,  182,  182,  182,  182,  180,  180,  183,
 
-      187,  183,  183,  183,  183,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  183,  183,  189,  188,  183,
-      183,  183,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      189,  188,  183,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  188,  185,  185,  185,
-      185,  185,  185,  185,  185,  185,  185,  185,  185,  185,
-      185,  185,    0,  183,  183,  183,  183,  183,  183
+      183,  184,  180,  180,  180,  180,  182,  182,  182,  182,
+      182,  182,  182,  182,  182,  182,  182,  182,  182,  182,
+      182,  182,  182,  182,  182,  182,  182,  180,  180,  183,
+      180,  180,  180,  182,  182,  182,  182,  182,  182,  182,
+      182,  182,  182,  182,  182,  182,  182,  182,  182,  182,
+      182,  182,  182,  182,  182,  182,  182,  182,  182,  182,
+      182,  182,  182,  182,  182,  182,  182,  182,  182,  182,
+      182,  182,  182,  182,  182,  182,  182,  182,  182,    0,
+      180,  180,  180,  180
     } ;
 
-static const flex_int16_t yy_nxt[290] =
+static const flex_int16_t yy_nxt[282] =
     {   0,
         4,    5,    6,    7,    8,    9,   10,   11,   12,   13,
        14,   15,   16,   17,   18,   19,   20,   21,   22,   23,
@@ -471,34 +451,34 @@ static const flex_int16_t yy_nxt[290] =
        32,   33,   34,   35,   27,   27,   36,   27,   37,   38,
        27,   27,   39,   40,   41,   42,   27,   43,   44,   27,
        27,   45,   46,   47,   49,   50,   51,   50,   54,   58,
-       88,   64,   60,   67,   73,   68,   65,   75,   59,   61,
+       88,   64,   60,   67,   54,   68,   65,   75,   59,   61,
        62,   66,   76,   69,   77,   80,   84,   81,   89,   55,
-       93,   69,   85,   86,   49,   50,   82,   94,   51,   50,
-       49,   50,   54,   63,  102,  104,   67,  104,   68,  129,
+       90,   69,   85,   86,   94,   55,   82,   49,   50,   51,
+       50,   95,   49,   50,   63,  103,  130,   67,   91,   68,
 
-      105,   98,  103,  126,  130,  126,   69,  102,  127,   98,
-      103,  182,  145,   55,   69,  103,  131,  181,  131,  129,
-      167,  132,  146,  103,  153,  130,  167,  180,  179,  178,
-      177,  153,   53,  176,   53,   99,   99,   99,  101,  175,
-      101,  128,  128,  128,  151,  151,  151,  174,  173,  172,
-      171,  170,  169,  168,  152,  166,  165,  164,  163,  162,
-      161,  160,  159,  158,  157,  156,  155,  154,  132,  132,
-      152,  127,  127,  150,  149,  148,  147,  144,  143,  142,
-      141,  140,  139,  138,  137,  136,  135,  134,  133,  105,
-      105,  100,  125,  124,  123,  122,  121,  120,  119,  118,
+      103,  131,   99,  104,  105,   73,  105,   69,  104,  106,
+       99,  104,  128,  179,  128,   69,  104,  129,  132,  146,
+      132,  130,  178,  133,  177,  176,  180,  175,  174,  147,
+       53,  173,   53,   53,  100,  100,  100,  100,  102,  172,
+      171,  102,  170,  169,  168,  167,  166,  165,  164,  163,
+      162,  161,  160,  159,  158,  157,  156,  155,  154,  153,
+      152,  133,  133,  129,  129,  151,  150,  149,  148,  145,
+      144,  143,  142,  141,  140,  139,  138,  137,  136,  135,
+      134,  106,  106,  101,  127,  126,  125,  124,  123,  122,
+      121,  120,  119,  118,  117,  116,  115,  114,  113,  112,
 
-      117,  116,  115,  114,  113,  112,  111,  110,  109,  108,
-      107,  106,  100,   48,   97,   96,   95,   92,   91,   90,
-       87,   83,   79,   78,   74,   72,   71,   70,   63,   57,
-       56,   52,   48,  183,    3,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183
+      111,  110,  109,  108,  107,  101,   48,   98,   97,   96,
+       93,   92,   87,   83,   79,   78,   74,   72,   71,   70,
+       63,   57,   56,   52,   48,  180,    3,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180
     } ;
 
-static const flex_int16_t yy_chk[290] =
+static const flex_int16_t yy_chk[282] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -506,40 +486,32 @@ static const flex_int16_t yy_chk[290] =
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    6,    6,    7,    7,    9,   15,
-       38,   19,   17,   20,  185,   20,   19,   31,   15,   17,
+       38,   19,   17,   20,   53,   20,   19,   31,   15,   17,
        17,   19,   31,   20,   31,   34,   36,   34,   38,    9,
-       42,   20,   36,   36,   49,   49,   34,   42,   50,   50,
-       51,   51,   53,   63,   67,   69,   68,   69,   68,  100,
+       39,   20,   36,   36,   42,   53,   34,   49,   49,   50,
+       50,   42,   51,   51,   63,   67,  101,   68,   39,   68,
 
-       69,   63,   67,   98,  100,   98,   68,  102,   98,   63,
-       67,  179,  121,   53,   68,  102,  103,  178,  103,  129,
-      152,  103,  121,  102,  129,  152,  167,  174,  173,  169,
-      164,  167,  184,  163,  184,  186,  186,  186,  187,  162,
-      187,  188,  188,  188,  189,  189,  189,  161,  160,  159,
-      158,  157,  156,  154,  151,  150,  147,  146,  145,  144,
-      143,  142,  141,  140,  137,  136,  135,  133,  132,  131,
-      128,  127,  126,  125,  124,  123,  122,  120,  119,  117,
-      114,  113,  112,  111,  110,  109,  108,  107,  106,  105,
-      104,   99,   96,   95,   94,   93,   92,   91,   90,   89,
+      103,  101,   63,   67,   69,  182,   69,   68,  103,   69,
+       63,   67,   99,  176,   99,   68,  103,   99,  104,  123,
+      104,  130,  175,  104,  171,  170,  130,  166,  162,  123,
+      181,  161,  181,  181,  183,  183,  183,  183,  184,  160,
+      159,  184,  158,  157,  156,  155,  154,  152,  151,  148,
+      147,  146,  145,  144,  143,  142,  141,  138,  137,  136,
+      134,  133,  132,  129,  128,  127,  126,  125,  124,  122,
+      120,  118,  115,  114,  113,  112,  111,  110,  109,  108,
+      107,  106,  105,  100,   97,   96,   95,   94,   93,   92,
+       91,   90,   89,   88,   87,   86,   85,   82,   81,   80,
 
-       88,   87,   86,   85,   82,   81,   80,   79,   78,   77,
-       76,   75,   64,   48,   46,   44,   43,   41,   40,   39,
-       37,   35,   33,   32,   30,   25,   24,   23,   18,   14,
-       11,    8,    5,    3,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183,  183,
-      183,  183,  183,  183,  183,  183,  183,  183,  183
+       79,   78,   77,   76,   75,   64,   48,   46,   44,   43,
+       41,   40,   37,   35,   33,   32,   30,   25,   24,   23,
+       18,   14,   11,    8,    5,    3,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180,  180,  180,  180,  180,  180,  180,  180,  180,  180,
+      180
     } ;
-
-/* Table of booleans, true if rule could match eol. */
-static const flex_int32_t yy_rule_can_match_eol[75] =
-    {   0,
-0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
-    0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0,     };
 
 /* The intent behind this definition is that it'll catch
  * any uses of REJECT which flex missed.
@@ -550,11 +522,11 @@ static const flex_int32_t yy_rule_can_match_eol[75] =
 #define YY_RESTORE_YY_MORE_OFFSET
 #line 1 "lexer_rules.l"
 #line 2 "lexer_rules.l"
-
-
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+
+#include "parser/parser.hpp"
 
 #include "generated/token.hpp"
 #include "lexer.hpp"
@@ -562,96 +534,87 @@ static const flex_int32_t yy_rule_can_match_eol[75] =
 using lex::Type;
 using lex::Token;
 using lex::Loc;
+using lex::Pos;
 
-// Running position
-static uint32_t g_column = 1;
-static uint64_t g_offset = 0;
+#define YY_DECL int Scanner::yylex()
 
-// Build a Loc for a token that does not span newlines
-static inline Loc make_loc(uint32_t line, uint32_t start_col, uint32_t len, uint64_t start_off) {
-    Loc L{};
-    L.begin.line   = line;
-    L.begin.column = start_col;
-    L.begin.offset = start_off;
 
-    L.end.line   = line;
-    if (len) {
-        L.end.column = start_col + (len - 1);
-        L.end.offset = start_off + (len - 1);
-    } else {
-        L.end.column = start_col;
-        L.end.offset = start_off;
-    }
-    return L;
+static Pos cur;  // { line=1, column=1, offset=0 } by default
+
+
+inline void advance(Pos& p, const char* text, size_t n) {
+  for (size_t i = 0; i < n; ++i) {
+    unsigned char c = static_cast<unsigned char>(text[i]);
+    ++p.offset;
+    if (c == '\n') { ++p.line; p.column = 1; }
+    else           { ++p.column; }
+  }
 }
 
-// Advance counters for arbitrary text (used in comments/newlines)
-static inline void bump_pos_for_text(const char* s, size_t n, int& yylineno_ref) {
-    for (size_t i = 0; i < n; ++i) {
-        if (s[i] == '\n') { ++yylineno_ref; g_column = 1; }
-        else { ++g_column; }
-        ++g_offset;
-    }
+static inline Loc token_loc_and_advance(const char* text, size_t n) {
+  Loc L{};
+  L.begin = cur;
+  if (n) {
+    L.end        = cur;
+    L.end.column += static_cast<uint32_t>(n - 1);
+    L.end.offset += static_cast<uint64_t>(n - 1);
+  } else {
+    L.end = cur;
+  }
+  advance(cur, text, n);   // finally move the global cursor
+  return L;
 }
 
-#define EMIT_SIMPLE(KIND) do { \
-    auto* self = static_cast<Scanner*>(this); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    Token t{}; t.type_ = KIND; t.loc_ = loc; \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(KIND); \
+#define EMIT_KIND(KIND) do { \
+  auto* self = static_cast<Scanner*>(this); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = (KIND); t.loc_ = loc; \
+  self->setCurrentToken(t); \
+  return static_cast<int>(KIND); \
 } while(0)
 
 #define EMIT_INT() do { \
-    auto* self = static_cast<Scanner*>(this); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    Token t{}; t.type_ = Type::TOK_INT_LITERAL; t.loc_ = loc; \
-    /* simple strtoll; you can add base/underscores later */ \
-    t.u_.i64 = strtoll(yytext, nullptr, 10); \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(Type::TOK_INT_LITERAL); \
+  auto* self = static_cast<Scanner*>(this); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_INT_LITERAL; t.loc_ = loc; \
+  t.u_.i64 = strtoll(yytext, nullptr, 10); \
+  self->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_INT_LITERAL); \
 } while(0)
 
 #define EMIT_FLOAT() do { \
-    auto* self = static_cast<Scanner*>(this); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    Token t{}; t.type_ = Type::TOK_FLOAT_LITERAL; t.loc_ = loc; \
-    t.u_.f64 = strtod(yytext, nullptr); \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(Type::TOK_FLOAT_LITERAL); \
+  auto* self = static_cast<Scanner*>(this); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_FLOAT_LITERAL; t.loc_ = loc; \
+  t.u_.f64 = strtod(yytext, nullptr); \
+  self->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_FLOAT_LITERAL); \
 } while(0)
 
 #define EMIT_STRING() do { \
-    auto* self = static_cast<Scanner*>(this); \
-    /* strip surrounding quotes; assume no newlines in rule */ \
-    const char* payload = yytext + 1; size_t n = (size_t)yyleng >= 2 ? (size_t)yyleng - 2 : 0; \
-    /* NOTE: implement unescape inside internString if you support escapes */ \
-    lex::SymId sym = self->internString(payload, n); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    Token t{}; t.type_ = Type::TOK_STRING_LITERAL; t.loc_ = loc; \
-    t.u_.sym = sym; \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(Type::TOK_STRING_LITERAL); \
+  auto* self = static_cast<Scanner*>(this); \
+  const char* payload = yytext + 1; size_t n = (size_t)yyleng >= 2 ? (size_t)yyleng - 2 : 0; \
+  lex::SymId sym = self->internString(payload, n); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_STRING_LITERAL; t.loc_ = loc; \
+  t.u_.sym = sym; \
+  self->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_STRING_LITERAL); \
 } while(0)
 
 #define EMIT_IDENT() do { \
-    auto* self = static_cast<Scanner*>(this); \
-    Loc loc = make_loc(yylineno, g_column, yyleng, g_offset); \
-    lex::SymId sym = self->internIdent(yytext, (size_t)yyleng); \
-    Token t{}; t.type_ = Type::TOK_IDENTIFIER; t.loc_ = loc; \
-    t.u_.sym = sym; \
-    self->setCurrentToken(t); \
-    g_column += yyleng; g_offset += yyleng; \
-    return static_cast<int>(Type::TOK_IDENTIFIER); \
+  auto* self = static_cast<Scanner*>(this); \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  lex::SymId sym = self->internIdent(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_IDENTIFIER; t.loc_ = loc; \
+  t.u_.sym = sym; \
+  self->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_IDENTIFIER); \
 } while(0)
 
-#line 652 "lexer.yy.cpp"
+#line 615 "lexer.yy.cpp"
 #define YY_NO_INPUT 1
-#line 654 "lexer.yy.cpp"
+#line 617 "lexer.yy.cpp"
 
 #define INITIAL 0
 
@@ -783,10 +746,10 @@ YY_DECL
 		}
 
 	{
-#line 110 "lexer_rules.l"
+#line 99 "lexer_rules.l"
 
 
-#line 789 "lexer.yy.cpp"
+#line 752 "lexer.yy.cpp"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -813,13 +776,13 @@ yy_match:
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 184 )
+				if ( yy_current_state >= 181 )
 					yy_c = yy_meta[yy_c];
 				}
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
 			++yy_cp;
 			}
-		while ( yy_base[yy_current_state] != 235 );
+		while ( yy_base[yy_current_state] != 227 );
 
 yy_find_action:
 		yy_act = yy_accept[yy_current_state];
@@ -831,16 +794,6 @@ yy_find_action:
 			}
 
 		YY_DO_BEFORE_ACTION;
-
-		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
-			{
-			int yyl;
-			for ( yyl = 0; yyl < yyleng; ++yyl )
-				if ( yytext[yyl] == '\n' )
-					
-    yylineno++;
-;
-			}
 
 do_action:	/* This label is used only to access EOF actions. */
 
@@ -855,978 +808,377 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 112 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_IF;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_IF);
-             }
+#line 101 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_IF); }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 123 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_WHILE;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_WHILE);
-             }
+#line 102 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_WHILE); }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 134 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_DO;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_DO);
-             }
+#line 103 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_DO); }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 145 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_ELSE;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_ELSE);
-             }
+#line 104 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_ELSE); }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 156 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_STRUCT;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_STRUCT);
-             }
+#line 105 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_STRUCT); }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 167 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_TRAIT;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_TRAIT);
-             }
+#line 106 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_TRAIT); }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 178 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_ENUM;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_ENUM);
-             }
+#line 107 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_ENUM); }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 189 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_FN;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_FN);
-             }
+#line 108 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_FN); }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 200 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_TYPE;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_TYPE);
-             }
+#line 109 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_TYPE); }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 211 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_LET;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_LET);
-             }
+#line 110 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_LET); }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 222 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_RETURN;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_RETURN);
-             }
+#line 111 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_RETURN); }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 233 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_MUT;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_MUT);
-             }
+#line 112 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_MUT); }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 244 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_INT;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_INT);
-             }
+#line 113 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_PUB); }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 255 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_BIGINT;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_BIGINT);
-             }
+#line 114 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_INT); }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 266 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_MAGICINT;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_MAGICINT);
-             }
+#line 115 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_BIGINT); }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 277 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_DOUBLE;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_DOUBLE);
-             }
+#line 116 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_MAGICINT); }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 288 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_BOOL;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_BOOL);
-             }
+#line 117 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_DOUBLE); }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 299 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_VOID;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_VOID);
-             }
+#line 118 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_BOOL); }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 310 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_STRING;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_STRING);
-             }
+#line 119 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_VOID); }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 321 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_BREAK;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_BREAK);
-             }
+#line 120 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_STRING); }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 332 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_CONTINUE;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_CONTINUE);
-             }
+#line 121 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_BREAK); }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 343 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_IMPORT;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_IMPORT);
-             }
+#line 122 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_CONTINUE); }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 354 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_EXPORT;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_EXPORT);
-             }
+#line 123 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_IMPORT); }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 365 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_PACKAGE;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_PACKAGE);
-             }
+#line 124 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_EXPORT); }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 376 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_AS;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_AS);
-             }
+#line 125 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_PACKAGE); }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 388 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_LPAR;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_LPAR);
-             }
+#line 126 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_AS); }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 399 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_RPAR;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_RPAR);
-             }
+#line 127 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_LPAR); }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 410 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_LBRACK;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_LBRACK);
-             }
+#line 128 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_RPAR); }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 421 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_RBRACK;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_RBRACK);
-             }
+#line 129 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_LBRACK); }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 432 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_LCBRA;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_LCBRA);
-             }
+#line 130 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_RBRACK); }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 443 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_RCBRA;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_RCBRA);
-             }
+#line 131 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_LCBRA); }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 454 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_COMMA;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_COMMA);
-             }
+#line 132 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_RCBRA); }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 465 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_SMCLN;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_SMCLN);
-             }
+#line 133 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_COMMA); }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 476 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_COLON;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_COLON);
-             }
+#line 134 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_SMCLN); }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 487 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_DOT;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_DOT);
-             }
+#line 135 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_COLON); }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 498 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_QUESTION;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_QUESTION);
-             }
+#line 136 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_DOT); }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 509 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_ARROW;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_ARROW);
-             }
+#line 137 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_QUESTION); }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 521 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_INC;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_INC);
-                 }
+#line 138 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_ARROW); }
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 532 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_DEC;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_DEC);
-                 }
+#line 139 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_INC); }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 543 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_NEGATION;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_NEGATION);
-                 }
+#line 140 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_DEC); }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 554 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_NEG;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_NEG);
-                 }
+#line 141 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_NEGATION); }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 565 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_STAR;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_STAR);
-                 }
+#line 142 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_NEG); }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 576 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_SLASH;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_SLASH);
-                 }
+#line 143 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_STAR); }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 587 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_MODULO;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_MODULO);
-                 }
+#line 144 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_SLASH); }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 598 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_PLUS;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_PLUS);
-                 }
+#line 145 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_MODULO); }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 609 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_MINUS;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_MINUS);
-                 }
+#line 146 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_PLUS); }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 620 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_LESS;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_LESS);
-                 }
+#line 147 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_MINUS); }
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 631 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_LEQ;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_LEQ);
-                 }
+#line 148 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_LESS); }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 642 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_GREATER;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_GREATER);
-                 }
+#line 149 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_LEQ); }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 653 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_GEQ;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_GEQ);
-                 }
+#line 150 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_GREATER); }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 664 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_EQUAL;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_EQUAL);
-                 }
+#line 151 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_GEQ); }
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 675 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_NEQUAL;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_NEQUAL);
-                 }
+#line 152 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_EQUAL); }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 686 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_BOOL_AND;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_BOOL_AND);
-                 }
+#line 153 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_NEQUAL); }
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 697 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_BOOL_OR;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_BOOL_OR);
-                 }
+#line 154 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_BOOL_AND); }
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 708 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_ASSIGN;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_ASSIGN);
-                 }
+#line 155 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_BOOL_OR); }
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 719 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_PLUS_ASSIGN;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_PLUS_ASSIGN);
-                 }
+#line 156 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_ASSIGN); }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 730 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_MIN_ASSIGN;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_MIN_ASSIGN);
-                 }
+#line 157 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_PLUS_ASSIGN); }
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 741 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_MUL_ASSIGN;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_MUL_ASSIGN);
-                 }
+#line 158 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_MIN_ASSIGN); }
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 752 "lexer_rules.l"
-{
-                  auto* self = static_cast<Scanner*>(this);
-                  Loc loc = make_loc(yylineno, g_column, yyleng, g_offset);
-                  Token t{}; t.loc_ = loc;
-
-                  t.type_ = Type::TOK_DIV_ASSIGN;
-                  self->setCurrentToken(t);
-                  g_column += yyleng; g_offset += yyleng;
-
-                  return static_cast<int>(Type::TOK_DIV_ASSIGN);
-                 }
+#line 159 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_MUL_ASSIGN); }
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 764 "lexer_rules.l"
-{ EMIT_STRING(); }
+#line 160 "lexer_rules.l"
+{ EMIT_KIND(Type::TOK_DIV_ASSIGN); }
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 766 "lexer_rules.l"
-{ EMIT_FLOAT(); }
+#line 161 "lexer_rules.l"
+{ EMIT_STRING(); }
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 767 "lexer_rules.l"
+#line 163 "lexer_rules.l"
 { EMIT_FLOAT(); }
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 768 "lexer_rules.l"
+#line 164 "lexer_rules.l"
 { EMIT_FLOAT(); }
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 770 "lexer_rules.l"
-{ EMIT_INT(); }
+#line 165 "lexer_rules.l"
+{ EMIT_FLOAT(); }
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 772 "lexer_rules.l"
-{ EMIT_IDENT(); }
+#line 167 "lexer_rules.l"
+{ EMIT_INT(); }
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 774 "lexer_rules.l"
-{ g_offset += yyleng; g_column += yyleng; }
+#line 169 "lexer_rules.l"
+{ EMIT_IDENT(); }
 	YY_BREAK
 case 67:
-/* rule 67 can match eol */
 YY_RULE_SETUP
-#line 776 "lexer_rules.l"
-{ bump_pos_for_text(yytext, (size_t)yyleng, yylineno); }
+#line 171 "lexer_rules.l"
+{ advance(cur, yytext, (size_t)yyleng); }
 	YY_BREAK
 case 68:
+/* rule 68 can match eol */
 YY_RULE_SETUP
-#line 778 "lexer_rules.l"
-{ bump_pos_for_text(yytext, (size_t)yyleng, yylineno); }
+#line 172 "lexer_rules.l"
+{ advance(cur, yytext, (size_t)yyleng); }
 	YY_BREAK
 case 69:
-/* rule 69 can match eol */
 YY_RULE_SETUP
-#line 780 "lexer_rules.l"
-{ bump_pos_for_text(yytext, (size_t)yyleng, yylineno); }
+#line 173 "lexer_rules.l"
+{ advance(cur, yytext, (size_t)yyleng); }
 	YY_BREAK
 case 70:
+/* rule 70 can match eol */
 YY_RULE_SETUP
-#line 782 "lexer_rules.l"
-{ bump_pos_for_text(yytext, (size_t)yyleng, yylineno); }
+#line 174 "lexer_rules.l"
+{ advance(cur, yytext, (size_t)yyleng); }
 	YY_BREAK
 case 71:
-/* rule 71 can match eol */
 YY_RULE_SETUP
-#line 784 "lexer_rules.l"
-{  }
+#line 176 "lexer_rules.l"
+{ advance(cur, yytext, (size_t)yyleng); }
+	YY_BREAK
+case YY_STATE_EOF(INITIAL):
+#line 178 "lexer_rules.l"
+{
+  auto* self = static_cast<Scanner*>(this);
+  Loc loc{}; loc.begin = cur; loc.end = cur;  /* zero-length at end */
+  Token t{}; t.type_ = Type::TOK_END; t.loc_ = loc;
+  self->setCurrentToken(t);
+  return 0;   /* Bison EOF */
+}
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 785 "lexer_rules.l"
-{  }
-	YY_BREAK
-case 73:
-YY_RULE_SETUP
-#line 786 "lexer_rules.l"
-{  } //TODO: fatal error
-	YY_BREAK
-case YY_STATE_EOF(INITIAL):
-#line 788 "lexer_rules.l"
-{
-    auto* self = static_cast<Scanner*>(this);
-    Loc loc = make_loc(yylineno, g_column, 0, g_offset);
-    Token t{}; t.type_ = Type::TOK_END; t.loc_ = loc;
-    self->setCurrentToken(t);
-    return static_cast<int>(Type::TOK_END);
-}
-	YY_BREAK
-case 74:
-YY_RULE_SETUP
-#line 796 "lexer_rules.l"
+#line 186 "lexer_rules.l"
 ECHO;
 	YY_BREAK
-#line 1829 "lexer.yy.cpp"
+#line 1181 "lexer.yy.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -2241,7 +1593,7 @@ int yyFlexLexer::yy_get_next_buffer()
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
-			if ( yy_current_state >= 184 )
+			if ( yy_current_state >= 181 )
 				yy_c = yy_meta[yy_c];
 			}
 		yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
@@ -2269,11 +1621,11 @@ int yyFlexLexer::yy_get_next_buffer()
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
-		if ( yy_current_state >= 184 )
+		if ( yy_current_state >= 181 )
 			yy_c = yy_meta[yy_c];
 		}
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + yy_c];
-	yy_is_jam = (yy_current_state == 183);
+	yy_is_jam = (yy_current_state == 180);
 
 		return yy_is_jam ? 0 : yy_current_state;
 }
@@ -2310,10 +1662,6 @@ int yyFlexLexer::yy_get_next_buffer()
 		}
 
 	*--yy_cp = (char) c;
-
-    if ( c == '\n' ){
-        --yylineno;
-    }
 
 	(yytext_ptr) = yy_bp;
 	(yy_hold_char) = *yy_cp;
@@ -2384,11 +1732,6 @@ int yyFlexLexer::yy_get_next_buffer()
 	c = *(unsigned char *) (yy_c_buf_p);	/* cast for 8-bit char's */
 	*(yy_c_buf_p) = '\0';	/* preserve yytext */
 	(yy_hold_char) = *++(yy_c_buf_p);
-
-	if ( c == '\n' )
-		
-    yylineno++;
-;
 
 	return c;
 }
@@ -2796,5 +2139,5 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 796 "lexer_rules.l"
+#line 186 "lexer_rules.l"
 
