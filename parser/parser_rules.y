@@ -4,6 +4,10 @@
 %define api.namespace {yy}
 %define api.location.type {lex::Loc}
 
+
+%define parse.lac full
+%define parse.error verbose
+
 /* We pass both the scanner and the AST factory into the parser. */
 %lex-param   { Scanner& scanner }
 %parse-param { Scanner& scanner }
@@ -63,11 +67,18 @@
   #include <iostream>
 
   void yy::parser::error(const location_type& loc, const std::string& msg) {
-    std::cerr << loc.begin.line << ':' << loc.begin.column << ": " << msg << '\n';
+    std::cerr << loc.end.line << ':' << loc.end.column << ": " << msg << '\n';
   }
 
   yy::parser::symbol_type yylex(Scanner& scanner) {
-    (void)scanner.yylex(); // advance; fills current_token_
+    int rc = scanner.yylex(); // advance; fills current_token_
+
+    if (rc == 0) {                            // true EOF
+        // Use the last token's end as the EOF location (or synthesize one)
+        lex::Loc L = scanner.getCurrentToken().loc_;
+        L.begin = L.end;                        // make it a point loc at end
+        return yy::parser::make_YYEOF(L);
+    }
     const lex::Token& t = scanner.getCurrentToken();
     const lex::Loc   L  = t.loc_;
 
@@ -95,6 +106,8 @@
       case T::TOK_EXPORT:   return yy::parser::make_TOK_EXPORT(L);
       case T::TOK_PACKAGE:  return yy::parser::make_TOK_PACKAGE(L);
       case T::TOK_AS:       return yy::parser::make_TOK_AS(L);
+      case T::TOK_PUB:      return yy::parser::make_TOK_PUB(L);
+      case T::TOK_MUT:      return yy::parser::make_TOK_MUT(L);
 
       /* Builtin type keywords */
       case T::TOK_INT:      return yy::parser::make_TOK_INT(L);
@@ -164,7 +177,7 @@
 /* =============================== TYPED TOKENS ===================================== */
 %token TOK_IF TOK_WHILE TOK_DO TOK_ELSE
 %token TOK_STRUCT TOK_ENUM TOK_TRAIT TOK_FN TOK_TYPE TOK_LET TOK_RETURN
-%token TOK_INT TOK_BIGINT TOK_MAGICINT TOK_DOUBLE TOK_BOOL TOK_VOID TOK_STRING TOK_MUT TOK_STATIC
+%token TOK_INT TOK_BIGINT TOK_MAGICINT TOK_DOUBLE TOK_BOOL TOK_VOID TOK_STRING TOK_MUT TOK_STATIC TOK_PUB
 %token TOK_BREAK TOK_CONTINUE
 %token TOK_IMPORT TOK_EXPORT TOK_PACKAGE TOK_AS
 
@@ -243,6 +256,9 @@
 %type <ast::ParamDeclPtr>                 param
 %type <std::vector<ast::ParamDeclPtr>>    param_list param_list_opt
 
+%type <std::vector<ast::FieldDecl*>> field_decl_list field_decl_list_opt
+%type <ast::FieldDecl*>              field_decl
+
 /* expressions */
 %type <ast::ExprPtr>                      expr assign cond logic_or logic_and equality relational additive multiplicative unary postfix primary expr_opt
 %type <ast::ObjLiteralExpr*>              struct_lit
@@ -252,12 +268,18 @@
 %type <std::vector<ast::FieldInitPtr>>    field_inits field_inits_opt
 %type <ast::FieldInitPtr>                 field_init
 
+%type <ast::StructDecl*>                       struct_decl
+
 %%
 /* ============================ modules / top level ============================ */
 
 translation_unit
   : opt_package import_list decl_list
-    { $$ = ast.mk_module(std::move($1), std::move($2), std::move($3), combine(@1, @3)); }
+    {
+        auto* m = ast.mk_module(std::move($1), std::move($2), std::move($3), combine(@1, @3));
+        ast.project_add_module(m);
+        $$ = m;
+    }
   ;
 
 /* Produce the package path as a vector<SymId>. Empty means “no package”. */
@@ -313,6 +335,7 @@ decl_list
 decl
   : maybe_export fn_decl      { $$ = static_cast<ast::DeclPtr>($2); }
   | maybe_export var_decl     { $$ = static_cast<ast::DeclPtr>($2); }
+  | maybe_export struct_decl  { $$ = static_cast<ast::DeclPtr>($2); }
   | maybe_export              { $$ = nullptr; }
   ;
 
@@ -331,23 +354,46 @@ fn_decl
       $$ = ast.mk_fn_decl($2, /*callable type*/ nullptr, std::move($4), $6, nullptr, combine(@1, @6)); /* prototype */
     }
   ;
+struct_decl
+    : TOK_STRUCT ident TOK_LCBRA field_decl_list_opt TOK_RCBRA
+      { $$ = ast.mk_struct_decl($2, std::move($4), combine(@1, @5)); }
+    | TOK_STRUCT ident TOK_SMCLN
+      { $$ = ast.mk_struct_decl($2, std::vector<ast::FieldDecl*>{}, combine(@1, @3)); }
+    ;
 
-  ret_type
+field_decl_list_opt
+    :                                   { $$ = std::vector<ast::FieldDecl*>{}; }
+    | field_decl_list
+    ;
+
+field_decl_list
+    : field_decl                        { std::vector<ast::FieldDecl*> v; v.push_back($1); $$ = std::move(v); }
+    | field_decl_list field_decl        { $1.push_back($2); $$ = std::move($1); }
+    ;
+
+field_decl
+    : qtype_spec ident TOK_SMCLN
+        { $$ = ast.mk_field_decl($2, $1.ty, $1.spec, false, combine(@1, @3)); }
+    | TOK_PUB qtype_spec ident TOK_SMCLN
+        { $$ = ast.mk_field_decl($3, $2.ty, $2.spec, true, combine(@1, @4)); }
+    ;
+
+ret_type
     : TOK_ARROW type_spec                { $$ = $2; }
     ;
 
-  param_list_opt
+param_list_opt
     : /* empty */                        { $$ = std::vector<ast::ParamDeclPtr>{}; }
     | param_list
     ;
 
-  param_list
+param_list
     : param                              { std::vector<ast::ParamDeclPtr> v; v.push_back($1); $$ = std::move(v); }
     | param_list TOK_COMMA param         { $1.push_back($3); $$ = std::move($1); }
     | param_list TOK_COMMA               { $$ = std::move($1); } /* trailing comma */
     ;
 
-  param
+param
     : qtype_spec ident                    { $$ = ast.mk_param_decl($2, $1.ty, $1.spec,  combine(@1, @2)); }
     ;
 
