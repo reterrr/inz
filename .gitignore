@@ -3,3 +3,11 @@ cmake-build-debug
 build
 
 */a.out
+
+test*
+
+*.a
+*.o
+*.so
+*.dylib
+a.out
