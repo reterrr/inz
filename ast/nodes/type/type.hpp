@@ -36,6 +36,14 @@ namespace ast {
         }
     };
 
+    struct TypeWithQual {
+        Type *ty{nullptr};
+        TypeSpecifier spec{TypeSpecifier::Imm};
+        TypeRegion region{TypeRegion::Auto};
+        lex::Loc loc{};
+    };
+
+
     struct BuiltinType final : Type {
         BuiltinTy which{};
 

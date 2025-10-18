@@ -152,21 +152,22 @@ CallExpr *AST::mk_call_expr(ExprPtr callee, std::vector<ExprPtr> &&args, const l
 }
 
 CallableType *AST::mk_callable_type(std::vector<Type *> &&param_types, Type *ret, const lex::Loc &loc) {
-    return make<CallableType>(std::move(param_types), ret, loc);
+    return type_interner_.make<CallableType>(std::move(param_types), ret, loc);
 }
 
 BuiltinType *AST::mk_builtin_type(BuiltinTy type, const lex::Loc &loc) {
-    return make<BuiltinType>(type, loc);
+    return type_interner_.make<BuiltinType>(type, loc);
 }
 
 FixedArrayType *AST::mk_fixed_array_type(Type *type, std::uint64_t length, const lex::Loc &loc) {
-    return make<FixedArrayType>(type, length, loc);
+    return type_interner_.make<FixedArrayType>(type, length, loc);
 }
 
 PathType *AST::mk_type_path_single(lex::SymId segment, const lex::Loc &loc) {
     std::vector<lex::SymId> segs;
     segs.push_back(segment);
-    return make<PathType>(std::move(segs), loc);
+
+    return type_interner_.make<PathType>(std::move(segs), loc);
 }
 
 PathType *AST::mk_type_path_append(PathType *base, lex::SymId segment, const lex::Loc &loc) {
