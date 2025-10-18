@@ -20,7 +20,8 @@ namespace ast {
         TyKind kind{};
         lex::Loc loc{};
 
-        explicit Type(const TyKind k, const lex::Loc &L) : kind(k), loc(L) {
+        explicit Type(const TyKind k, const lex::Loc &L)
+            : kind(k), loc(L) {
         }
 
         virtual ~Type() = default;
@@ -47,7 +48,8 @@ namespace ast {
     struct BuiltinType final : Type {
         BuiltinTy which{};
 
-        explicit BuiltinType(BuiltinTy b, const lex::Loc &L) : Type(TyKind::Builtin, L), which(b) {
+        explicit BuiltinType(BuiltinTy b, const lex::Loc &L)
+            : Type(TyKind::Builtin, L), which(b) {
         }
 
         bool equals(const Type &other) const override {
@@ -133,7 +135,8 @@ namespace ast {
     struct RefType final : Type {
         Type *pointee{};
 
-        RefType(Type *p, const lex::Loc &L) : Type(TyKind::Ref, L), pointee(p) {
+        RefType(Type *p, const lex::Loc &L)
+            : Type(TyKind::Ref, L), pointee(p) {
         }
 
         bool equals(const Type &other) const override {
@@ -173,7 +176,8 @@ namespace ast {
     };
 
     struct MagicIntType final : Type {
-        explicit MagicIntType(const lex::Loc &L) : Type(TyKind::MagicInt, L) {
+        explicit MagicIntType(const lex::Loc &L)
+            : Type(TyKind::MagicInt, L) {
         }
     };
 
