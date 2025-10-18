@@ -11,29 +11,51 @@ template<typename T>
 struct BumpAllocatorAdaptor {
     using value_type = T;
     using pointer = T *;
+    using const_pointer = const T *;
+    using size_type = std::size_t;
+    using difference_type = std::ptrdiff_t;
+
+    using is_always_equal = std::false_type;
+
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
 
     llvm::BumpPtrAllocator *arena = nullptr;
 
     BumpAllocatorAdaptor() noexcept = default;
 
-    explicit BumpAllocatorAdaptor(llvm::BumpPtrAllocator *a) noexcept : arena(a) {
+    explicit BumpAllocatorAdaptor(llvm::BumpPtrAllocator *a) noexcept
+        : arena(a) {
     }
 
     template<typename U>
-    explicit BumpAllocatorAdaptor(const BumpAllocatorAdaptor<U> &other) noexcept : arena(other.arena) {
+    explicit BumpAllocatorAdaptor(const BumpAllocatorAdaptor<U> &other) noexcept
+        : arena(other.arena) {
     }
 
-    pointer allocate(std::size_t n) {
-        if (!arena) throw std::bad_alloc{};
-        if (n > std::numeric_limits<std::size_t>::max() / sizeof(T)) throw std::bad_alloc{};
+    pointer allocate(std::size_t n) noexcept {
+        if (!arena)
+#ifndef LLVM_ENABLE_EXCEPTIONS
+            llvm::report_fatal_error("BumpAllocatorAdaptor does not support malloc");
+#else
+            throw std::bad_alloc{};
+#endif
+
+        if (n > std::numeric_limits<std::size_t>::max() / sizeof(T))
+#ifndef LLVM_ENABLE_EXCEPTIONS
+        llvm::report_fatal_error("BumpAllocatorAdaptor does not support malloc");
+#else
+            throw std::bad_alloc{};
+#endif
         void *mem = arena->Allocate(n * sizeof(T), alignof(T));
+
         return static_cast<pointer>(mem);
     }
 
     void deallocate(pointer, std::size_t) noexcept {
     }
 };
-
 
 struct TypeHash {
     using is_transparent = void;
@@ -57,7 +79,7 @@ namespace sema::type {
 
         TypeInterner() noexcept : arena{},
                                   types{Alloc(&arena)} {
-        };
+        }
 
         llvm::BumpPtrAllocator arena;
 
@@ -70,7 +92,7 @@ namespace sema::type {
             T probe(std::forward<Args>(args)...);
 
             if (auto it = types.find(probe); it != types.end()) {
-                return *it;
+                return static_cast<T *>(*it);
             }
 
             void *mem = arena.Allocate(sizeof(T), alignof(T));
