@@ -19,7 +19,7 @@ namespace ast {
     struct Expr : Node, Visitable<visitor::ExprVisitor> {
         using Node::Node, Visitable::accept;
 
-        Type *type_{nullptr};
+        Type *type_;
         ExprRole role{ExprRole::Unknown};
 
         virtual ~Expr() = default;

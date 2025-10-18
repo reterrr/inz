@@ -6,17 +6,24 @@
 
 #include <algorithm>
 
-#include "function_decl.hpp"
-#include "struct_decl.hpp"
-#include "var_decl.hpp"
+#include "stmt/block_statement.hpp"
+#include "decl/param_decl.hpp"
+#include "expr/field_init_expr.hpp"
+#include "decl/function_decl.hpp"
+#include "decl/struct_decl.hpp"
+#include "decl/var_decl.hpp"
+#include "module/import_decl.hpp"
 #include "expr/assign_expr.hpp"
 #include "expr/binary_op_expr.hpp"
 #include "expr/call_expr.hpp"
 #include "expr/field_expr.hpp"
+
 #include "expr/init_declarator_expr.hpp"
 #include "expr/obj_expr.hpp"
 #include "expr/ref_expr.hpp"
 #include "expr/unary_op_expr.hpp"
+#include "module/module.hpp"
+
 #include "stmt/do_while_statement.hpp"
 #include "stmt/expr_statement.hpp"
 #include "stmt/if_statement.hpp"
@@ -119,16 +126,12 @@ void ast::visitor::OverallVisitor::visit(IfStatement &i) {
 }
 
 void ast::visitor::OverallVisitor::visit(BlockStatement &b) {
-    std::ranges::for_each(b.statements, [this](auto &s) { s.accept(*this); });
+    std::ranges::for_each(b.statements, [this](auto &s) { s->accept(*this); });
 }
 
 void ast::visitor::OverallVisitor::visit(WhileStatement &w) {
     if (w.condition) w.condition->accept(*this);
     if (w.body) w.body->accept(*this);
-}
-
-void ast::visitor::OverallVisitor::visit(VarDeclStatement &v) {
-    std::ranges::for_each(v.declarators, [this](auto &d) { d->accept(*this); });
 }
 
 void ast::visitor::OverallVisitor::visit(ReturnStatement &r) {
@@ -150,6 +153,10 @@ void ast::visitor::OverallVisitor::visit(BreakStatement &b) {
 void ast::visitor::OverallVisitor::visit(DoWhileStatement &d) {
     if (d.condition) d.condition->accept(*this);
     if (d.body) d.body->accept(*this);
+}
+
+void ast::visitor::OverallVisitor::visit(VarDeclStatement &v) {
+    if (v.decl) v.decl->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(Module &m) {

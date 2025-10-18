@@ -15,6 +15,7 @@ namespace ast {
 
         InitDeclarator(const lex::SymId name, ExprPtr init, const lex::Loc &loc)
             : Expr(NodeKind::Expr_DeclInit, loc), name(name), init(init) {
+            init->parent = this;
         }
 
         void accept(visitor::ExprVisitor &) override;

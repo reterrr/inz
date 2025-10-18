@@ -45,7 +45,6 @@ add_executable(inz main.cpp
         ast/nodes/expr/binary_op_exression_kind.hpp
         ast/nodes/expr/unary_op_expr.hpp
         ast/nodes/expr/binary_op_expr.hpp
-        #test.cpp
         ast/ast.hpp
         ast/allocator.hpp
         ast/nodes/expr/type_node.hpp
@@ -88,6 +87,20 @@ add_executable(inz main.cpp
         ast/nodes/visit/dump_visitor.hpp
         ast/nodes/decl/struct_decl.hpp
         ast/nodes/decl/field_decl.hpp
+        hir/hir.hpp
+        sema/symbol_table.hpp
+        hir/de_sugar.hpp
+        sema/passes/pass.hpp
+        sema/passes/decl_pass.hpp
+        ast/nodes/visit/overallvisitor.cpp
+        ast/nodes/visit/overallvisitor.hpp
+        sema/scope_stack.hpp
+        sema/symbol.hpp
+        sema/passes/decl_pass.cpp
+        sema/type_interner.hpp
+        test.cpp
+        test_mv.cpp
+        test_hie.cpp
 )
 
 target_include_directories(inz PRIVATE

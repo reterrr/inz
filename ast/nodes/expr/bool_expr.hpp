@@ -12,7 +12,9 @@ namespace ast {
         kl_bool value;
 
         BoolLiteralExpr(const kl_bool value, const lex::Loc& loc)
-            : Expr(NodeKind::Expr_BoolLiteral, loc), value(value) {}
+            : Expr(NodeKind::Expr_BoolLiteral, loc), value(value) {
+
+        }
 
         void accept(visitor::ExprVisitor &) override;
     };

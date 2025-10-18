@@ -16,6 +16,8 @@ namespace ast {
 
         AssignExpr(ExprPtr lhs, ExprPtr rhs, AssignOp op, const lex::Loc& loc)
             : Expr(NodeKind::Expr_Assign, loc), lhs(lhs), rhs(rhs), op(op) {
+            lhs->parent = this;
+            rhs->parent = this;
         }
 
         void accept(visitor::ExprVisitor &) override;

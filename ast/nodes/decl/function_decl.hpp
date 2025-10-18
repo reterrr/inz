@@ -4,18 +4,18 @@
 
 #ifndef FUNCTION_DECL_HPP
 #define FUNCTION_DECL_HPP
-#include <optional>
-#include <token.hpp>
+
 
 #include "decl.hpp"
-#include "param_decl.hpp"
 #include "../type/type.hpp"
 
 #include "../visit/decl_visitor.hpp"
 
-#include "../stmt/block_statement.hpp"
 
 namespace ast {
+    struct ParamDecl;
+    struct BlockStatement;
+
     struct FunctionDecl final : Decl {
         CallableType *type{nullptr};
         lex::SymId name;
@@ -35,6 +35,10 @@ namespace ast {
               body(body),
               params(std::move(params)),
               ret(ret) {
+            body->parent = this;
+            std::ranges::for_each(params, [this](ParamDecl *&p) {
+                p->parent = this;
+            });
         }
 
         void accept(visitor::DeclVisitor &) override;

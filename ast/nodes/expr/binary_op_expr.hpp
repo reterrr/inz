@@ -14,10 +14,14 @@
 namespace ast {
     struct BinaryExpr final : Expr {
         BinaryOp op;
-        ExprPtr lhs, rhs;
+        ExprPtr lhs;
+        ExprPtr rhs;
 
         BinaryExpr(const BinaryOp op, ExprPtr lhs, ExprPtr rhs, const lex::Loc& loc) :
-            Expr(NodeKind::Expr_Binary, loc), op(op), lhs(lhs), rhs(rhs) {}
+            Expr(NodeKind::Expr_Binary, loc), op(op), lhs(lhs), rhs(rhs) {
+            lhs->parent = this;
+            rhs->parent = this;
+        }
 
         void accept(visitor::ExprVisitor &) override;
     };

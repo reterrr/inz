@@ -12,17 +12,17 @@ namespace ast {
     struct WhileStatement;
     struct DoWhileStatement;
     struct BlockStatement;
-    struct VarDeclStatement;
     struct ReturnStatement;
     struct ExprStatement;
     struct ContinueStatement;
     struct BreakStatement;
+    struct VarDeclStatement;
 }
 
 namespace ast::visitor {
     struct StmtVisitor
             : Visitor<IfStatement, BlockStatement, WhileStatement,
-                VarDeclStatement, ReturnStatement, ExprStatement,
+                ReturnStatement, ExprStatement, VarDeclStatement,
                 ContinueStatement, BreakStatement, DoWhileStatement> {
     };
 }

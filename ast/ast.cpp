@@ -122,13 +122,6 @@ RefExpr *AST::mk_ref_expr(lex::SymId name, const lex::Loc &loc) {
     return make<RefExpr>(name, loc);
 }
 
-VarDeclStatement *AST::mk_var_decl_stmt(std::vector<InitDeclarator *> &&declarators,
-                                        Type *type,
-                                        TypeSpecifier specifier,
-                                        TypeRegion region,
-                                        const lex::Loc &loc) {
-    return make<VarDeclStatement>(std::move(declarators), type, loc, specifier, region);
-}
 
 ContinueStatement *AST::mk_continue_stmt(const lex::Loc &loc) {
     return make<ContinueStatement>(loc);
@@ -150,6 +143,10 @@ ExprStatement *AST::mk_expr_stmt(ExprPtr expr, const lex::Loc &loc) {
     return make<ExprStatement>(expr, loc);
 }
 
+VarDeclStatement *AST::mk_var_decl_stmt(VarDecl *decl, const lex::Loc &loc) {
+    return make<VarDeclStatement>(decl, loc);
+}
+
 CallExpr *AST::mk_call_expr(ExprPtr callee, std::vector<ExprPtr> &&args, const lex::Loc &loc) {
     return make<CallExpr>(callee, std::move(args), loc);
 }
@@ -158,7 +155,7 @@ CallableType *AST::mk_callable_type(std::vector<Type *> &&param_types, Type *ret
     return make<CallableType>(std::move(param_types), ret, loc);
 }
 
-BuiltinType *AST::mk_builtin_type(ast::BuiltinTy type, const lex::Loc &loc) {
+BuiltinType *AST::mk_builtin_type(BuiltinTy type, const lex::Loc &loc) {
     return make<BuiltinType>(type, loc);
 }
 

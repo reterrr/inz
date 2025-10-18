@@ -1,18 +1,25 @@
-package lublyu.dyvnu.veroniku;
+package www.www;
 
-import veronichka;
-import so;
-//люблю Вероніку
+import os;
 
-/* love Veronika */
+struct K {
+    int a;
+    int b;
+}
 
-struct K {}
 struct a;
 
-fn s(int c, int b, int d) -> int
+fn s(int[10] c, int b, int d) -> int
 {
-    int a = 10;
+    int a = 10 + 10 * 20;
     magicint l = 100;
+    a++;
+    ++a;
+    --a;
+    !-a;
+    !!!!a;
+
+    a--;
 
     return a;
 }

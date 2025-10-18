@@ -459,7 +459,6 @@ namespace yy {
       // import_decl
       char dummy8[sizeof (ast::ImportDecl*)];
 
-      // init_declarator_stmt
       // init_declarator_decl
       char dummy9[sizeof (ast::InitDeclarator*)];
 
@@ -535,7 +534,6 @@ namespace yy {
       // import_list
       char dummy31[sizeof (std::vector<ast::ImportDecl*>)];
 
-      // init_declarator_stmt_list
       // init_declarator_decl_list
       char dummy32[sizeof (std::vector<ast::InitDeclarator*>)];
 
@@ -787,29 +785,27 @@ namespace yy {
         S_stmt = 102,                            // stmt
         S_expr_opt = 103,                        // expr_opt
         S_var_decl_stmt = 104,                   // var_decl_stmt
-        S_init_declarator_stmt_list = 105,       // init_declarator_stmt_list
-        S_init_declarator_stmt = 106,            // init_declarator_stmt
-        S_var_decl = 107,                        // var_decl
-        S_init_declarator_decl_list = 108,       // init_declarator_decl_list
-        S_init_declarator_decl = 109,            // init_declarator_decl
-        S_expr = 110,                            // expr
-        S_assign = 111,                          // assign
-        S_cond = 112,                            // cond
-        S_logic_or = 113,                        // logic_or
-        S_logic_and = 114,                       // logic_and
-        S_equality = 115,                        // equality
-        S_relational = 116,                      // relational
-        S_additive = 117,                        // additive
-        S_multiplicative = 118,                  // multiplicative
-        S_unary = 119,                           // unary
-        S_postfix = 120,                         // postfix
-        S_arg_list_opt = 121,                    // arg_list_opt
-        S_arg_list = 122,                        // arg_list
-        S_primary = 123,                         // primary
-        S_struct_lit = 124,                      // struct_lit
-        S_field_inits_opt = 125,                 // field_inits_opt
-        S_field_inits = 126,                     // field_inits
-        S_field_init = 127                       // field_init
+        S_var_decl = 105,                        // var_decl
+        S_init_declarator_decl_list = 106,       // init_declarator_decl_list
+        S_init_declarator_decl = 107,            // init_declarator_decl
+        S_expr = 108,                            // expr
+        S_assign = 109,                          // assign
+        S_cond = 110,                            // cond
+        S_logic_or = 111,                        // logic_or
+        S_logic_and = 112,                       // logic_and
+        S_equality = 113,                        // equality
+        S_relational = 114,                      // relational
+        S_additive = 115,                        // additive
+        S_multiplicative = 116,                  // multiplicative
+        S_unary = 117,                           // unary
+        S_postfix = 118,                         // postfix
+        S_arg_list_opt = 119,                    // arg_list_opt
+        S_arg_list = 120,                        // arg_list
+        S_primary = 121,                         // primary
+        S_struct_lit = 122,                      // struct_lit
+        S_field_inits_opt = 123,                 // field_inits_opt
+        S_field_inits = 124,                     // field_inits
+        S_field_init = 125                       // field_init
       };
     };
 
@@ -895,7 +891,6 @@ namespace yy {
         value.move< ast::ImportDecl* > (std::move (that.value));
         break;
 
-      case symbol_kind::S_init_declarator_stmt: // init_declarator_stmt
       case symbol_kind::S_init_declarator_decl: // init_declarator_decl
         value.move< ast::InitDeclarator* > (std::move (that.value));
         break;
@@ -994,7 +989,6 @@ namespace yy {
         value.move< std::vector<ast::ImportDecl*> > (std::move (that.value));
         break;
 
-      case symbol_kind::S_init_declarator_stmt_list: // init_declarator_stmt_list
       case symbol_kind::S_init_declarator_decl_list: // init_declarator_decl_list
         value.move< std::vector<ast::InitDeclarator*> > (std::move (that.value));
         break;
@@ -1580,7 +1574,6 @@ switch (yykind)
         value.template destroy< ast::ImportDecl* > ();
         break;
 
-      case symbol_kind::S_init_declarator_stmt: // init_declarator_stmt
       case symbol_kind::S_init_declarator_decl: // init_declarator_decl
         value.template destroy< ast::InitDeclarator* > ();
         break;
@@ -1679,7 +1672,6 @@ switch (yykind)
         value.template destroy< std::vector<ast::ImportDecl*> > ();
         break;
 
-      case symbol_kind::S_init_declarator_stmt_list: // init_declarator_stmt_list
       case symbol_kind::S_init_declarator_decl_list: // init_declarator_decl_list
         value.template destroy< std::vector<ast::InitDeclarator*> > ();
         break;
@@ -3313,8 +3305,8 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 335,     ///< Last index in yytable_.
-      yynnts_ = 55,  ///< Number of nonterminal symbols.
+      yylast_ = 348,     ///< Last index in yytable_.
+      yynnts_ = 53,  ///< Number of nonterminal symbols.
       yyfinal_ = 7 ///< Termination state number.
     };
 
@@ -3438,7 +3430,6 @@ switch (yykind)
         value.copy< ast::ImportDecl* > (YY_MOVE (that.value));
         break;
 
-      case symbol_kind::S_init_declarator_stmt: // init_declarator_stmt
       case symbol_kind::S_init_declarator_decl: // init_declarator_decl
         value.copy< ast::InitDeclarator* > (YY_MOVE (that.value));
         break;
@@ -3537,7 +3528,6 @@ switch (yykind)
         value.copy< std::vector<ast::ImportDecl*> > (YY_MOVE (that.value));
         break;
 
-      case symbol_kind::S_init_declarator_stmt_list: // init_declarator_stmt_list
       case symbol_kind::S_init_declarator_decl_list: // init_declarator_decl_list
         value.copy< std::vector<ast::InitDeclarator*> > (YY_MOVE (that.value));
         break;
@@ -3631,7 +3621,6 @@ switch (yykind)
         value.move< ast::ImportDecl* > (YY_MOVE (s.value));
         break;
 
-      case symbol_kind::S_init_declarator_stmt: // init_declarator_stmt
       case symbol_kind::S_init_declarator_decl: // init_declarator_decl
         value.move< ast::InitDeclarator* > (YY_MOVE (s.value));
         break;
@@ -3730,7 +3719,6 @@ switch (yykind)
         value.move< std::vector<ast::ImportDecl*> > (YY_MOVE (s.value));
         break;
 
-      case symbol_kind::S_init_declarator_stmt_list: // init_declarator_stmt_list
       case symbol_kind::S_init_declarator_decl_list: // init_declarator_decl_list
         value.move< std::vector<ast::InitDeclarator*> > (YY_MOVE (s.value));
         break;
@@ -3811,7 +3799,7 @@ switch (yykind)
 
 #line 4 "parser_rules.y"
 } // yy
-#line 3815 "parser.hpp"
+#line 3803 "parser.hpp"
 
 
 // "%code provides" blocks.
@@ -3819,7 +3807,7 @@ switch (yykind)
 
   yy::parser::symbol_type yylex(Scanner& scanner);
 
-#line 3823 "parser.hpp"
+#line 3811 "parser.hpp"
 
 
 #endif // !YY_YY_PARSER_HPP_INCLUDED

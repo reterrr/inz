@@ -51,7 +51,7 @@ struct TypeEq {
     bool operator()(const ast::Type &a, const ast::Type &b) const noexcept { return a.equals(b); }
 };
 
-namespace type {
+namespace sema::type {
     struct TypeInterner {
         using Alloc = BumpAllocatorAdaptor<ast::Type *>;
 
@@ -65,7 +65,7 @@ namespace type {
 
         template<typename T, typename... Args>
             requires std::is_base_of_v<ast::Type, T>
-        ast::Type *make(Args &&... args)
+        T *make(Args &&... args)
             noexcept(noexcept(T(std::forward<Args>(args)...))) {
             T probe(std::forward<Args>(args)...);
 

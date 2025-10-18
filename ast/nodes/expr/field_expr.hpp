@@ -18,6 +18,7 @@ namespace ast {
             : Expr(NodeKind::Expr_Field, loc)
               , base(baseExpr)
               , field(fieldName) {
+            base->parent = this;
         }
 
         void accept(visitor::ExprVisitor &v) override { v.visit(*this); }

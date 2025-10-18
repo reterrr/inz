@@ -5,6 +5,16 @@
 #ifndef AST_ITERATOR_HPP
 #define AST_ITERATOR_HPP
 
-namespace
+#include "visit/decl_visitor.hpp"
+#include "visit/expr_visitor.hpp"
+#include "visit/module_visitor.hpp"
+#include "visit/overallvisitor.hpp"
+#include "visit/stmt_visitor.hpp"
+
+namespace ast {
+    struct AstIteratorVisitor : visitor::OverallVisitor {
+        using OverallVisitor::visit;
+    };
+}
 
 #endif //AST_ITERATOR_HPP

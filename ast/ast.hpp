@@ -43,13 +43,13 @@
 
 #include "nodes/stmt/block_statement.hpp"
 #include "nodes/stmt/return_statement.hpp"
-#include "nodes/stmt/var_decl_statement.hpp"
 #include "nodes/stmt/if_statement.hpp"
 #include "nodes/stmt/expr_statement.hpp"
 #include "nodes/stmt/while_statement.hpp"
 #include "nodes/stmt/continue_statement.hpp"
 #include "nodes/stmt/break_statement.hpp"
 #include "nodes/stmt/do_while_statement.hpp"
+
 
 #include "nodes/decl/param_decl.hpp"
 #include "nodes/decl/function_decl.hpp"
@@ -68,6 +68,10 @@
 
 #include "nodes/module/module.hpp"
 
+#include "nodes/stmt/var_decl_statement.hpp"
+#include "sema/type_interner.hpp"
+
+
 namespace ast {
     // ===== forward declarations (keep header light) =====
 
@@ -75,6 +79,8 @@ namespace ast {
     // ====================================================
 
     class AST final {
+        sema::type::TypeInterner type_interner_{};
+
         llvm::BumpPtrAllocator alloc_{};
         Project *project = nullptr;
 
@@ -149,11 +155,7 @@ namespace ast {
 
         ExprStatement *mk_expr_stmt(ExprPtr expr, const lex::Loc &loc);
 
-        VarDeclStatement *mk_var_decl_stmt(std::vector<InitDeclarator *> &&declarators,
-                                           Type *type,
-                                           TypeSpecifier specifier,
-                                           TypeRegion region,
-                                           const lex::Loc &loc);
+        VarDeclStatement *mk_var_decl_stmt(VarDecl *decl, const lex::Loc &loc);
 
         ContinueStatement *mk_continue_stmt(const lex::Loc &loc);
 

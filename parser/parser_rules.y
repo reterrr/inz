@@ -354,6 +354,7 @@ fn_decl
       $$ = ast.mk_fn_decl($2, /*callable type*/ nullptr, std::move($4), $6, nullptr, combine(@1, @6)); /* prototype */
     }
   ;
+
 struct_decl
     : TOK_STRUCT ident TOK_LCBRA field_decl_list_opt TOK_RCBRA
       { $$ = ast.mk_struct_decl($2, std::move($4), combine(@1, @5)); }
@@ -503,8 +504,8 @@ expr_opt
 /* let T a, b=1; — typed mid-rule ($0) threads the type to declarators. */
 
 var_decl_stmt
-  : qtype_spec init_declarator_stmt_list TOK_SMCLN
-    { $$ = ast.mk_var_decl_stmt(std::move($2), $1.ty, $1.spec, $1.region, combine(@1, @3)); }
+  : var_decl
+    { $$ = ast.mk_var_decl_stmt($1, @1); }
   ;
 
 init_declarator_stmt_list
@@ -619,9 +620,9 @@ postfix
   | postfix TOK_DOT ident
     { $$ = ast.mk_field_expr(std::move($1), $3, combine(@1, @3)); }
   | postfix TOK_INC
-    { $$ = ast.mk_unary_op_expr(ast::UnaryOp::preincrement, std::move($1), combine(@1, @2)); }
+    { $$ = ast.mk_unary_op_expr(ast::UnaryOp::postincrement, std::move($1), combine(@1, @2)); }
   | postfix TOK_DEC
-    { $$ = ast.mk_unary_op_expr(ast::UnaryOp::predecrement, std::move($1), combine(@1, @2)); }
+    { $$ = ast.mk_unary_op_expr(ast::UnaryOp::postdecrement, std::move($1), combine(@1, @2)); }
   ;
 
 arg_list_opt
@@ -652,7 +653,7 @@ struct_lit
 
 field_inits_opt
   : /* empty */        { $$ = std::vector<ast::FieldInitPtr>{}; }
-  | field_inits
+  | field_inits        { $$ = std::move($1); }
   ;
 
 field_inits

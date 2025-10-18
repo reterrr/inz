@@ -15,6 +15,7 @@ namespace ast {
         FieldInitExpr(const lex::SymId name, ExprPtr value, const lex::Loc &loc)
             : Expr(NodeKind::Expr_FieldInit, loc),
               name(name), value(value) {
+            value->parent = this;
         }
 
         void accept(visitor::ExprVisitor &) override;

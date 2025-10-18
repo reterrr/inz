@@ -17,6 +17,7 @@ namespace ast {
 
         UnaryExpr(const UnaryOp op, ExprPtr expr, const lex::Loc &loc)
             : Expr(NodeKind::Expr_Unary, loc), op(op), expr(expr) {
+            expr->parent = this;
         }
 
         void accept(visitor::ExprVisitor &) override;

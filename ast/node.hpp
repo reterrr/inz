@@ -5,7 +5,7 @@
 #ifndef NODE_HPP
 #define NODE_HPP
 
-#include <token.hpp>
+#include "../../generated/token.hpp"
 
 #include "node_type.hpp"
 
@@ -18,10 +18,9 @@ namespace ast {
 
         Node(const NodeKind nodeType, const lex::Loc &loc) :
             nodeType_(nodeType), location_(loc) {
-
-
         }
 
+        NodePtr parent = nullptr;
         NodeKind nodeType_;
         lex::Loc location_;
     };

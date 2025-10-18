@@ -1,4 +1,5 @@
 #include <fstream>
+#include <stack>
 
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
@@ -20,6 +21,7 @@ int main() {
         if (auto* prj = ast.get_project()) {
             for (auto* m : prj->modules) if (m) m->accept(visitor);
         }
+
     }
 
     return rc;

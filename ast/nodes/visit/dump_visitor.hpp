@@ -306,6 +306,10 @@ namespace ast::visitor {
             indent--;
         }
 
+        void visit(VarDeclStatement &v) override {
+            v.decl->accept(*this);
+        }
+
         void visit(ast::BlockStatement &n) override {
             pad();
             os << "Block\n";
@@ -335,22 +339,6 @@ namespace ast::visitor {
             indent--;
         }
 
-        void visit(ast::VarDeclStatement &n) override {
-            pad();
-            os << "VarDeclStatement spec=" << static_cast<int>(n.specifier)
-                    << " region=" << static_cast<int>(n.region) << "\n";
-            indent++;
-            if (n.type) {
-                pad();
-                os << "type@" << n.type << "\n";
-            }
-            pad();
-            os << "declarators:\n";
-            indent++;
-            for (auto *d: n.declarators) if (d) d->accept(*this);
-            indent--;
-            indent--;
-        }
 
         void visit(ast::ReturnStatement &n) override {
             pad();
@@ -438,9 +426,9 @@ namespace ast::visitor {
             os << "struct " << (n.name) << " {\n";
             ++indent;
 
-            for (auto* d : n.fields) {
+            for (auto *d: n.fields) {
                 if (!d) continue;
-                d->accept(*this);  // Will dispatch to visit(FieldDecl&) below
+                d->accept(*this); // Will dispatch to visit(FieldDecl&) below
             }
 
             --indent;

@@ -13,7 +13,7 @@ namespace ast {
     }
 
     struct Decl : Node, Visitable<visitor::DeclVisitor> {
-        using Node::Node;
+        using Node::Node, Visitable::accept;
     };
 
     typedef Decl *DeclPtr;

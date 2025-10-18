@@ -16,6 +16,8 @@ namespace ast {
         IndexExpr(ExprPtr b, ExprPtr i, const lex::Loc &loc)
             : Expr(NodeKind::Expr_Index, loc),
               base(b), index(i) {
+            base->parent = this;
+            index->parent = this;
         }
 
         void accept(visitor::ExprVisitor &v) override { v.visit(*this); }

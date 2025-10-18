@@ -8,8 +8,7 @@
 #include "decl_visitor.hpp"
 #include "expr_visitor.hpp"
 #include "stmt_visitor.hpp"
-#include "module/module.hpp"
-
+#include "module_visitor.hpp"
 
 namespace ast::visitor {
     struct OverallVisitor :
@@ -65,8 +64,6 @@ namespace ast::visitor {
 
         void visit(WhileStatement &) override;
 
-        void visit(VarDeclStatement &) override;
-
         void visit(ReturnStatement &) override;
 
         void visit(ExprStatement &) override;
@@ -76,6 +73,8 @@ namespace ast::visitor {
         void visit(BreakStatement &) override;
 
         void visit(DoWhileStatement &) override;
+
+        void visit(VarDeclStatement &) override;
 
         void visit(Module &) override;
     };
