@@ -10,11 +10,14 @@
 #include "../node.hpp"
 
 namespace ast {
-    struct Module; using ModulePtr = Module*;
+    struct Module;
+    using ModulePtr = Module *;
+
     struct Project final : Node {
         std::vector<ModulePtr> modules;
 
-        Project(std::vector<ModulePtr>&& modules, const lex::Loc &loc)
+        Project(std::vector<ModulePtr> &&modules,
+                const lex::Loc &loc)
             : Node(NodeKind::Project, loc),
               modules(std::move(modules)) {
         }

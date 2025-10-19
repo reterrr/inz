@@ -10,14 +10,14 @@
 
 namespace ast {
     struct IndexExpr final : Expr {
-        ExprPtr base;
-        ExprPtr index;
+        ExprPtr base_;
+        ExprPtr index_;
 
-        IndexExpr(ExprPtr b, ExprPtr i, const lex::Loc &loc)
+        IndexExpr(ExprPtr base, ExprPtr index, const lex::Loc &loc)
             : Expr(NodeKind::Expr_Index, loc),
-              base(b), index(i) {
-            base->parent = this;
-            index->parent = this;
+              base_(base), index_(index) {
+            base_->parent = this;
+            index_->parent = this;
         }
 
         void accept(visitor::ExprVisitor &v) override { v.visit(*this); }

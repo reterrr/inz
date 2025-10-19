@@ -77,6 +77,10 @@ namespace ast::visitor {
         void visit(VarDeclStatement &) override;
 
         void visit(Module &) override;
+
+        void visit(VarsDecl &) override;
+
+        void visit(VarsDeclStatement &) override;
     };
 }
 

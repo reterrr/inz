@@ -19,8 +19,8 @@ namespace ast {
     struct FunctionDecl final : Decl {
         CallableType *type{nullptr};
         lex::SymId name;
-        BlockStatement *body; //prototype or definition
-        std::vector<ParamDecl *> params;
+        BlockStatement *body_; //prototype or definition
+        std::vector<ParamDecl *> params_;
         Type *ret;
 
         FunctionDecl(const lex::SymId name,
@@ -32,11 +32,11 @@ namespace ast {
             : Decl(NodeKind::Decl_Fn, loc),
               type(type),
               name(name),
-              body(body),
-              params(std::move(params)),
+              body_(body),
+              params_(std::move(params)),
               ret(ret) {
-            body->parent = this;
-            std::ranges::for_each(params, [this](ParamDecl *&p) {
+            body_->parent = this;
+            std::ranges::for_each(params_, [this](ParamDecl *&p) {
                 p->parent = this;
             });
         }

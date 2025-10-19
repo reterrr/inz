@@ -20,14 +20,14 @@ namespace ast {
      */
     struct StructDecl final : Decl {
         lex::SymId name;
-        std::vector<FieldDecl *> fields;
+        std::vector<FieldDecl *> fields_;
 
         StructDecl(const lex::SymId name,
                    std::vector<FieldDecl *> &&fields,
                    const lex::Loc &loc)
             : Decl(NodeKind::Decl_Struct, loc),
-              name(name), fields(std::move(fields)) {
-            std::ranges::for_each(fields, [this](FieldDecl *field) {
+              name(name), fields_(std::move(fields)) {
+            std::ranges::for_each(fields_, [this](FieldDecl *field) {
                 field->parent = this;
             });
         }

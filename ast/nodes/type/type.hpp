@@ -1,4 +1,5 @@
-#pragma once
+#ifndef AST_TYPE_HPP
+#define AST_TYPE_HPP
 
 #include <cstdint>
 #include <memory>
@@ -19,6 +20,7 @@ namespace ast {
     struct Type {
         TyKind kind{};
         lex::Loc loc{};
+        TypeSpecifier specifier{TypeSpecifier::Imm};
 
         explicit Type(const TyKind k, const lex::Loc &L)
             : kind(k), loc(L) {
@@ -36,14 +38,6 @@ namespace ast {
             return h;
         }
     };
-
-    struct TypeWithQual {
-        Type *ty{nullptr};
-        TypeSpecifier spec{TypeSpecifier::Imm};
-        TypeRegion region{TypeRegion::Auto};
-        lex::Loc loc{};
-    };
-
 
     struct BuiltinType final : Type {
         BuiltinTy which{};
@@ -183,3 +177,5 @@ namespace ast {
 
     using StructType = PathType;
 }
+
+#endif

@@ -13,11 +13,11 @@
 namespace ast {
     struct UnaryExpr final : Expr {
         UnaryOp op;
-        ExprPtr expr;
+        ExprPtr expr_;
 
         UnaryExpr(const UnaryOp op, ExprPtr expr, const lex::Loc &loc)
-            : Expr(NodeKind::Expr_Unary, loc), op(op), expr(expr) {
-            expr->parent = this;
+            : Expr(NodeKind::Expr_Unary, loc), op(op), expr_(expr) {
+            expr_->parent = this;
         }
 
         void accept(visitor::ExprVisitor &) override;

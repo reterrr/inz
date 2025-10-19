@@ -13,11 +13,12 @@
 namespace ast {
     struct RefExpr final : Expr {
         lex::SymId name;
-        DeclPtr binding;
+        DeclPtr binding_;
 
         RefExpr(const lex::SymId name, const lex::Loc &loc)
-            : Expr(NodeKind::Expr_Ref, loc), name(name), binding(nullptr) {
-
+            : Expr(NodeKind::Expr_Ref, loc),
+              name(name),
+              binding_(nullptr) {
         }
 
         void accept(visitor::ExprVisitor &v) override { v.visit(*this); }

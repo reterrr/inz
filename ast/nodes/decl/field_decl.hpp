@@ -9,16 +9,15 @@
 #include "../visit/decl_visitor.hpp"
 
 namespace ast {
-
     struct FieldDecl final : Decl {
         lex::SymId name;
         Type *type;
-        TypeSpecifier spec;
         bool is_public{false};
 
-        FieldDecl(const lex::SymId name, Type *type, const TypeSpecifier spec, const bool is_public, const lex::Loc &loc)
+        FieldDecl(const lex::SymId name, Type *type, const bool is_public,
+                  const lex::Loc &loc)
             : Decl(NodeKind::Decl_Field, loc), name(name),
-              type(type), spec(spec), is_public(is_public) {
+              type(type), is_public(is_public) {
         }
 
         void accept(visitor::DeclVisitor &) override;

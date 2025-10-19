@@ -14,15 +14,16 @@ namespace ast {
     struct BlockStatement;
 
     struct DoWhileStatement final : Statement {
-        ExprPtr condition;
-        BlockStatement *body;
+        ExprPtr condition_;
+        BlockStatement *body_;
 
         DoWhileStatement(ExprPtr condition,
                          BlockStatement *body,
                          const lex::Loc &loc)
             : Statement(NodeKind::Stmt_DoWhile, loc),
-              condition(condition),
-              body(body) {
+              condition_(condition),
+              body_(body) {
+            body_->parent = this;
         }
 
         void accept(visitor::StmtVisitor &) override;

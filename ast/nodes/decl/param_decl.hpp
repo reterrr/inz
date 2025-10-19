@@ -13,10 +13,9 @@ namespace ast {
     struct ParamDecl final : Decl {
         Type *type{nullptr};
         lex::SymId name;
-        TypeSpecifier qual{TypeSpecifier::Imm};
 
-        ParamDecl(const lex::SymId name, Type *ty, const TypeSpecifier q, const lex::Loc &L)
-            : Decl(NodeKind::Decl_Param, L), type(ty), name(name), qual(q) {
+        ParamDecl(const lex::SymId name, Type *ty, const lex::Loc &L)
+            : Decl(NodeKind::Decl_Param, L), type(ty), name(name) {
         }
 
         void accept(visitor::DeclVisitor &) override;

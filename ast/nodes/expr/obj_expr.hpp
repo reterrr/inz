@@ -11,12 +11,12 @@ namespace ast {
     // when we write e.g. Obj eg = Obj{a, b, 1 };
     struct ObjLiteralExpr final : Expr {
         PathType *type;
-        std::vector<FieldInitExpr *> elements;
+        std::vector<FieldInitExpr *> elements_;
 
         ObjLiteralExpr(PathType *type, std::vector<FieldInitExpr *> &&elements, const lex::Loc &loc)
             : Expr(NodeKind::Expr_ObjLiteral, loc),
-              type(type), elements(std::move(elements)) {
-            std::ranges::for_each(elements, [this](FieldInitExpr *&e) {
+              type(type), elements_(std::move(elements)) {
+            std::ranges::for_each(elements_, [this](FieldInitExpr *&e) {
                 e->parent = this;
             });
         }

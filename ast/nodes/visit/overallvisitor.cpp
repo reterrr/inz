@@ -36,8 +36,8 @@ void ast::visitor::OverallVisitor::visit(ParamDecl &p) {
 }
 
 void ast::visitor::OverallVisitor::visit(FunctionDecl &f) {
-    if (f.body) f.body->accept(*this);
-    std::ranges::for_each(f.params, [this](auto &p) { p->accept(*this); });
+    if (f.body_) f.body_->accept(*this);
+    std::ranges::for_each(f.params_, [this](auto &p) { p->accept(*this); });
 }
 
 void ast::visitor::OverallVisitor::visit(TypeAliasDecl &t) {
@@ -49,11 +49,11 @@ void ast::visitor::OverallVisitor::visit(ImportDecl &i) {
 }
 
 void ast::visitor::OverallVisitor::visit(VarDecl &v) {
-    std::ranges::for_each(v.declarators, [this](auto &d) { d->accept(*this); });
+    v.declarator->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(StructDecl &s) {
-    std::ranges::for_each(s.fields, [this](auto &f) { f->accept(*this); });
+    std::ranges::for_each(s.fields_, [this](auto &f) { f->accept(*this); });
 }
 
 void ast::visitor::OverallVisitor::visit(FieldDecl &f) {
@@ -69,12 +69,12 @@ void ast::visitor::OverallVisitor::visit(FloatLiteralExpr &f) {
 }
 
 void ast::visitor::OverallVisitor::visit(UnaryExpr &u) {
-    if (u.expr) u.expr->accept(*this);
+    if (u.expr_) u.expr_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(BinaryExpr &b) {
-    if (b.lhs) b.lhs->accept(*this);
-    if (b.rhs) b.rhs->accept(*this);
+    if (b.lhs_) b.lhs_->accept(*this);
+    if (b.rhs_) b.rhs_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(StringLiteralExpr &s) {
@@ -82,29 +82,29 @@ void ast::visitor::OverallVisitor::visit(StringLiteralExpr &s) {
 }
 
 void ast::visitor::OverallVisitor::visit(ObjLiteralExpr &o) {
-    std::ranges::for_each(o.elements, [this](auto &f) { f->accept(*this); });
+    std::ranges::for_each(o.elements_, [this](auto &f) { f->accept(*this); });
 }
 
 void ast::visitor::OverallVisitor::visit(AssignExpr &a) {
-    if (a.lhs) a.lhs->accept(*this);
-    if (a.rhs) a.rhs->accept(*this);
+    if (a.lhs_) a.lhs_->accept(*this);
+    if (a.rhs_) a.rhs_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(InitDeclarator &i) {
-    if (i.init) i.init->accept(*this);
+    if (i.init_) i.init_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(FieldExpr &f) {
-    if (f.base) f.base->accept(*this);
+    if (f.base_) f.base_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(CallExpr &e) {
-    if (e.callee) e.callee->accept(*this);
-    std::ranges::for_each(e.args, [this](auto &a) { a->accept(*this); });
+    if (e.callee_) e.callee_->accept(*this);
+    std::ranges::for_each(e.args_, [this](auto &a) { a->accept(*this); });
 }
 
 void ast::visitor::OverallVisitor::visit(RefExpr &r) {
-    if (r.binding) r.binding->accept(*this);
+    if (r.binding_) r.binding_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(IndexExpr &i) {
@@ -121,25 +121,25 @@ void ast::visitor::OverallVisitor::visit(FieldInitExpr &f) {
 }
 
 void ast::visitor::OverallVisitor::visit(IfStatement &i) {
-    if (i.condition) i.condition->accept(*this);
-    if (i.thenBody) i.thenBody->accept(*this);
+    if (i.condition_) i.condition_->accept(*this);
+    if (i.thenBody_) i.thenBody_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(BlockStatement &b) {
-    std::ranges::for_each(b.statements, [this](auto &s) { s->accept(*this); });
+    std::ranges::for_each(b.statements_, [this](auto &s) { s->accept(*this); });
 }
 
 void ast::visitor::OverallVisitor::visit(WhileStatement &w) {
-    if (w.condition) w.condition->accept(*this);
-    if (w.body) w.body->accept(*this);
+    if (w.condition_) w.condition_->accept(*this);
+    if (w.body_) w.body_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(ReturnStatement &r) {
-    if (r.expr) r.expr->accept(*this);
+    if (r.expr_) r.expr_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(ExprStatement &e) {
-    if (e.expr) e.expr->accept(*this);
+    if (e.expr_) e.expr_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(ContinueStatement &c) {
@@ -151,15 +151,21 @@ void ast::visitor::OverallVisitor::visit(BreakStatement &b) {
 }
 
 void ast::visitor::OverallVisitor::visit(DoWhileStatement &d) {
-    if (d.condition) d.condition->accept(*this);
-    if (d.body) d.body->accept(*this);
+    if (d.condition_) d.condition_->accept(*this);
+    if (d.body_) d.body_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(VarDeclStatement &v) {
-    if (v.decl) v.decl->accept(*this);
+    if (v.decl_) v.decl_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(Module &m) {
     std::ranges::for_each(m.decls, [this](auto &d) { d->accept(*this); });
     std::ranges::for_each(m.imports, [this](auto &i) { i->accept(*this); });
+}
+
+void ast::visitor::OverallVisitor::visit(VarsDecl &) {
+}
+
+void ast::visitor::OverallVisitor::visit(VarsDeclStatement &) {
 }

@@ -12,7 +12,7 @@
 
 namespace ast {
     struct BlockStatement final : Statement {
-        std::vector<StatementPtr> statements;
+        std::vector<StatementPtr> statements_;
 
         // lex::Loc lbrace;
         // lex::Loc rbrace;
@@ -24,16 +24,19 @@ namespace ast {
         // }
 
         BlockStatement(std::vector<StatementPtr> &&statements, const lex::Loc &loc)
-            : Statement(NodeKind::Stmt_Block, loc), statements(std::move(statements)){
+            : Statement(NodeKind::Stmt_Block, loc),
+              statements_(std::move(statements)) {
+            std::ranges::for_each(statements, [this](auto &stmt) {
+                stmt->parent = this;
+            });
         }
 
         void accept(visitor::StmtVisitor &) override;
     };
 
-    inline void BlockStatement::accept(visitor::StmtVisitor & v) {
+    inline void BlockStatement::accept(visitor::StmtVisitor &v) {
         v.visit(*this);
     }
-
 }
 
 #endif //COMPOUND_STATEMENT_HPP

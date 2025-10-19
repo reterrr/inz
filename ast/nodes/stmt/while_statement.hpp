@@ -13,12 +13,15 @@ namespace ast {
     struct BlockStatement;
 
     struct WhileStatement final : Statement {
-        ExprPtr condition;
-        BlockStatement *body;
+        ExprPtr condition_;
+        BlockStatement *body_;
 
         WhileStatement(ExprPtr condition, BlockStatement *body, const lex::Loc &loc)
             : Statement(NodeKind::Stmt_While, loc),
-              condition(condition), body(body) {
+              condition_(condition),
+              body_(body) {
+            condition_->parent = this;
+            body_->parent = this;
         }
 
         void accept(visitor::StmtVisitor &) override;

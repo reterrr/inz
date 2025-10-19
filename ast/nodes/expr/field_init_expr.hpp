@@ -10,12 +10,12 @@
 namespace ast {
     struct FieldInitExpr final : Expr {
         lex::SymId name;
-        ExprPtr value;
+        ExprPtr value_;
 
         FieldInitExpr(const lex::SymId name, ExprPtr value, const lex::Loc &loc)
             : Expr(NodeKind::Expr_FieldInit, loc),
-              name(name), value(value) {
-            value->parent = this;
+              name(name), value_(value) {
+            value_->parent = this;
         }
 
         void accept(visitor::ExprVisitor &) override;

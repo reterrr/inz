@@ -11,11 +11,12 @@
 
 namespace ast {
     struct ExprStatement final : Statement {
-        ExprPtr expr;
+        ExprPtr expr_;
 
         ExprStatement(ExprPtr expr, const lex::Loc &loc)
             : Statement(NodeKind::Stmt_Expr, loc),
-              expr(expr) {
+              expr_(expr) {
+            expr_->parent = this;
         }
 
         void accept(visitor::StmtVisitor &) override;

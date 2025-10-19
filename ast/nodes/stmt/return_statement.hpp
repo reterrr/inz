@@ -11,19 +11,20 @@
 
 namespace ast {
     struct ReturnStatement final : Statement {
-        ExprPtr expr;
+        ExprPtr expr_;
 
         ReturnStatement(ExprPtr expr, const lex::Loc &loc)
-            : Statement(NodeKind::Stmt_Return, loc), expr(expr) {
+            : Statement(NodeKind::Stmt_Return, loc),
+              expr_(expr) {
+            expr_->parent = this;
         }
 
         void accept(visitor::StmtVisitor &) override;
     };
 
-    inline void ReturnStatement::accept(visitor::StmtVisitor & v) {
+    inline void ReturnStatement::accept(visitor::StmtVisitor &v) {
         v.visit(*this);
     }
-
 }
 
 

@@ -13,11 +13,12 @@
 
 namespace ast {
     struct VarDeclStatement final : Statement {
-        VarDecl *decl;
+        VarDecl *decl_;
 
         VarDeclStatement(VarDecl *decl, const lex::Loc &loc)
             : Statement(NodeKind::Stmt_VarDecl, loc),
-              decl(decl) {
+              decl_(decl) {
+            decl_->parent = this;
         }
 
         void accept(visitor::StmtVisitor &) override;

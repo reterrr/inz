@@ -10,17 +10,17 @@
 
 namespace ast {
     struct CallExpr final : Expr {
-        ExprPtr callee; // foo(...) or obj.method(...): callee is an Expr
-        std::vector<ExprPtr> args; // positional arguments, in order
+        ExprPtr callee_; // foo(...) or obj.method(...): callee is an Expr
+        std::vector<ExprPtr> args_; // positional arguments, in order
 
         CallExpr(ExprPtr callee,
                  std::vector<ExprPtr> &&args,
                  const lex::Loc &loc)
             : Expr(NodeKind::Expr_Call, loc),
-              callee(callee),
-              args(std::move(args)) {
-            callee->parent = this;
-            std::ranges::for_each(args, [this](ExprPtr &e) { e->parent = this; });
+              callee_(callee),
+              args_(std::move(args)) {
+            callee_->parent = this;
+            std::ranges::for_each(args_, [this](ExprPtr &e) { e->parent = this; });
         }
 
         void accept(visitor::ExprVisitor &v) override;

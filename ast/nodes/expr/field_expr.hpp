@@ -10,15 +10,15 @@
 
 namespace ast {
     struct FieldExpr final : Expr {
-        ExprPtr base; // the object expression (value or &ref)
+        ExprPtr base_; // the object expression (value or &ref)
         lex::SymId field; // interned field name
         int32_t cached_index = -1; // filled by semantic pass (optional)
 
-        FieldExpr(ExprPtr baseExpr, const lex::SymId fieldName, const lex::Loc &loc)
+        FieldExpr(ExprPtr base, const lex::SymId fieldName, const lex::Loc &loc)
             : Expr(NodeKind::Expr_Field, loc)
-              , base(baseExpr)
+              , base_(base)
               , field(fieldName) {
-            base->parent = this;
+            base_->parent = this;
         }
 
         void accept(visitor::ExprVisitor &v) override { v.visit(*this); }
