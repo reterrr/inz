@@ -31,7 +31,6 @@ tokens:
       BOOL: "bool"
       VOID: "void"
       STRING: "string"
-      LET: "let"
     misc_flow:
       BREAK: "break"
       CONTINUE: "continue"
