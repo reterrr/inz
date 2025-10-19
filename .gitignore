@@ -2,8 +2,6 @@
 cmake-build-debug
 build
 
-*/a.out
-
 test*
 
 *.a
@@ -11,3 +9,11 @@ test*
 *.so
 *.dylib
 a.out
+generated/token.hpp
+
+generated/lexer/lexer.yy.cpp
+generated/lexer/lexer_rules.l
+
+parser/parser_rules.tab*
+parser/parser.cpp
+parser/parser.hpp
