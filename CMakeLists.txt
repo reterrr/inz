@@ -17,7 +17,7 @@ set(TOKEN_DIR ${CMAKE_SOURCE_DIR}/tokens)
 set(TEMPLATES_DIR ${CMAKE_SOURCE_DIR}/templates)
 set(GEN_DIR ${CMAKE_SOURCE_DIR}/generated)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -O1")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_BUILD_TYPE DEBUG)
 
 include_directories(
@@ -96,11 +96,9 @@ add_executable(inz main.cpp
         ast/nodes/visit/overallvisitor.hpp
         sema/scope_stack.hpp
         sema/symbol.hpp
-        sema/passes/decl_pass.cpp
         sema/type_interner.hpp
-        test.cpp
-        test_mv.cpp
-        test_hie.cpp
+        ast/nodes/decl/vars_decl.hpp
+        ast/nodes/stmt/vars_decl_statement.hpp
 )
 
 target_include_directories(inz PRIVATE

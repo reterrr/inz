@@ -1,18 +1,20 @@
-package www.www;
+package www.www; //ok
 
-import os;
+import os; //ok
 
 struct K {
     int a;
     int b;
-}
+} //ok
 
-struct a;
+struct a; //ok
 
 fn s(int[10] c, int b, int d) -> int
 {
-    int a = 10 + 10 * 20;
-    magicint l = 100;
+    let int a = 10 + 10 * 20;
+    let int a;
+    let mut int (a, b, c) = 1, 2, 3;
+    let magicint l = 100;
     a++;
     ++a;
     --a;
@@ -22,9 +24,18 @@ fn s(int[10] c, int b, int d) -> int
     a--;
 
     return a;
+} //ok
+
+fn k() -> void {} //ok
+
+
+let int a = 10;
+
+fn main() -> int {
+    a = 10 + 1 * 1 / 10; //ok
+    let int[10] s; //ok
+    let K b; // NOT ok
+
+    k(); //ok
+    let int key = s(s, b, a); //ok
 }
-
-
-int a = 10, b = 10;
-
-string p = "pp";

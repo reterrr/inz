@@ -225,6 +225,7 @@
 %type <ast::VarDecl*>                     var_decl   /* top-level var decl */
 %type <ast::VarsDecl*>                    vars_decl
 %type <std::vector<Str>>                  vars_group
+%type <ast::DeclPtr>                      top_decl
 
 /* types */
 %type <ast::TypeSpecifier>                type_specifier_opt
@@ -330,8 +331,7 @@ decl_list
 
 decl
   : maybe_export fn_decl      { $$ = static_cast<ast::DeclPtr>($2); }
-  | maybe_export var_decl     { $$ = static_cast<ast::DeclPtr>($2); }
-  | vars_decl                 { $$ = static_cast<ast::DeclPtr>($1); }
+  | maybe_export top_decl     { $$ = static_cast<ast::DeclPtr>($2); }
   | maybe_export struct_decl  { $$ = static_cast<ast::DeclPtr>($2); }
   ;
 
@@ -499,13 +499,13 @@ expr_opt
 /* let T a, b=1; — typed mid-rule ($0) threads the type to declarators. */
 
 var_decl_stmt
-  : var_decl
-    { $$ = ast.mk_var_decl_stmt($1, @1); }
+  : TOK_LET var_decl
+    { $$ = ast.mk_var_decl_stmt($2, @2); }
   ;
 
 vars_decl_stmt
-: vars_decl
-  { $$ = ast.mk_vars_decl_stmt($1, @1); }
+  : TOK_LET vars_decl
+  { $$ = ast.mk_vars_decl_stmt($2, @2); }
 ;
 
 /* ================== top-level (declaration-level) var declarations ============ */
@@ -513,6 +513,11 @@ vars_decl_stmt
 vars_group
   : TOK_LPAR ident_list TOK_RPAR
     { $$ = std::move($2); }
+  ;
+
+top_decl
+  : TOK_LET var_decl      { $$ = static_cast<ast::DeclPtr>($2); }
+  | TOK_LET vars_decl     { $$ = static_cast<ast::DeclPtr>($2); }
   ;
 
 vars_decl
