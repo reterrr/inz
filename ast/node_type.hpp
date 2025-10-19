@@ -75,7 +75,8 @@ enum class NodeKind : uint16_t {
     Expr_DeclInit,
 
     // ---- Statements
-    Stmt_VarDecl, // (qualifiers + type) name [= init], ...
+    Stmt_VarDecl,
+    Stmt_VarsDecl_Sugar,// (qualifiers + type) name [= init], ...
     Stmt_Return,
     Stmt_If,
     Stmt_While,
@@ -96,6 +97,7 @@ enum class NodeKind : uint16_t {
     Decl_Package,
     Decl_Param,
     Decl_Var,
+    Decl_Vars_Sugar,
     Decl_Field,
 
     // ---- Type syntax
