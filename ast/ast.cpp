@@ -76,13 +76,18 @@ IfStatement *AST::mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, const lex::Loc
     return make<IfStatement>(cond, thenStmt, /*else*/ loc);
 }
 
-ParamDecl *AST::mk_param_decl(lex::SymId name, Type *type, TypeSpecifier q, const lex::Loc &loc) {
-    return make<ParamDecl>(name, type, q, loc);
+ParamDecl *AST::mk_param_decl(lex::SymId name, Type *type, const lex::Loc &loc) {
+    return make<ParamDecl>(name, type, loc);
 }
 
-VarDecl *AST::mk_var_decl(std::vector<InitDeclarator *> &&decls, Type *ty, TypeSpecifier spec, TypeRegion reg,
+VarDecl *AST::mk_var_decl(InitDeclarator *decl, Type *ty, TypeRegion reg,
                           const lex::Loc &loc) {
-    return make<VarDecl>(std::move(decls), ty, spec, reg, loc);
+    return make<VarDecl>(decl, ty, reg, loc);
+}
+
+VarsDecl *AST::mk_vars_decl(std::vector<lex::SymId> &&names, std::vector<Expr *> &&assignments, Type *type,
+                            TypeRegion region, const lex::Loc &loc) {
+    return make<VarsDecl>(std::move(names), std::move(assignments), type, region, loc);
 }
 
 // StatementPtr AST::mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, StatementPtr elseStmt, const lex::Loc& loc) {
@@ -100,8 +105,8 @@ FunctionDecl *AST::mk_fn_decl(lex::SymId name,
     return make<FunctionDecl>(name, type, std::move(params), ret, body, loc);
 }
 
-FieldDecl *AST::mk_field_decl(lex::SymId name, Type *type, TypeSpecifier spec, bool is_public, const lex::Loc &loc) {
-    return make<FieldDecl>(name, type, spec, is_public, loc);
+FieldDecl *AST::mk_field_decl(lex::SymId name, Type *type, bool is_public, const lex::Loc &loc) {
+    return make<FieldDecl>(name, type, is_public, loc);
 }
 
 StructDecl *AST::mk_struct_decl(lex::SymId name, std::vector<FieldDecl *> &&fields, const lex::Loc &loc) {
@@ -145,6 +150,10 @@ ExprStatement *AST::mk_expr_stmt(ExprPtr expr, const lex::Loc &loc) {
 
 VarDeclStatement *AST::mk_var_decl_stmt(VarDecl *decl, const lex::Loc &loc) {
     return make<VarDeclStatement>(decl, loc);
+}
+
+VarsDeclStatement *AST::mk_vars_decl_stmt(VarsDecl *decl, const lex::Loc &loc) {
+    return make<VarsDeclStatement>(decl, loc);
 }
 
 CallExpr *AST::mk_call_expr(ExprPtr callee, std::vector<ExprPtr> &&args, const lex::Loc &loc) {

@@ -54,6 +54,7 @@
 #include "nodes/decl/param_decl.hpp"
 #include "nodes/decl/function_decl.hpp"
 #include "nodes/decl/var_decl.hpp"
+#include "nodes/decl/vars_decl.hpp"
 #include "nodes/decl/type_alias_decl.hpp"
 #include "nodes/decl/struct_decl.hpp"
 #include "nodes/decl/field_decl.hpp"
@@ -69,6 +70,7 @@
 #include "nodes/module/module.hpp"
 
 #include "nodes/stmt/var_decl_statement.hpp"
+#include "nodes/stmt/vars_decl_statement.hpp"
 #include "sema/type_interner.hpp"
 
 
@@ -157,6 +159,8 @@ namespace ast {
 
         VarDeclStatement *mk_var_decl_stmt(VarDecl *decl, const lex::Loc &loc);
 
+        VarsDeclStatement *mk_vars_decl_stmt(VarsDecl *decl, const lex::Loc &loc);
+
         ContinueStatement *mk_continue_stmt(const lex::Loc &loc);
 
         WhileStatement *mk_while_stmt(ExprPtr condition, BlockStatement *body, const lex::Loc &loc);
@@ -169,13 +173,18 @@ namespace ast {
         // if (cond) then else other;   // with else
         //StatementPtr mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, StatementPtr elseStmt, const lex::Loc &loc);
 
-        ParamDecl *mk_param_decl(lex::SymId name, Type *type, TypeSpecifier q, const lex::Loc &loc);
+        ParamDecl *mk_param_decl(lex::SymId name, Type *type, const lex::Loc &loc);
 
-        VarDecl *mk_var_decl(std::vector<InitDeclarator *> &&decls,
+        VarDecl *mk_var_decl(InitDeclarator *decl,
                              Type *ty,
-                             TypeSpecifier spec,
                              TypeRegion reg,
                              const lex::Loc &loc);
+
+        VarsDecl *mk_vars_decl(std::vector<lex::SymId> &&names,
+                               std::vector<Expr *> &&assignments,
+                               Type *type,
+                               TypeRegion region,
+                               const lex::Loc &loc);
 
         // ========= Declarations =========
         FunctionDecl *mk_fn_decl(lex::SymId name,
@@ -185,9 +194,9 @@ namespace ast {
                                  BlockStatement *body, // nullptr => prototype
                                  const lex::Loc &loc);
 
-        FieldDecl *mk_field_decl(lex::SymId name, Type *type, TypeSpecifier spec, bool is_public, const lex::Loc &loc);
+        FieldDecl *mk_field_decl(lex::SymId name, Type *type, bool is_public, const lex::Loc &loc);
 
-        StructDecl* mk_struct_decl(lex::SymId name, std::vector<FieldDecl *> &&fields, const lex::Loc &loc);
+        StructDecl *mk_struct_decl(lex::SymId name, std::vector<FieldDecl *> &&fields, const lex::Loc &loc);
 
         Module *mk_module(std::vector<lex::SymId> &&package_path,
                           std::vector<ImportDecl *> &&imports,
