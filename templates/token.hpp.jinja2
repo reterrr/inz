@@ -2,6 +2,7 @@
 #ifndef TOKEN_HPP
 #define TOKEN_HPP
 #include <cstdint>
+#include <ostream>
 
 namespace lex {
     enum Type {
@@ -53,6 +54,14 @@ namespace lex {
    inline Loc operator+(Loc a, const Loc &b) {
        a += b;
        return a;
+   }
+
+   inline std::ostream& operator<<(std::ostream &os, const Pos &pos) {
+        return os << "\n(line: " << pos.line << ", column: " << pos.column << ", offset: " << pos.offset << ")\n";
+   }
+
+   inline std::ostream& operator<<(std::ostream &os, const Loc &loc) {
+        return os << "\n(begin: " << loc.begin << ", end: " << loc.end << ")\n";
    }
 
    using SymId = uint32_t;
