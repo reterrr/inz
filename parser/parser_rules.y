@@ -4,9 +4,9 @@
 %define api.namespace {yy}
 %define api.location.type {lex::Loc}
 
-
 %define parse.lac full
 %define parse.error verbose
+%define parse.trace
 
 /* We pass both the scanner and the AST factory into the parser. */
 %lex-param   { Scanner& scanner }
@@ -73,12 +73,6 @@
   yy::parser::symbol_type yylex(Scanner& scanner) {
     int rc = scanner.yylex(); // advance; fills current_token_
 
-    if (rc == 0) {                            // true EOF
-        // Use the last token's end as the EOF location (or synthesize one)
-        lex::Loc L = scanner.getCurrentToken().loc_;
-        L.begin = L.end;                        // make it a point loc at end
-        return yy::parser::make_YYEOF(L);
-    }
     const lex::Token& t = scanner.getCurrentToken();
     const lex::Loc   L  = t.loc_;
 
@@ -217,6 +211,7 @@
 
 /* names & imports */
 %type <Str>                               ident name
+%type <std::vector<Str>>                  ident_list
 %type <std::vector<Str>>                  names_separated_by_dots
 %type <ast::ImportDecl*>                  import_decl
 %type <std::vector<ast::ImportDecl*>>     import_list
@@ -228,14 +223,18 @@
 %type <ast::DeclPtr>                      decl
 %type <ast::FunctionDecl*>                fn_decl
 %type <ast::VarDecl*>                     var_decl   /* top-level var decl */
+%type <ast::VarsDecl*>                    vars_decl
+%type <std::vector<Str>>                  vars_group
 
 /* types */
 %type <ast::TypeSpecifier>                type_specifier_opt
 %type <ast::TypeRegion>                   type_region_opt
-%type <ast::TypePtr>                      type_spec ret_type builtin_type
+%type <ast::TypePtr>                      type_spec ret_type
+%type <ast::TypePtr>                      type_with_spec
+%type <ast::FixedArrayType*>              fixed_array_type
+%type <ast::BuiltinType *>                builtin_type
 %type <ast::PathTypePtr>                  type_path
 %type <Str>                               type_atom
-%type <ast::TypeWithQual>                 qtype_spec
 
 /* statements */
 %type <ast::StatementPtr>                 stmt
@@ -245,19 +244,16 @@
 
 /* local var decls (statement-level) */
 %type <ast::VarDeclStatement*>            var_decl_stmt
-%type <std::vector<ast::InitDeclarator*>> init_declarator_stmt_list
-%type <ast::InitDeclarator*>              init_declarator_stmt
+%type <ast::VarsDeclStatement*>           vars_decl_stmt
 
 /* top-level var decls (declaration-level) */
-%type <std::vector<ast::InitDeclarator*>> init_declarator_decl_list
-%type <ast::InitDeclarator*>              init_declarator_decl
 
 /* parameters */
 %type <ast::ParamDeclPtr>                 param
 %type <std::vector<ast::ParamDeclPtr>>    param_list param_list_opt
 
-%type <std::vector<ast::FieldDecl*>> field_decl_list field_decl_list_opt
-%type <ast::FieldDecl*>              field_decl
+%type <std::vector<ast::FieldDecl*>>      field_decl_list field_decl_list_opt
+%type <ast::FieldDecl*>                   field_decl
 
 /* expressions */
 %type <ast::ExprPtr>                      expr assign cond logic_or logic_and equality relational additive multiplicative unary postfix primary expr_opt
@@ -268,7 +264,7 @@
 %type <std::vector<ast::FieldInitPtr>>    field_inits field_inits_opt
 %type <ast::FieldInitPtr>                 field_init
 
-%type <ast::StructDecl*>                       struct_decl
+%type <ast::StructDecl*>                  struct_decl
 
 %%
 /* ============================ modules / top level ============================ */
@@ -335,8 +331,8 @@ decl_list
 decl
   : maybe_export fn_decl      { $$ = static_cast<ast::DeclPtr>($2); }
   | maybe_export var_decl     { $$ = static_cast<ast::DeclPtr>($2); }
+  | vars_decl                 { $$ = static_cast<ast::DeclPtr>($1); }
   | maybe_export struct_decl  { $$ = static_cast<ast::DeclPtr>($2); }
-  | maybe_export              { $$ = nullptr; }
   ;
 
 maybe_export
@@ -364,7 +360,7 @@ struct_decl
 
 field_decl_list_opt
     :                                   { $$ = std::vector<ast::FieldDecl*>{}; }
-    | field_decl_list
+    | field_decl_list                   { $$ = std::move($1); }
     ;
 
 field_decl_list
@@ -373,19 +369,19 @@ field_decl_list
     ;
 
 field_decl
-    : qtype_spec ident TOK_SMCLN
-        { $$ = ast.mk_field_decl($2, $1.ty, $1.spec, false, combine(@1, @3)); }
-    | TOK_PUB qtype_spec ident TOK_SMCLN
-        { $$ = ast.mk_field_decl($3, $2.ty, $2.spec, true, combine(@1, @4)); }
+    : type_with_spec ident TOK_SMCLN
+        { $$ = ast.mk_field_decl($2, $1, false, combine(@1, @3)); }
+    | TOK_PUB type_with_spec ident TOK_SMCLN
+        { $$ = ast.mk_field_decl($3, $2, true, combine(@1, @4)); }
     ;
 
 ret_type
-    : TOK_ARROW type_spec                { $$ = $2; }
+    : TOK_ARROW type_with_spec                { $$ = $2; }
     ;
 
 param_list_opt
     : /* empty */                        { $$ = std::vector<ast::ParamDeclPtr>{}; }
-    | param_list
+    | param_list                         { $$ = std::move($1); }
     ;
 
 param_list
@@ -395,7 +391,7 @@ param_list
     ;
 
 param
-    : qtype_spec ident                    { $$ = ast.mk_param_decl($2, $1.ty, $1.spec,  combine(@1, @2)); }
+    : type_with_spec ident                { $$ = ast.mk_param_decl($2, $1, combine(@1, @2)); }
     ;
 
 
@@ -415,26 +411,15 @@ type_region_opt
     { $$ = ast::TypeRegion::Static; }
     ;
 
-qtype_spec
-  : type_specifier_opt type_region_opt type_spec
-    { $$ = ast::TypeWithQual{ $3, $1, $2, @3 }; }
-  | type_specifier_opt type_spec
-    { $$ = ast::TypeWithQual{ $2, $1, ast::TypeRegion::Auto, @2 }; }
-  | type_region_opt type_spec
-    { $$ = ast::TypeWithQual{ $2, ast::TypeSpecifier::Imm, $1, @2 }; }
-  | type_spec type_specifier_opt
-    { $$ = ast::TypeWithQual{ $1, $2, ast::TypeRegion::Auto, @1 }; }
-  | type_spec type_region_opt
-    { $$ = ast::TypeWithQual{ $1, ast::TypeSpecifier::Imm, $2, @1 }; }
-  | type_spec
-    { $$ = ast::TypeWithQual{ $1, ast::TypeSpecifier::Imm, ast::TypeRegion::Auto, @1 }; }
-  ;
+type_with_spec
+    : type_specifier_opt type_spec
+    { $2->specifier = $1; $$ = $2; }
+    ;
 
 type_spec
-  : builtin_type
-  | type_path         { $$ = ast.mk_type_from_path($1, @1); }
-  | type_spec TOK_LBRACK TOK_INT_LITERAL TOK_RBRACK
-    { $$ = ast.mk_fixed_array_type($1, $3, combine(@1, @3)); }
+  : builtin_type      { $$ = static_cast<ast::TypePtr>($1); }
+  | type_path         { $$ = static_cast<ast::TypePtr>(ast.mk_type_from_path($1, @1)); }
+  | fixed_array_type  { $$ = static_cast<ast::TypePtr>($1); }
   ;
 
 builtin_type
@@ -455,13 +440,22 @@ type_path
   ;
 
 type_atom
-  : TOK_TYPE_NAME     { $$ = std::move($1); }
-  | TOK_IDENTIFIER    { $$ = std::move($1); } /* keep until lexer distinguishes */
+  : TOK_IDENTIFIER    { $$ = std::move($1); } /* keep until lexer distinguishes */
   ;
+
+fixed_array_type
+    : type_spec TOK_LBRACK TOK_INT_LITERAL TOK_RBRACK
+    { $$ = ast.mk_fixed_array_type($1, $3, combine(@1, @3)); }
+    ;
 
 ident
   : TOK_IDENTIFIER    { $$ = std::move($1); }
   ;
+
+ident_list
+    : ident                        { $$ = std::vector<Str>(std::move($1)); }
+    | ident_list TOK_COMMA ident   { $1.push_back(std::move($3)); $$ = std::move($1); }
+    ;
 
 /* =============================== statements ================================= */
 
@@ -477,6 +471,7 @@ stmt_list
 
 stmt
   : var_decl_stmt                         { $$ = static_cast<ast::StatementPtr>($1); }
+  | vars_decl_stmt                        { $$ = static_cast<ast::StatementPtr>($1); }
   | TOK_RETURN expr_opt TOK_SMCLN         { $$ = ast.mk_return_stmt($2, @1); }
   | TOK_IF TOK_LPAR expr TOK_RPAR stmt
       { $$ = ast.mk_if_stmt($3, $5, combine(@1, @5)); }
@@ -508,40 +503,52 @@ var_decl_stmt
     { $$ = ast.mk_var_decl_stmt($1, @1); }
   ;
 
-init_declarator_stmt_list
-  : init_declarator_stmt
-    { std::vector<ast::InitDeclarator *> v; v.push_back(std::move($1)); $$ = std::move(v); }
-  | init_declarator_stmt_list TOK_COMMA init_declarator_stmt
-    { $1.push_back(std::move($3)); $$ = std::move($1); }
-  ;
-
-init_declarator_stmt
-  : ident
-    { $$ = ast.mk_var_declarator_expr($1, nullptr, @1); }
-  | ident TOK_ASSIGN assign
-    { $$ = ast.mk_var_declarator_expr($1, std::move($3), combine(@1, @3)); }
-  ;
+vars_decl_stmt
+: vars_decl
+  { $$ = ast.mk_vars_decl_stmt($1, @1); }
+;
 
 /* ================== top-level (declaration-level) var declarations ============ */
 
+vars_group
+  : TOK_LPAR ident_list TOK_RPAR
+    { $$ = std::move($2); }
+  ;
+
+vars_decl
+  : type_region_opt type_with_spec vars_group TOK_SMCLN
+    {
+      // No initializers
+      $$ = ast.mk_vars_decl(/*names*/std::move($3),
+                            /*assignments*/std::vector<ast::ExprPtr>{},
+                            /*type*/$2,
+                            /*region*/$1,
+                            /*range*/combine(@1, @3));
+    }
+  | type_region_opt type_with_spec vars_group TOK_ASSIGN arg_list_opt TOK_SMCLN
+    {
+      // Initializers: either empty, one expr, or N exprs
+      $$ = ast.mk_vars_decl(/*names*/std::move($3),
+                            /*assignments*/std::move($5),
+                            /*type*/$2,
+                            /*region*/$1,
+                            /*range*/combine(@1, @3));
+    }
+  ;
+
 var_decl
-  : qtype_spec init_declarator_decl_list TOK_SMCLN
-    { $$ = ast.mk_var_decl(std::move($2), $1.ty, $1.spec, $1.region, combine(@1, @3)); }
+  : type_region_opt type_with_spec ident TOK_SMCLN
+    {
+      auto decl = ast.mk_var_declarator_expr($3, nullptr, @3);
+      $$ = ast.mk_var_decl(std::move(decl), $2, $1, combine(@1, @3));
+    }
+  | type_region_opt type_with_spec ident TOK_ASSIGN assign TOK_SMCLN
+    {
+      auto decl = ast.mk_var_declarator_expr($3, std::move($5), combine(@3, @5));
+      $$ = ast.mk_var_decl(std::move(decl), $2, $1, combine(@1, @5));
+    }
   ;
 
-init_declarator_decl_list
-  : init_declarator_decl
-    { std::vector<ast::InitDeclarator*> v; v.push_back($1); $$ = std::move(v); }
-  | init_declarator_decl_list TOK_COMMA init_declarator_decl
-    { $1.push_back($3); $$ = std::move($1); }
-  ;
-
-init_declarator_decl
-  : ident
-    { $$ = ast.mk_var_declarator_expr($1, nullptr, @1); }
-  | ident TOK_ASSIGN assign
-    { $$ = ast.mk_var_declarator_expr($1, std::move($3), combine(@1, @3)); }
-  ;
 
 /* =============================== expressions ================================ */
 
@@ -627,7 +634,7 @@ postfix
 
 arg_list_opt
   : /* empty */                  { $$ = std::vector<ast::ExprPtr>{}; }
-  | arg_list
+  | arg_list                     { $$ = std::move($1);  }
   ;
 
 arg_list
