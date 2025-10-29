@@ -15,13 +15,10 @@ int main() {
     yy::parser p(scanner, ast);
     const int rc = p.parse();
 
-    std::cout << "hello: " << rc << std::endl;
-
     if (rc == 0) {
-        if (auto* prj = ast.get_project()) {
-            for (auto* m : prj->modules) if (m) m->accept(visitor);
+        if (auto *prj = ast.get_project()) {
+            for (auto *m: prj->modules) if (m) m->accept(visitor);
         }
-
     }
 
     return rc;

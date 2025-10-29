@@ -32,7 +32,7 @@
 
 
 /**
- ** \file parser.hpp
+ ** \file parser/parser.hpp
  ** Define the yy::parser class.
  */
 
@@ -42,10 +42,10 @@
 // especially those whose name start with YY_ or yy_.  They are
 // private implementation details that can be changed or removed.
 
-#ifndef YY_YY_PARSER_HPP_INCLUDED
-# define YY_YY_PARSER_HPP_INCLUDED
+#ifndef YY_YY_PARSER_PARSER_HPP_INCLUDED
+# define YY_YY_PARSER_PARSER_HPP_INCLUDED
 // "%code requires" blocks.
-#line 17 "parser_rules.y"
+#line 17 "parser/parser_rules.y"
 
   #include "../generated/token.hpp"   // defines lex::Loc, lex::SymId, token enum
   #include "../types.hpp"             // kl_int, kl_double, kl_bool, etc.
@@ -86,7 +86,7 @@
 
   using Str = lex::SymId;
 
-#line 90 "parser.hpp"
+#line 90 "parser/parser.hpp"
 
 
 # include <cstdlib> // std::abort
@@ -217,12 +217,12 @@
 
 /* Debug traces.  */
 #ifndef YYDEBUG
-# define YYDEBUG 0
+# define YYDEBUG 1
 #endif
 
-#line 4 "parser_rules.y"
+#line 4 "parser/parser_rules.y"
 namespace yy {
-#line 226 "parser.hpp"
+#line 226 "parser/parser.hpp"
 
 
 
@@ -429,8 +429,12 @@ namespace yy {
       // block
       char dummy2[sizeof (ast::BlockStatement*)];
 
+      // builtin_type
+      char dummy3[sizeof (ast::BuiltinType *)];
+
       // decl
-      char dummy3[sizeof (ast::DeclPtr)];
+      // top_decl
+      char dummy4[sizeof (ast::DeclPtr)];
 
       // expr_opt
       // expr
@@ -445,54 +449,51 @@ namespace yy {
       // unary
       // postfix
       // primary
-      char dummy4[sizeof (ast::ExprPtr)];
+      char dummy5[sizeof (ast::ExprPtr)];
 
       // field_decl
-      char dummy5[sizeof (ast::FieldDecl*)];
+      char dummy6[sizeof (ast::FieldDecl*)];
 
       // field_init
-      char dummy6[sizeof (ast::FieldInitPtr)];
+      char dummy7[sizeof (ast::FieldInitPtr)];
+
+      // fixed_array_type
+      char dummy8[sizeof (ast::FixedArrayType*)];
 
       // fn_decl
-      char dummy7[sizeof (ast::FunctionDecl*)];
+      char dummy9[sizeof (ast::FunctionDecl*)];
 
       // import_decl
-      char dummy8[sizeof (ast::ImportDecl*)];
-
-      // init_declarator_decl
-      char dummy9[sizeof (ast::InitDeclarator*)];
+      char dummy10[sizeof (ast::ImportDecl*)];
 
       // translation_unit
-      char dummy10[sizeof (ast::ModulePtr)];
+      char dummy11[sizeof (ast::ModulePtr)];
 
       // struct_lit
-      char dummy11[sizeof (ast::ObjLiteralExpr*)];
+      char dummy12[sizeof (ast::ObjLiteralExpr*)];
 
       // param
-      char dummy12[sizeof (ast::ParamDeclPtr)];
+      char dummy13[sizeof (ast::ParamDeclPtr)];
 
       // type_path
-      char dummy13[sizeof (ast::PathTypePtr)];
+      char dummy14[sizeof (ast::PathTypePtr)];
 
       // stmt
-      char dummy14[sizeof (ast::StatementPtr)];
+      char dummy15[sizeof (ast::StatementPtr)];
 
       // struct_decl
-      char dummy15[sizeof (ast::StructDecl*)];
+      char dummy16[sizeof (ast::StructDecl*)];
 
       // ret_type
+      // type_with_spec
       // type_spec
-      // builtin_type
-      char dummy16[sizeof (ast::TypePtr)];
+      char dummy17[sizeof (ast::TypePtr)];
 
       // type_region_opt
-      char dummy17[sizeof (ast::TypeRegion)];
+      char dummy18[sizeof (ast::TypeRegion)];
 
       // type_specifier_opt
-      char dummy18[sizeof (ast::TypeSpecifier)];
-
-      // qtype_spec
-      char dummy19[sizeof (ast::TypeWithQual)];
+      char dummy19[sizeof (ast::TypeSpecifier)];
 
       // var_decl
       char dummy20[sizeof (ast::VarDecl*)];
@@ -500,49 +501,54 @@ namespace yy {
       // var_decl_stmt
       char dummy21[sizeof (ast::VarDeclStatement*)];
 
+      // vars_decl
+      char dummy22[sizeof (ast::VarsDecl*)];
+
+      // vars_decl_stmt
+      char dummy23[sizeof (ast::VarsDeclStatement*)];
+
       // maybe_export
-      char dummy22[sizeof (int)];
+      char dummy24[sizeof (int)];
 
       // TOK_BOOL_LITERAL
-      char dummy23[sizeof (kl_bool)];
+      char dummy25[sizeof (kl_bool)];
 
       // TOK_FLOAT_LITERAL
-      char dummy24[sizeof (kl_float)];
+      char dummy26[sizeof (kl_float)];
 
       // TOK_INT_LITERAL
-      char dummy25[sizeof (kl_int)];
+      char dummy27[sizeof (kl_int)];
 
       // opt_package
       // names_separated_by_dots
-      char dummy26[sizeof (std::vector<Str>)];
+      // ident_list
+      // vars_group
+      char dummy28[sizeof (std::vector<Str>)];
 
       // decl_list
-      char dummy27[sizeof (std::vector<ast::DeclPtr>)];
+      char dummy29[sizeof (std::vector<ast::DeclPtr>)];
 
       // arg_list_opt
       // arg_list
-      char dummy28[sizeof (std::vector<ast::ExprPtr>)];
+      char dummy30[sizeof (std::vector<ast::ExprPtr>)];
 
       // field_decl_list_opt
       // field_decl_list
-      char dummy29[sizeof (std::vector<ast::FieldDecl*>)];
+      char dummy31[sizeof (std::vector<ast::FieldDecl*>)];
 
       // field_inits_opt
       // field_inits
-      char dummy30[sizeof (std::vector<ast::FieldInitPtr>)];
+      char dummy32[sizeof (std::vector<ast::FieldInitPtr>)];
 
       // import_list
-      char dummy31[sizeof (std::vector<ast::ImportDecl*>)];
-
-      // init_declarator_decl_list
-      char dummy32[sizeof (std::vector<ast::InitDeclarator*>)];
+      char dummy33[sizeof (std::vector<ast::ImportDecl*>)];
 
       // param_list_opt
       // param_list
-      char dummy33[sizeof (std::vector<ast::ParamDeclPtr>)];
+      char dummy34[sizeof (std::vector<ast::ParamDeclPtr>)];
 
       // stmt_list
-      char dummy34[sizeof (std::vector<ast::StatementPtr>)];
+      char dummy35[sizeof (std::vector<ast::StatementPtr>)];
     };
 
     /// The size of the largest semantic type.
@@ -774,38 +780,42 @@ namespace yy {
         S_param = 91,                            // param
         S_type_specifier_opt = 92,               // type_specifier_opt
         S_type_region_opt = 93,                  // type_region_opt
-        S_qtype_spec = 94,                       // qtype_spec
+        S_type_with_spec = 94,                   // type_with_spec
         S_type_spec = 95,                        // type_spec
         S_builtin_type = 96,                     // builtin_type
         S_type_path = 97,                        // type_path
         S_type_atom = 98,                        // type_atom
-        S_ident = 99,                            // ident
-        S_block = 100,                           // block
-        S_stmt_list = 101,                       // stmt_list
-        S_stmt = 102,                            // stmt
-        S_expr_opt = 103,                        // expr_opt
-        S_var_decl_stmt = 104,                   // var_decl_stmt
-        S_var_decl = 105,                        // var_decl
-        S_init_declarator_decl_list = 106,       // init_declarator_decl_list
-        S_init_declarator_decl = 107,            // init_declarator_decl
-        S_expr = 108,                            // expr
-        S_assign = 109,                          // assign
-        S_cond = 110,                            // cond
-        S_logic_or = 111,                        // logic_or
-        S_logic_and = 112,                       // logic_and
-        S_equality = 113,                        // equality
-        S_relational = 114,                      // relational
-        S_additive = 115,                        // additive
-        S_multiplicative = 116,                  // multiplicative
-        S_unary = 117,                           // unary
-        S_postfix = 118,                         // postfix
-        S_arg_list_opt = 119,                    // arg_list_opt
-        S_arg_list = 120,                        // arg_list
-        S_primary = 121,                         // primary
-        S_struct_lit = 122,                      // struct_lit
-        S_field_inits_opt = 123,                 // field_inits_opt
-        S_field_inits = 124,                     // field_inits
-        S_field_init = 125                       // field_init
+        S_fixed_array_type = 99,                 // fixed_array_type
+        S_ident = 100,                           // ident
+        S_ident_list = 101,                      // ident_list
+        S_block = 102,                           // block
+        S_stmt_list = 103,                       // stmt_list
+        S_stmt = 104,                            // stmt
+        S_expr_opt = 105,                        // expr_opt
+        S_var_decl_stmt = 106,                   // var_decl_stmt
+        S_vars_decl_stmt = 107,                  // vars_decl_stmt
+        S_vars_group = 108,                      // vars_group
+        S_top_decl = 109,                        // top_decl
+        S_vars_decl = 110,                       // vars_decl
+        S_var_decl = 111,                        // var_decl
+        S_expr = 112,                            // expr
+        S_assign = 113,                          // assign
+        S_cond = 114,                            // cond
+        S_logic_or = 115,                        // logic_or
+        S_logic_and = 116,                       // logic_and
+        S_equality = 117,                        // equality
+        S_relational = 118,                      // relational
+        S_additive = 119,                        // additive
+        S_multiplicative = 120,                  // multiplicative
+        S_unary = 121,                           // unary
+        S_postfix = 122,                         // postfix
+        S_arg_list_opt = 123,                    // arg_list_opt
+        S_arg_list = 124,                        // arg_list
+        S_primary = 125,                         // primary
+        S_struct_lit = 126,                      // struct_lit
+        S_field_inits_opt = 127,                 // field_inits_opt
+        S_field_inits = 128,                     // field_inits
+        S_field_init = 129                       // field_init
       };
     };
 
@@ -855,7 +865,12 @@ namespace yy {
         value.move< ast::BlockStatement* > (std::move (that.value));
         break;
 
+      case symbol_kind::S_builtin_type: // builtin_type
+        value.move< ast::BuiltinType * > (std::move (that.value));
+        break;
+
       case symbol_kind::S_decl: // decl
+      case symbol_kind::S_top_decl: // top_decl
         value.move< ast::DeclPtr > (std::move (that.value));
         break;
 
@@ -883,16 +898,16 @@ namespace yy {
         value.move< ast::FieldInitPtr > (std::move (that.value));
         break;
 
+      case symbol_kind::S_fixed_array_type: // fixed_array_type
+        value.move< ast::FixedArrayType* > (std::move (that.value));
+        break;
+
       case symbol_kind::S_fn_decl: // fn_decl
         value.move< ast::FunctionDecl* > (std::move (that.value));
         break;
 
       case symbol_kind::S_import_decl: // import_decl
         value.move< ast::ImportDecl* > (std::move (that.value));
-        break;
-
-      case symbol_kind::S_init_declarator_decl: // init_declarator_decl
-        value.move< ast::InitDeclarator* > (std::move (that.value));
         break;
 
       case symbol_kind::S_translation_unit: // translation_unit
@@ -920,8 +935,8 @@ namespace yy {
         break;
 
       case symbol_kind::S_ret_type: // ret_type
+      case symbol_kind::S_type_with_spec: // type_with_spec
       case symbol_kind::S_type_spec: // type_spec
-      case symbol_kind::S_builtin_type: // builtin_type
         value.move< ast::TypePtr > (std::move (that.value));
         break;
 
@@ -933,16 +948,20 @@ namespace yy {
         value.move< ast::TypeSpecifier > (std::move (that.value));
         break;
 
-      case symbol_kind::S_qtype_spec: // qtype_spec
-        value.move< ast::TypeWithQual > (std::move (that.value));
-        break;
-
       case symbol_kind::S_var_decl: // var_decl
         value.move< ast::VarDecl* > (std::move (that.value));
         break;
 
       case symbol_kind::S_var_decl_stmt: // var_decl_stmt
         value.move< ast::VarDeclStatement* > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_vars_decl: // vars_decl
+        value.move< ast::VarsDecl* > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_vars_decl_stmt: // vars_decl_stmt
+        value.move< ast::VarsDeclStatement* > (std::move (that.value));
         break;
 
       case symbol_kind::S_maybe_export: // maybe_export
@@ -963,6 +982,8 @@ namespace yy {
 
       case symbol_kind::S_opt_package: // opt_package
       case symbol_kind::S_names_separated_by_dots: // names_separated_by_dots
+      case symbol_kind::S_ident_list: // ident_list
+      case symbol_kind::S_vars_group: // vars_group
         value.move< std::vector<Str> > (std::move (that.value));
         break;
 
@@ -987,10 +1008,6 @@ namespace yy {
 
       case symbol_kind::S_import_list: // import_list
         value.move< std::vector<ast::ImportDecl*> > (std::move (that.value));
-        break;
-
-      case symbol_kind::S_init_declarator_decl_list: // init_declarator_decl_list
-        value.move< std::vector<ast::InitDeclarator*> > (std::move (that.value));
         break;
 
       case symbol_kind::S_param_list_opt: // param_list_opt
@@ -1054,6 +1071,20 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, ast::BuiltinType *&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const ast::BuiltinType *& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
       basic_symbol (typename Base::kind_type t, ast::DeclPtr&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
@@ -1110,6 +1141,20 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, ast::FixedArrayType*&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const ast::FixedArrayType*& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
       basic_symbol (typename Base::kind_type t, ast::FunctionDecl*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
@@ -1131,20 +1176,6 @@ namespace yy {
       {}
 #else
       basic_symbol (typename Base::kind_type t, const ast::ImportDecl*& v, const location_type& l)
-        : Base (t)
-        , value (v)
-        , location (l)
-      {}
-#endif
-
-#if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::InitDeclarator*&& v, location_type&& l)
-        : Base (t)
-        , value (std::move (v))
-        , location (std::move (l))
-      {}
-#else
-      basic_symbol (typename Base::kind_type t, const ast::InitDeclarator*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1278,20 +1309,6 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::TypeWithQual&& v, location_type&& l)
-        : Base (t)
-        , value (std::move (v))
-        , location (std::move (l))
-      {}
-#else
-      basic_symbol (typename Base::kind_type t, const ast::TypeWithQual& v, const location_type& l)
-        : Base (t)
-        , value (v)
-        , location (l)
-      {}
-#endif
-
-#if 201103L <= YY_CPLUSPLUS
       basic_symbol (typename Base::kind_type t, ast::VarDecl*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
@@ -1313,6 +1330,34 @@ namespace yy {
       {}
 #else
       basic_symbol (typename Base::kind_type t, const ast::VarDeclStatement*& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, ast::VarsDecl*&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const ast::VarsDecl*& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, ast::VarsDeclStatement*&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const ast::VarsDeclStatement*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1460,20 +1505,6 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, std::vector<ast::InitDeclarator*>&& v, location_type&& l)
-        : Base (t)
-        , value (std::move (v))
-        , location (std::move (l))
-      {}
-#else
-      basic_symbol (typename Base::kind_type t, const std::vector<ast::InitDeclarator*>& v, const location_type& l)
-        : Base (t)
-        , value (v)
-        , location (l)
-      {}
-#endif
-
-#if 201103L <= YY_CPLUSPLUS
       basic_symbol (typename Base::kind_type t, std::vector<ast::ParamDeclPtr>&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
@@ -1538,7 +1569,12 @@ switch (yykind)
         value.template destroy< ast::BlockStatement* > ();
         break;
 
+      case symbol_kind::S_builtin_type: // builtin_type
+        value.template destroy< ast::BuiltinType * > ();
+        break;
+
       case symbol_kind::S_decl: // decl
+      case symbol_kind::S_top_decl: // top_decl
         value.template destroy< ast::DeclPtr > ();
         break;
 
@@ -1566,16 +1602,16 @@ switch (yykind)
         value.template destroy< ast::FieldInitPtr > ();
         break;
 
+      case symbol_kind::S_fixed_array_type: // fixed_array_type
+        value.template destroy< ast::FixedArrayType* > ();
+        break;
+
       case symbol_kind::S_fn_decl: // fn_decl
         value.template destroy< ast::FunctionDecl* > ();
         break;
 
       case symbol_kind::S_import_decl: // import_decl
         value.template destroy< ast::ImportDecl* > ();
-        break;
-
-      case symbol_kind::S_init_declarator_decl: // init_declarator_decl
-        value.template destroy< ast::InitDeclarator* > ();
         break;
 
       case symbol_kind::S_translation_unit: // translation_unit
@@ -1603,8 +1639,8 @@ switch (yykind)
         break;
 
       case symbol_kind::S_ret_type: // ret_type
+      case symbol_kind::S_type_with_spec: // type_with_spec
       case symbol_kind::S_type_spec: // type_spec
-      case symbol_kind::S_builtin_type: // builtin_type
         value.template destroy< ast::TypePtr > ();
         break;
 
@@ -1616,16 +1652,20 @@ switch (yykind)
         value.template destroy< ast::TypeSpecifier > ();
         break;
 
-      case symbol_kind::S_qtype_spec: // qtype_spec
-        value.template destroy< ast::TypeWithQual > ();
-        break;
-
       case symbol_kind::S_var_decl: // var_decl
         value.template destroy< ast::VarDecl* > ();
         break;
 
       case symbol_kind::S_var_decl_stmt: // var_decl_stmt
         value.template destroy< ast::VarDeclStatement* > ();
+        break;
+
+      case symbol_kind::S_vars_decl: // vars_decl
+        value.template destroy< ast::VarsDecl* > ();
+        break;
+
+      case symbol_kind::S_vars_decl_stmt: // vars_decl_stmt
+        value.template destroy< ast::VarsDeclStatement* > ();
         break;
 
       case symbol_kind::S_maybe_export: // maybe_export
@@ -1646,6 +1686,8 @@ switch (yykind)
 
       case symbol_kind::S_opt_package: // opt_package
       case symbol_kind::S_names_separated_by_dots: // names_separated_by_dots
+      case symbol_kind::S_ident_list: // ident_list
+      case symbol_kind::S_vars_group: // vars_group
         value.template destroy< std::vector<Str> > ();
         break;
 
@@ -1670,10 +1712,6 @@ switch (yykind)
 
       case symbol_kind::S_import_list: // import_list
         value.template destroy< std::vector<ast::ImportDecl*> > ();
-        break;
-
-      case symbol_kind::S_init_declarator_decl_list: // init_declarator_decl_list
-        value.template destroy< std::vector<ast::InitDeclarator*> > ();
         break;
 
       case symbol_kind::S_param_list_opt: // param_list_opt
@@ -3018,7 +3056,7 @@ switch (yykind)
     /// \param yyvalue   the value to check
     static bool yy_table_value_is_error_ (int yyvalue) YY_NOEXCEPT;
 
-    static const short yypact_ninf_;
+    static const signed char yypact_ninf_;
     static const signed char yytable_ninf_;
 
     /// Convert a scanner token kind \a t to a symbol kind.
@@ -3054,14 +3092,14 @@ switch (yykind)
     // number is the opposite.  If YYTABLE_NINF, syntax error.
     static const short yytable_[];
 
-    static const short yycheck_[];
+    static const unsigned char yycheck_[];
 
     // YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
     // state STATE-NUM.
-    static const signed char yystos_[];
+    static const unsigned char yystos_[];
 
     // YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.
-    static const signed char yyr1_[];
+    static const unsigned char yyr1_[];
 
     // YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.
     static const signed char yyr2_[];
@@ -3305,8 +3343,8 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 348,     ///< Last index in yytable_.
-      yynnts_ = 53,  ///< Number of nonterminal symbols.
+      yylast_ = 250,     ///< Last index in yytable_.
+      yynnts_ = 57,  ///< Number of nonterminal symbols.
       yyfinal_ = 7 ///< Termination state number.
     };
 
@@ -3394,7 +3432,12 @@ switch (yykind)
         value.copy< ast::BlockStatement* > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_builtin_type: // builtin_type
+        value.copy< ast::BuiltinType * > (YY_MOVE (that.value));
+        break;
+
       case symbol_kind::S_decl: // decl
+      case symbol_kind::S_top_decl: // top_decl
         value.copy< ast::DeclPtr > (YY_MOVE (that.value));
         break;
 
@@ -3422,16 +3465,16 @@ switch (yykind)
         value.copy< ast::FieldInitPtr > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_fixed_array_type: // fixed_array_type
+        value.copy< ast::FixedArrayType* > (YY_MOVE (that.value));
+        break;
+
       case symbol_kind::S_fn_decl: // fn_decl
         value.copy< ast::FunctionDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_import_decl: // import_decl
         value.copy< ast::ImportDecl* > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_init_declarator_decl: // init_declarator_decl
-        value.copy< ast::InitDeclarator* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_translation_unit: // translation_unit
@@ -3459,8 +3502,8 @@ switch (yykind)
         break;
 
       case symbol_kind::S_ret_type: // ret_type
+      case symbol_kind::S_type_with_spec: // type_with_spec
       case symbol_kind::S_type_spec: // type_spec
-      case symbol_kind::S_builtin_type: // builtin_type
         value.copy< ast::TypePtr > (YY_MOVE (that.value));
         break;
 
@@ -3472,16 +3515,20 @@ switch (yykind)
         value.copy< ast::TypeSpecifier > (YY_MOVE (that.value));
         break;
 
-      case symbol_kind::S_qtype_spec: // qtype_spec
-        value.copy< ast::TypeWithQual > (YY_MOVE (that.value));
-        break;
-
       case symbol_kind::S_var_decl: // var_decl
         value.copy< ast::VarDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_var_decl_stmt: // var_decl_stmt
         value.copy< ast::VarDeclStatement* > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_vars_decl: // vars_decl
+        value.copy< ast::VarsDecl* > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_vars_decl_stmt: // vars_decl_stmt
+        value.copy< ast::VarsDeclStatement* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_maybe_export: // maybe_export
@@ -3502,6 +3549,8 @@ switch (yykind)
 
       case symbol_kind::S_opt_package: // opt_package
       case symbol_kind::S_names_separated_by_dots: // names_separated_by_dots
+      case symbol_kind::S_ident_list: // ident_list
+      case symbol_kind::S_vars_group: // vars_group
         value.copy< std::vector<Str> > (YY_MOVE (that.value));
         break;
 
@@ -3526,10 +3575,6 @@ switch (yykind)
 
       case symbol_kind::S_import_list: // import_list
         value.copy< std::vector<ast::ImportDecl*> > (YY_MOVE (that.value));
-        break;
-
-      case symbol_kind::S_init_declarator_decl_list: // init_declarator_decl_list
-        value.copy< std::vector<ast::InitDeclarator*> > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_param_list_opt: // param_list_opt
@@ -3585,7 +3630,12 @@ switch (yykind)
         value.move< ast::BlockStatement* > (YY_MOVE (s.value));
         break;
 
+      case symbol_kind::S_builtin_type: // builtin_type
+        value.move< ast::BuiltinType * > (YY_MOVE (s.value));
+        break;
+
       case symbol_kind::S_decl: // decl
+      case symbol_kind::S_top_decl: // top_decl
         value.move< ast::DeclPtr > (YY_MOVE (s.value));
         break;
 
@@ -3613,16 +3663,16 @@ switch (yykind)
         value.move< ast::FieldInitPtr > (YY_MOVE (s.value));
         break;
 
+      case symbol_kind::S_fixed_array_type: // fixed_array_type
+        value.move< ast::FixedArrayType* > (YY_MOVE (s.value));
+        break;
+
       case symbol_kind::S_fn_decl: // fn_decl
         value.move< ast::FunctionDecl* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_import_decl: // import_decl
         value.move< ast::ImportDecl* > (YY_MOVE (s.value));
-        break;
-
-      case symbol_kind::S_init_declarator_decl: // init_declarator_decl
-        value.move< ast::InitDeclarator* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_translation_unit: // translation_unit
@@ -3650,8 +3700,8 @@ switch (yykind)
         break;
 
       case symbol_kind::S_ret_type: // ret_type
+      case symbol_kind::S_type_with_spec: // type_with_spec
       case symbol_kind::S_type_spec: // type_spec
-      case symbol_kind::S_builtin_type: // builtin_type
         value.move< ast::TypePtr > (YY_MOVE (s.value));
         break;
 
@@ -3663,16 +3713,20 @@ switch (yykind)
         value.move< ast::TypeSpecifier > (YY_MOVE (s.value));
         break;
 
-      case symbol_kind::S_qtype_spec: // qtype_spec
-        value.move< ast::TypeWithQual > (YY_MOVE (s.value));
-        break;
-
       case symbol_kind::S_var_decl: // var_decl
         value.move< ast::VarDecl* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_var_decl_stmt: // var_decl_stmt
         value.move< ast::VarDeclStatement* > (YY_MOVE (s.value));
+        break;
+
+      case symbol_kind::S_vars_decl: // vars_decl
+        value.move< ast::VarsDecl* > (YY_MOVE (s.value));
+        break;
+
+      case symbol_kind::S_vars_decl_stmt: // vars_decl_stmt
+        value.move< ast::VarsDeclStatement* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_maybe_export: // maybe_export
@@ -3693,6 +3747,8 @@ switch (yykind)
 
       case symbol_kind::S_opt_package: // opt_package
       case symbol_kind::S_names_separated_by_dots: // names_separated_by_dots
+      case symbol_kind::S_ident_list: // ident_list
+      case symbol_kind::S_vars_group: // vars_group
         value.move< std::vector<Str> > (YY_MOVE (s.value));
         break;
 
@@ -3717,10 +3773,6 @@ switch (yykind)
 
       case symbol_kind::S_import_list: // import_list
         value.move< std::vector<ast::ImportDecl*> > (YY_MOVE (s.value));
-        break;
-
-      case symbol_kind::S_init_declarator_decl_list: // init_declarator_decl_list
-        value.move< std::vector<ast::InitDeclarator*> > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_param_list_opt: // param_list_opt
@@ -3797,17 +3849,17 @@ switch (yykind)
   }
 
 
-#line 4 "parser_rules.y"
+#line 4 "parser/parser_rules.y"
 } // yy
-#line 3803 "parser.hpp"
+#line 3855 "parser/parser.hpp"
 
 
 // "%code provides" blocks.
-#line 59 "parser_rules.y"
+#line 59 "parser/parser_rules.y"
 
   yy::parser::symbol_type yylex(Scanner& scanner);
 
-#line 3811 "parser.hpp"
+#line 3863 "parser/parser.hpp"
 
 
-#endif // !YY_YY_PARSER_HPP_INCLUDED
+#endif // !YY_YY_PARSER_PARSER_HPP_INCLUDED
