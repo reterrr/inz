@@ -14,6 +14,8 @@ generated/token.hpp
 generated/lexer/lexer.yy.cpp
 generated/lexer/lexer_rules.l
 
+
+test
 parser/parser_rules.tab*
 parser/parser.cpp
 parser/parser.hpp
