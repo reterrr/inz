@@ -1,6 +1,6 @@
 package www.www; //ok
 
-import os; //ok
+import os.so; //ok
 
 struct K {
     int a;
@@ -12,12 +12,12 @@ struct a; //ok
 fn s(int[10] c, int b, int d) -> int
 {
     let int a = 10 + 10 * 20;
-    let int a;
+
     let mut int (a, b, c) = 1, 2, 3;
     let magicint l = 100;
     a++;
     ++a;
-    --a;
+    --a;        
     !-a;
     !!!!a;
 
@@ -28,14 +28,29 @@ fn s(int[10] c, int b, int d) -> int
 
 fn k() -> void {} //ok
 
-
 let int a = 10;
 
 fn main() -> int {
     a = 10 + 1 * 1 / 10; //ok
     let int[10] s; //ok
-    let K b; // NOT ok
+    let K b = K{a:1,b:2}; // ok
+
+    if (a < 0) {
+        a += 10;
+
+
+    } //ok
+
+    while (a < 0) {
+        a /= 10 + a;
+
+        if (a == 1) {
+            ++a;
+        }
+    }
 
     k(); //ok
     let int key = s(s, b, a); //ok
+
+    return 0; //ok
 }
