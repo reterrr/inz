@@ -88,24 +88,23 @@ namespace sema::pass {
     void DeclPassAstIteratorVisitor::visit(ast::VarDecl &v) {
         // Assuming VarDecl aggregates multiple declarators (each has a name + optional init).
         // And VarDecl carries the declared type + spec/region.
-        for (auto *init: v.declarators) {
-            if (!init) continue;
+        auto *init = v.declarator;
+        if (!init) return;
 
-            Symbol sym;
-            sym.id = init->name; // or however you store the identifier on the declarator
-            sym.kind = SymbolKind::Var;
-            sym.loc = init->location_;
-            sym.type = v.type; // declared type is on the VarDecl
-            sym.decl = &v;
+        Symbol sym;
+        sym.id = init->name; // or however you store the identifier on the declarator
+        sym.kind = SymbolKind::Var;
+        sym.loc = init->location_;
+        sym.type = v.type; // declared type is on the VarDecl
+        sym.decl = &v;
 
-            // Attributes (if present on VarDecl)
-            // sym.mut  = to_mutability(static_cast<int>(v.spec));
-            // sym.stor = to_storage(static_cast<int>(v.reg));
-            sym.mutability = Mutability::Imm;
-            sym.storage = Storage::Auto;
+        // Attributes (if present on VarDecl)
+        // sym.mut  = to_mutability(static_cast<int>(v.spec));
+        // sym.stor = to_storage(static_cast<int>(v.reg));
+        sym.mutability = Mutability::Imm;
+        sym.storage = Storage::Auto;
 
-            (void) symbol_table.declare(sym);
-        }
+        (void) symbol_table.declare(sym);
     }
 
     // -------- StructDecl --------
