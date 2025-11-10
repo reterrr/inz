@@ -76,7 +76,15 @@
 
 namespace ast {
     // ===== forward declarations (keep header light) =====
+    struct Dtor final {
+        void (*dtor)(void *);
 
+        void *obj;
+
+        void operator()() const noexcept {
+            dtor(obj);
+        }
+    };
 
     // ====================================================
 
@@ -84,12 +92,16 @@ namespace ast {
         sema::type::TypeInterner type_interner_{};
 
         llvm::BumpPtrAllocator alloc_{};
+        std::vector<Dtor> dtors_{};
+
         Project *project = nullptr;
 
         std::size_t expr_count_ = 0;
         std::size_t stmt_count_ = 0;
         std::size_t decl_count_ = 0;
         std::size_t module_count_ = 0;
+
+
 
         template<typename T, typename... Args>
         T *make(Args &&... args) {
@@ -102,7 +114,23 @@ namespace ast {
             if constexpr (std::is_base_of_v<Decl, T>) ++decl_count_;
             if constexpr (std::is_base_of_v<Module, T>) ++module_count_;
 
+            if constexpr (!std::is_trivially_destructible_v<T>) {
+                dtors_.push_back({
+                    +[](void *o) { static_cast<T *>(o)->~T(); },
+                    obj
+                });
+            }
+
             return obj;
+        }
+
+        void destroy_all() {
+            std::for_each(dtors_.rbegin(), dtors_.rend(),
+                          [](const Dtor &dtor) { dtor(); }
+            );
+
+            dtors_.clear();
+            alloc_.Reset();
         }
 
     public:
@@ -110,7 +138,9 @@ namespace ast {
             : project(mk_project(std::vector<ModulePtr>{}, lex::Loc{})) {
         }
 
-        ~AST() = default;
+        ~AST() {
+            destroy_all();
+        }
 
         [[nodiscard]] Project *get_project() const { return project; }
 
