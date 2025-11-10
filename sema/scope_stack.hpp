@@ -14,22 +14,24 @@ namespace sema {
         std::vector<SymbolTable> stack_;
 
     public:
-        void enterScope(lex::SymId scope) { stack_.emplace_back({scope}); }
+        SymbolTable &enterScope(lex::SymId scope) { return stack_.emplace_back({scope}); }
         void exitScope() { stack_.pop_back(); }
 
         bool declare(Symbol sym) {
             // ensure top exists
-            if (stack_.empty()) enterScope();
+            if (stack_.empty()) enterScope(sym.id);
             return stack_.back().declare(std::move(sym));
         }
 
         // Find first scope that has the name
+        [[nodiscard]]
         const SymbolBucket *lookup(lex::SymId id) const {
-            for (const auto & it : std::ranges::reverse_view(stack_))
+            for (const auto &it: std::ranges::reverse_view(stack_))
                 if (auto b = it.lookup_local(id)) return b;
             return nullptr;
         }
 
+        [[nodiscard]]
         const SymbolBucket *lookup_local(lex::SymId id) const {
             return stack_.empty() ? nullptr : stack_.back().lookup_local(id);
         }

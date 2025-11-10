@@ -17,16 +17,19 @@
 
 #include "ast/nodes/expr/init_declarator_expr.hpp"
 
+#include "sema/symbol_table.hpp"
+
 using sema::Symbol;
 using sema::SymbolKind;
 using sema::Visibility;
 using sema::Mutability;
 using sema::Storage;
 
+
 namespace sema::pass {
     // -------- ctor --------
-    DeclPassAstIteratorVisitor::DeclPassAstIteratorVisitor(SymbolTable &symtab)
-        : symbol_table(symtab) {
+    DeclPassAstIteratorVisitor::DeclPassAstIteratorVisitor(SymbolTable &symbol_table)
+        : symbol_table(symbol_table) {
     }
 
     // -------- ParamDecl --------
@@ -37,6 +40,9 @@ namespace sema::pass {
         sym.loc = p.location_;
         sym.type = p.type;
         sym.decl = &p;
+        sym.mutability = (p.type->specifier == ast::TypeSpecifier::Imm)
+                             ? Mutability::Imm
+                             : Mutability::Mut;
         // Optional mutability if you carry it on ParamDecl (spec/qual):
         // sym.mut = (p.spec == ast::TypeSpecifier::Mut) ? Mutability::Mut : Mutability::Imm;
 
@@ -130,6 +136,10 @@ namespace sema::pass {
         // Intentionally NO-OP for a *global* SymbolTable.
         // When you give each StructDecl a member table, declare there instead.
         (void) f;
+    }
+
+    void DeclPassAstIteratorVisitor::visit(ast::Module &module) {
+
     }
 
     // -------- VarDeclStatement (local) -------

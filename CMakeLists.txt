@@ -92,6 +92,7 @@ add_executable(inz main.cpp
         hir/de_sugar.hpp
         sema/passes/pass.hpp
         sema/passes/decl_pass.hpp
+        sema/passes/decl_pass.cpp
         ast/nodes/visit/overallvisitor.cpp
         ast/nodes/visit/overallvisitor.hpp
         sema/scope_stack.hpp
@@ -99,6 +100,8 @@ add_executable(inz main.cpp
         sema/type_interner.hpp
         ast/nodes/decl/vars_decl.hpp
         ast/nodes/stmt/vars_decl_statement.hpp
+        sema/sema.cpp
+        sema/sema.hpp
 )
 
 target_include_directories(inz PRIVATE
