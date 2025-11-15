@@ -3,7 +3,7 @@ import sys
 import yaml
 import click
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Set
+from typing import Any, Dict, List, Optional,   Tuple, Set
 from pydantic import BaseModel, Field, field_validator, model_validator
 from jinja2 import Environment, FileSystemLoader
 

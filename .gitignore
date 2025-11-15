@@ -1,21 +1,2 @@
-.idea
-cmake-build-debug
-build
-
-test*
-
-*.a
-*.o
-*.so
-*.dylib
-a.out
-generated/token.hpp
-
-generated/lexer/lexer.yy.cpp
-generated/lexer/lexer_rules.l
-
-
-test
-parser/parser_rules.tab*
-parser/parser.cpp
-parser/parser.hpp
+# Created by venv; see https://docs.python.org/3/library/venv.html
+*

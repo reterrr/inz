@@ -12,6 +12,7 @@ struct a; //ok
 fn s(int[10] c, int b, int d) -> int
 {
     let int a = 10 + 10 * 20;
+    let int av = a;
 
     let mut int (a, b, c) = 1, 2, 3;
     let magicint l = 100;
