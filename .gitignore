@@ -19,3 +19,10 @@ test
 parser/parser_rules.tab*
 parser/parser.cpp
 parser/parser.hpp
+
+pyvenv.cfg
+some.c
+lib
+lib64
+.venv
+bin
