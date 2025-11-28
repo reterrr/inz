@@ -8,19 +8,25 @@
 #include "../../generated/token.hpp"
 
 #include "node_type.hpp"
+#include "scope.hpp"
 
-namespace ast {
+
+namespace ast
+{
     struct Node;
     typedef Node* NodePtr;
 
-    struct Node {
+    struct Node
+    {
         virtual ~Node() = default;
 
-        Node(const NodeKind nodeType, const lex::Loc &loc) :
-            nodeType_(nodeType), location_(loc) {
+        Node(const NodeKind nodeType, const lex::Loc& loc) :
+            nodeType_(nodeType), location_(loc)
+        {
         }
 
         NodePtr parent = nullptr;
+        scope::ScopeId id = scope::INVALID_SCOPE_ID;
         NodeKind nodeType_;
         lex::Loc location_;
     };
