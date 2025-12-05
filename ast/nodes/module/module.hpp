@@ -13,8 +13,7 @@
 
 namespace ast
 {
-    struct Module final
-        : Node, Visitable<visitor::ModuleVisitor>
+    struct Module final : Node, Visitable<visitor::ModuleVisitor>
     {
         using Node::Node, Visitable::accept;
 
