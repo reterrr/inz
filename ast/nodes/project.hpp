@@ -9,17 +9,28 @@
 
 #include "../node.hpp"
 
-namespace ast {
-    struct Module;
-    using ModulePtr = Module *;
+#include "visit/project_visitor.hpp"
 
-    struct Project final : Node {
+namespace ast
+{
+    struct Module;
+    using ModulePtr = Module*;
+
+    struct Project final
+        : Node, Visitable<visitor::ProjectVisitor>
+    {
         std::vector<ModulePtr> modules;
 
-        Project(std::vector<ModulePtr> &&modules,
-                const lex::Loc &loc)
+        Project(std::vector<ModulePtr>&& modules,
+                const lex::Loc& loc)
             : Node(NodeKind::Project, loc),
-              modules(std::move(modules)) {
+              modules(std::move(modules))
+        {
+        }
+
+        void accept(visitor::ProjectVisitor& v) override
+        {
+            v.visit(*this);
         }
     };
 }
