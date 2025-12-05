@@ -24,6 +24,7 @@ namespace ast {
               condition_(condition),
               body_(body) {
             body_->parent = this;
+            condition_->parent = this;
         }
 
         void accept(visitor::StmtVisitor &) override;
