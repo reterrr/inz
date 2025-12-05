@@ -5,11 +5,13 @@
 #ifndef PROJECT_HPP
 #define PROJECT_HPP
 
+#include <algorithm>
 #include <vector>
 
 #include "../node.hpp"
 
 #include "visit/project_visitor.hpp"
+#include "ast/nodes/module/module.hpp"
 
 namespace ast
 {
@@ -26,6 +28,10 @@ namespace ast
             : Node(NodeKind::Project, loc),
               modules(std::move(modules))
         {
+            std::ranges::for_each(modules, [this](auto& m)
+            {
+                m->parent = this;
+            });
         }
 
         void accept(visitor::ProjectVisitor& v) override
