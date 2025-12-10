@@ -9,7 +9,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(LLVM REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 find_package(Boost REQUIRED)
-find_package(CLI11 CONFIG REQUIRED)
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
@@ -88,6 +87,7 @@ add_executable(inz main.cpp
         ast/nodes/decl/struct_decl.hpp
         ast/nodes/decl/field_decl.hpp
         hir/hir.hpp
+        sema/passes/scope_pass.cpp
         sema/symbol_table.hpp
         hir/de_sugar.hpp
         sema/passes/pass.hpp
@@ -102,6 +102,7 @@ add_executable(inz main.cpp
         ast/nodes/stmt/vars_decl_statement.hpp
         sema/sema.cpp
         sema/sema.hpp
+        ast/nodes/visit/project_visitor.hpp
 )
 
 target_include_directories(inz PRIVATE

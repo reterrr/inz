@@ -7,21 +7,28 @@
 #include "project.hpp"
 #include "module/module.hpp"
 
-namespace ast {
+namespace ast
+{
     struct Project;
 }
 
-namespace sema::pass {
-    template<typename VisitorT>
-    class Pass {
-        ast::Project *root;
+namespace sema::pass
+{
+    template <typename VisitorT>
+    class Pass
+    {
+        ast::Project* root;
         VisitorT visitor;
 
-        Pass(ast::Project *root, VisitorT &&visitor);
-
     public:
-        void run() {
-            for (auto *m: root->modules) m->accept(visitor);
+        Pass(ast::Project* root, VisitorT&& visitor)
+            : root(root), visitor(visitor)
+        {
+        }
+
+        void run()
+        {
+            root->accept(visitor);
         }
     };
 }

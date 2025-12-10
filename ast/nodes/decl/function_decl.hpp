@@ -11,6 +11,9 @@
 
 #include "../visit/decl_visitor.hpp"
 
+#include "decl/param_decl.hpp"
+#include "stmt/block_statement.hpp"
+
 
 namespace ast {
     struct ParamDecl;

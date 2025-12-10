@@ -8,44 +8,53 @@
 #include "ast_iterator.hpp"
 #include "param_decl.hpp"
 #include "pass.hpp"
+#include "sema/scope_info.hpp"
 
-
-namespace ast {
+namespace ast
+{
     struct Project;
 }
 
-namespace sema {
-    class ScopeStack;
+namespace sema
+{
+    class ScopeController;
     class SymbolTable;
 
-    namespace pass {
-        struct DeclPassAstIteratorVisitor final : ast::AstIteratorVisitor {
-            SymbolTable &symbol_table;
-            ScopeStack &scope_stack;
+    namespace pass
+    {
+        /**
+         * symbols
+         */
+        class DeclPassAstIteratorVisitor final
+            : ast::AstIteratorVisitor
+        {
+            SymbolTable& symbol_table;
 
-            void visit(ast::ParamDecl &p) override;
+        public:
+            explicit DeclPassAstIteratorVisitor(SymbolTable& symbol_table);
 
-            void visit(ast::FunctionDecl &f) override;
+            void visit(ast::BlockStatement&) override;
 
-            void visit(ast::ImportDecl &i) override;
+            void visit(ast::Module&) override;
 
-            void visit(ast::VarDecl &v) override;
+            void visit(ast::ParamDecl& p) override;
 
-            void visit(ast::StructDecl &s) override;
+            void visit(ast::FunctionDecl& f) override;
 
-            void visit(ast::FieldDecl &f) override;
+            void visit(ast::ImportDecl& i) override;
 
+            void visit(ast::VarDecl& v) override;
 
-            void visit(ast::Module &) override;
+            void visit(ast::StructDecl& s) override;
 
-            void visit(ast::BlockStatement &) override;
-
-            explicit DeclPassAstIteratorVisitor(SymbolTable &symbol_table);
+            void visit(ast::FieldDecl& f) override;
         };
 
-        struct DeclPass final : Pass<DeclPassAstIteratorVisitor> {
-            DeclPass(ast::Project *root, SymbolTable &symbol_table)
-                : Pass(root, DeclPassAstIteratorVisitor{symbol_table}) {
+        struct DeclPass final : Pass<DeclPassAstIteratorVisitor>
+        {
+            DeclPass(ast::Project* root, SymbolTable& symbol_table)
+                : Pass(root, DeclPassAstIteratorVisitor{symbol_table})
+            {
             }
         };
     }

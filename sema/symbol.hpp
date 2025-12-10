@@ -6,6 +6,7 @@
 #define SYMBOL_HPP
 
 #include <token.hpp>
+#include "ast/nodes/type/type.hpp"
 
 #include "decl.hpp"
 

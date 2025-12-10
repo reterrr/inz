@@ -10,7 +10,6 @@
 #include "node_type.hpp"
 #include "scope.hpp"
 
-
 namespace ast
 {
     struct Node;

@@ -30,15 +30,6 @@ namespace ast
               imports(std::move(imps)),
               decls(std::move(ds))
         {
-            std::ranges::for_each(imports, [&](auto& imp)
-            {
-                imp->parent = this;
-            });
-
-            std::ranges::for_each(decls, [&](auto& decl)
-            {
-                decl->parent = this;
-            });
         }
 
         void accept(visitor::ModuleVisitor& v) override;

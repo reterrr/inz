@@ -1,0 +1,90 @@
+Starting program: /home/yhwach/CLionProjects/inz/a.out 
+
+This GDB supports auto-downloading debuginfo from the following URLs:
+  <https://debuginfod.archlinux.org>
+Debuginfod has been enabled.
+To make this setting permanent, add 'set debuginfod enabled on' to .gdbinit.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib/libthread_db.so.1".
+
+Program received signal SIGABRT, Aborted.
+__pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44
+#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44
+#1  0x00007fffed8989d3 in __pthread_kill_internal (threadid=<optimized out>, signo=6) at pthread_kill.c:89
+#2  0x00007fffed83e3a0 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26
+#3  0x00007fffed82557a in __GI_abort () at abort.c:77
+#4  0x00007fffedc9a41f in std::__glibcxx_assert_fail (file=<optimized out>, line=<optimized out>, function=<optimized out>, condition=<optimized out>) at /usr/src/debug/gcc/gcc/libstdc++-v3/src/c++11/assert_fail.cc:41
+#5  0x000055555559f123 in std::stack<unsigned int, std::deque<unsigned int, std::allocator<unsigned int> > >::top (this=0x7fffffffd190) at /usr/include/c++/15.2.1/bits/stl_stack.h:260
+#6  0x000055555559e361 in sema::ScopeController::_enterScope (this=0x7fffffffd188, kind=sema::scope::ScopeKind::Module) at ./sema/scope_stack.hpp:94
+#7  0x000055555559e1db in sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}::operator()(unsigned int) const (__closure=0x7fffffffce00, symId=1) at ./sema/scope_stack.hpp:77
+#8  0x00005555555a1f02 in std::__invoke_impl<void, sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}&, unsigned int const&>(std::__invoke_other, sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}&, unsigned int const&) (__f=...) at /usr/include/c++/15.2.1/bits/invoke.h:63
+#9  0x00005555555a0cbd in std::__invoke<sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}&, unsigned int const&>(sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}&, unsigned int const&) (__fn=...) at /usr/include/c++/15.2.1/bits/invoke.h:98
+#10 0x000055555559f01b in std::ranges::__for_each_fn::operator()<__gnu_cxx::__normal_iterator<unsigned int const*, std::vector<unsigned int, std::allocator<unsigned int> > >, __gnu_cxx::__normal_iterator<unsigned int const*, std::vector<unsigned int, std::allocator<unsigned int> > >, std::identity, sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}>(__gnu_cxx::__normal_iterator<unsigned int const*, std::vector<unsigned int, std::allocator<unsigned int> > >, __gnu_cxx::__normal_iterator<unsigned int const*, std::vector<unsigned int, std::allocator<unsigned int> > >, sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}, std::identity) const (this=0x5555555a5006 <std::ranges::for_each>, __first=1, __last=0, __f=..., __proj=...) at /usr/include/c++/15.2.1/bits/ranges_algo.h:190
+#11 0x000055555559e2e1 in sema::ScopeController::enterScope (this=0x7fffffffd188, symbols=std::vector of length 2, capacity 2 = {...}, kind=sema::scope::ScopeKind::Module) at ./sema/scope_stack.hpp:72
+#12 0x000055555559d0fa in sema::pass::ScopeAstVisitor::visit (this=0x7fffffffd1f0, m=...) at sema/passes/scope_pass.cpp:22
+#13 0x0000555555561cd0 in ast::Module::accept (this=0x520000004ee0, v=...) at ./ast/nodes/module/module.hpp:40
+#14 0x00005555555754e5 in sema::pass::Pass<sema::pass::ScopeAstVisitor>::run (this=0x7fffffffd1e8) at sema/passes/pass.hpp:31
+#15 0x00005555555744b8 in sema::Sema::run (this=0x7fffffffd180) at sema/sema.hpp:34
+#16 0x000055555557004c in main () at main.cpp:24
+Starting program: /home/yhwach/CLionProjects/inz/a.out 
+
+This GDB supports auto-downloading debuginfo from the following URLs:
+  <https://debuginfod.archlinux.org>
+Debuginfod has been enabled.
+To make this setting permanent, add 'set debuginfod enabled on' to .gdbinit.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib/libthread_db.so.1".
+
+Program received signal SIGABRT, Aborted.
+__pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44
+#0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44
+#1  0x00007fffed8989d3 in __pthread_kill_internal (threadid=<optimized out>, signo=6) at pthread_kill.c:89
+#2  0x00007fffed83e3a0 in __GI_raise (sig=sig@entry=6) at ../sysdeps/posix/raise.c:26
+#3  0x00007fffed82557a in __GI_abort () at abort.c:77
+#4  0x00007fffedc9a41f in std::__glibcxx_assert_fail (file=<optimized out>, line=<optimized out>, function=<optimized out>, condition=<optimized out>) at /usr/src/debug/gcc/gcc/libstdc++-v3/src/c++11/assert_fail.cc:41
+#5  0x000055555559f123 in std::stack<unsigned int, std::deque<unsigned int, std::allocator<unsigned int> > >::top (this=0x7fffffffd190) at /usr/include/c++/15.2.1/bits/stl_stack.h:260
+#6  0x000055555559e361 in sema::ScopeController::_enterScope (this=0x7fffffffd188, kind=sema::scope::ScopeKind::Module) at ./sema/scope_stack.hpp:94
+#7  0x000055555559e1db in sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}::operator()(unsigned int) const (__closure=0x7fffffffce00, symId=1) at ./sema/scope_stack.hpp:77
+#8  0x00005555555a1f02 in std::__invoke_impl<void, sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}&, unsigned int const&>(std::__invoke_other, sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}&, unsigned int const&) (__f=...) at /usr/include/c++/15.2.1/bits/invoke.h:63
+#9  0x00005555555a0cbd in std::__invoke<sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}&, unsigned int const&>(sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}&, unsigned int const&) (__fn=...) at /usr/include/c++/15.2.1/bits/invoke.h:98
+#10 0x000055555559f01b in std::ranges::__for_each_fn::operator()<__gnu_cxx::__normal_iterator<unsigned int const*, std::vector<unsigned int, std::allocator<unsigned int> > >, __gnu_cxx::__normal_iterator<unsigned int const*, std::vector<unsigned int, std::allocator<unsigned int> > >, std::identity, sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}>(__gnu_cxx::__normal_iterator<unsigned int const*, std::vector<unsigned int, std::allocator<unsigned int> > >, __gnu_cxx::__normal_iterator<unsigned int const*, std::vector<unsigned int, std::allocator<unsigned int> > >, sema::ScopeController::enterScope(std::vector<unsigned int, std::allocator<unsigned int> > const&, sema::scope::ScopeKind)::{lambda(unsigned int)#1}, std::identity) const (this=0x5555555a5006 <std::ranges::for_each>, __first=1, __last=0, __f=..., __proj=...) at /usr/include/c++/15.2.1/bits/ranges_algo.h:190
+#11 0x000055555559e2e1 in sema::ScopeController::enterScope (this=0x7fffffffd188, symbols=std::vector of length 2, capacity 2 = {...}, kind=sema::scope::ScopeKind::Module) at ./sema/scope_stack.hpp:72
+#12 0x000055555559d0fa in sema::pass::ScopeAstVisitor::visit (this=0x7fffffffd1f0, m=...) at sema/passes/scope_pass.cpp:22
+#13 0x0000555555561cd0 in ast::Module::accept (this=0x520000004ee0, v=...) at ./ast/nodes/module/module.hpp:40
+#14 0x00005555555754e5 in sema::pass::Pass<sema::pass::ScopeAstVisitor>::run (this=0x7fffffffd1e8) at sema/passes/pass.hpp:31
+#15 0x00005555555744b8 in sema::Sema::run (this=0x7fffffffd180) at sema/sema.hpp:34
+#16 0x000055555557004c in main () at main.cpp:24
+Run till exit from #0  __pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44
+
+Program terminated with signal SIGABRT, Aborted.
+The program no longer exists.
+Breakpoint 1 at 0x1c03d: file main.cpp, line 24.
+Starting program: /home/yhwach/CLionProjects/inz/a.out 
+
+This GDB supports auto-downloading debuginfo from the following URLs:
+  <https://debuginfod.archlinux.org>
+Debuginfod has been enabled.
+To make this setting permanent, add 'set debuginfod enabled on' to .gdbinit.
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib/libthread_db.so.1".
+
+Breakpoint 1, main () at main.cpp:24
+sema::Sema::run (this=0x7fffffffd180) at sema/sema.hpp:34
+sema::pass::Pass<sema::pass::ScopeAstVisitor>::run (this=0x7fffffffd1e8) at sema/passes/pass.hpp:31
+ast::Project::accept (this=0x520000001000, v=...) at parser/../ast/nodes/project.hpp:39
+sema::pass::ScopeAstVisitor::visit (this=0x7fffffffd1f0, project=...) at sema/passes/scope_pass.cpp:122
+
+Program received signal SIGABRT, Aborted.
+__pthread_kill_implementation (threadid=<optimized out>, signo=signo@entry=6, no_tid=no_tid@entry=0) at pthread_kill.c:44
+Requires argument (checkpoint id to restart)
+Starting program: /home/yhwach/CLionProjects/inz/a.out 
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/usr/lib/libthread_db.so.1".
+
+Breakpoint 1, main () at main.cpp:24
+sema::Sema::run (this=0x7fffffffd180) at sema/sema.hpp:34
+sema::pass::Pass<sema::pass::ScopeAstVisitor>::run (this=0x7fffffffd1e8) at sema/passes/pass.hpp:31
+ast::Project::accept (this=0x520000001000, v=...) at parser/../ast/nodes/project.hpp:39
+sema::pass::ScopeAstVisitor::visit (this=0x7fffffffd1f0, project=...) at sema/passes/scope_pass.cpp:122
+sema::ScopeController::enterScope (this=0x7fffffffd188, kind=sema::scope::ScopeKind::Project) at ./sema/scope_stack.hpp:60
+sema::ScopeController::_enterScope (this=0x7fffffffd188, kind=sema::scope::ScopeKind::Project) at ./sema/scope_stack.hpp:92
