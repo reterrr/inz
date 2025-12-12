@@ -9,78 +9,83 @@
 #include "expr_visitor.hpp"
 #include "stmt_visitor.hpp"
 #include "module_visitor.hpp"
+#include "project_visitor.hpp"
 
-namespace ast::visitor {
+namespace ast::visitor
+{
     struct OverallVisitor :
-            DeclVisitor,
-            ExprVisitor,
-            StmtVisitor,
-            ModuleVisitor {
-        void visit(ParamDecl &) override;
+        ProjectVisitor,
+        DeclVisitor,
+        ExprVisitor,
+        StmtVisitor,
+        ModuleVisitor
+    {
+        void visit(ParamDecl&) override;
 
-        void visit(FunctionDecl &) override;
+        void visit(FunctionDecl&) override;
 
-        void visit(TypeAliasDecl &) override;
+        void visit(TypeAliasDecl&) override;
 
-        void visit(ImportDecl &) override;
+        void visit(ImportDecl&) override;
 
-        void visit(VarDecl &) override;
+        void visit(VarDecl&) override;
 
-        void visit(StructDecl &) override;
+        void visit(StructDecl&) override;
 
-        void visit(FieldDecl &) override;
+        void visit(FieldDecl&) override;
 
-        void visit(IntLiteralExpr &) override;
+        void visit(IntLiteralExpr&) override;
 
-        void visit(FloatLiteralExpr &) override;
+        void visit(FloatLiteralExpr&) override;
 
-        void visit(UnaryExpr &) override;
+        void visit(UnaryExpr&) override;
 
-        void visit(BinaryExpr &) override;
+        void visit(BinaryExpr&) override;
 
-        void visit(StringLiteralExpr &) override;
+        void visit(StringLiteralExpr&) override;
 
-        void visit(ObjLiteralExpr &) override;
+        void visit(ObjLiteralExpr&) override;
 
-        void visit(AssignExpr &) override;
+        void visit(AssignExpr&) override;
 
-        void visit(InitDeclarator &) override;
+        void visit(InitDeclarator&) override;
 
-        void visit(FieldExpr &) override;
+        void visit(FieldExpr&) override;
 
-        void visit(CallExpr &) override;
+        void visit(CallExpr&) override;
 
-        void visit(RefExpr &) override;
+        void visit(RefExpr&) override;
 
-        void visit(IndexExpr &) override;
+        void visit(IndexExpr&) override;
 
-        void visit(BoolLiteralExpr &) override;
+        void visit(BoolLiteralExpr&) override;
 
-        void visit(FieldInitExpr &) override;
+        void visit(FieldInitExpr&) override;
 
-        void visit(IfStatement &) override;
+        void visit(IfStatement&) override;
 
-        void visit(BlockStatement &) override;
+        void visit(BlockStatement&) override;
 
-        void visit(WhileStatement &) override;
+        void visit(WhileStatement&) override;
 
-        void visit(ReturnStatement &) override;
+        void visit(ReturnStatement&) override;
 
-        void visit(ExprStatement &) override;
+        void visit(ExprStatement&) override;
 
-        void visit(ContinueStatement &) override;
+        void visit(ContinueStatement&) override;
 
-        void visit(BreakStatement &) override;
+        void visit(BreakStatement&) override;
 
-        void visit(DoWhileStatement &) override;
+        void visit(DoWhileStatement&) override;
 
-        void visit(VarDeclStatement &) override;
+        void visit(VarDeclStatement&) override;
 
-        void visit(Module &) override;
+        void visit(Module&) override;
 
-        void visit(VarsDecl &) override;
+        void visit(VarsDecl&) override;
 
-        void visit(VarsDeclStatement &) override;
+        void visit(VarsDeclStatement&) override;
+        void visit(Project&) override;
     };
 }
 

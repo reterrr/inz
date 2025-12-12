@@ -10,57 +10,70 @@
 #include "module_visitor.hpp"
 #include "stmt_visitor.hpp"
 
-namespace ast::visitor {
+namespace ast::visitor
+{
     struct DumpVisitor final
-            : ExprVisitor,
-              DeclVisitor,
-              StmtVisitor,
-              ModuleVisitor {
-        explicit DumpVisitor(std::ostream &os)
-            : os(os) {
+        : ProjectVisitor,
+          ExprVisitor,
+          DeclVisitor,
+          StmtVisitor,
+          ModuleVisitor
+    {
+        explicit DumpVisitor(std::ostream& os)
+            : os(os)
+        {
         }
 
-        std::ostream &os;
+        std::ostream& os;
         int indent = 0;
 
-        void pad() const {
-            for (int i = 0; i < indent; i++) {
+        void pad() const
+        {
+            for (int i = 0; i < indent; i++)
+            {
                 os << ' ';
             }
         }
 
-        void visit(ast::IntLiteralExpr &n) override {
+        void visit(ast::IntLiteralExpr& n) override
+        {
             pad();
             os << "IntLiteral " << n.v_ << "\n";
         }
 
-        void visit(ast::FloatLiteralExpr &n) override {
+        void visit(ast::FloatLiteralExpr& n) override
+        {
             pad();
             os << "FloatLiteral " << n.v_ << "\n";
         }
 
-        void visit(ast::UnaryExpr &n) override {
+        void visit(ast::UnaryExpr& n) override
+        {
             pad();
             os << "UnaryExpr op=" << static_cast<int>(n.op) << "\n";
-            if (n.expr_) {
+            if (n.expr_)
+            {
                 indent++;
                 n.expr_->accept(*this);
                 indent--;
             }
         }
 
-        void visit(ast::BinaryExpr &n) override {
+        void visit(ast::BinaryExpr& n) override
+        {
             pad();
             os << "BinaryExpr op=" << static_cast<int>(n.op) << "\n";
             indent++;
-            if (n.lhs_) {
+            if (n.lhs_)
+            {
                 pad();
                 os << "lhs:\n";
                 indent++;
                 n.lhs_->accept(*this);
                 indent--;
             }
-            if (n.rhs_) {
+            if (n.rhs_)
+            {
                 pad();
                 os << "rhs:\n";
                 indent++;
@@ -70,19 +83,23 @@ namespace ast::visitor {
             indent--;
         }
 
-        void visit(ast::StringLiteralExpr &n) override {
+        void visit(ast::StringLiteralExpr& n) override
+        {
             pad();
             os << "StringLiteral sym#" << n.value << "\n";
         }
 
-        void visit(ast::ObjLiteralExpr &n) override {
+        void visit(ast::ObjLiteralExpr& n) override
+        {
             pad();
             os << "ObjLiteral\n";
             indent++;
-            if (n.type) {
+            if (n.type)
+            {
                 pad();
                 os << "type-path: ";
-                for (size_t i = 0; i < n.type->segments.size(); ++i) {
+                for (size_t i = 0; i < n.type->segments.size(); ++i)
+                {
                     if (i) os << ".";
                     os << n.type->segments[i];
                 }
@@ -91,25 +108,28 @@ namespace ast::visitor {
             pad();
             os << "fields:\n";
             indent++;
-            for (auto *f: n.elements_) if (f) f->accept(*this);
+            for (auto* f : n.elements_) if (f) f->accept(*this);
             indent--;
             indent--;
         }
 
-        void visit(ast::AssignExpr &n) override {
+        void visit(ast::AssignExpr& n) override
+        {
             pad();
             os << "AssignExpr op=" << static_cast<int>(n.op) << "\n";
             indent++;
             // If your AssignExpr stores a name instead of LHS expr, print that here
             // pad(); os << "lhs-name sym#" << n.name << "\n";
-            if (n.lhs_) {
+            if (n.lhs_)
+            {
                 pad();
                 os << "lhs:\n";
                 indent++;
                 n.lhs_->accept(*this);
                 indent--;
             }
-            if (n.rhs_) {
+            if (n.rhs_)
+            {
                 pad();
                 os << "rhs:\n";
                 indent++;
@@ -119,31 +139,37 @@ namespace ast::visitor {
             indent--;
         }
 
-        void visit(ast::InitDeclarator &n) override {
+        void visit(ast::InitDeclarator& n) override
+        {
             pad();
             os << "InitDeclarator name#" << n.name << "\n";
-            if (n.init_) {
+            if (n.init_)
+            {
                 indent++;
                 n.init_->accept(*this);
                 indent--;
             }
         }
 
-        void visit(ast::FieldExpr &n) override {
+        void visit(ast::FieldExpr& n) override
+        {
             pad();
             os << "FieldExpr .#" << n.field << "\n";
-            if (n.base_) {
+            if (n.base_)
+            {
                 indent++;
                 n.base_->accept(*this);
                 indent--;
             }
         }
 
-        void visit(ast::CallExpr &n) override {
+        void visit(ast::CallExpr& n) override
+        {
             pad();
             os << "CallExpr\n";
             indent++;
-            if (n.callee_) {
+            if (n.callee_)
+            {
                 pad();
                 os << "callee:\n";
                 indent++;
@@ -153,28 +179,32 @@ namespace ast::visitor {
             pad();
             os << "args:\n";
             indent++;
-            for (auto *a: n.args_) if (a) a->accept(*this);
+            for (auto* a : n.args_) if (a) a->accept(*this);
             indent--;
             indent--;
         }
 
-        void visit(ast::RefExpr &n) override {
+        void visit(ast::RefExpr& n) override
+        {
             pad();
             os << "Ref name#" << n.name << "\n";
         }
 
-        void visit(ast::IndexExpr &n) override {
+        void visit(ast::IndexExpr& n) override
+        {
             pad();
             os << "IndexExpr\n";
             indent++;
-            if (n.base_) {
+            if (n.base_)
+            {
                 pad();
                 os << "base:\n";
                 indent++;
                 n.base_->accept(*this);
                 indent--;
             }
-            if (n.index_) {
+            if (n.index_)
+            {
                 pad();
                 os << "index:\n";
                 indent++;
@@ -184,26 +214,31 @@ namespace ast::visitor {
             indent--;
         }
 
-        void visit(ast::BoolLiteralExpr &n) override {
+        void visit(ast::BoolLiteralExpr& n) override
+        {
             pad();
             os << "BoolLiteral " << (n.value ? "true" : "false") << "\n";
         }
 
-        void visit(ast::FieldInitExpr &n) override {
+        void visit(ast::FieldInitExpr& n) override
+        {
             pad();
             os << "FieldInit name#" << n.name << "\n";
-            if (n.value_) {
+            if (n.value_)
+            {
                 indent++;
                 n.value_->accept(*this);
                 indent--;
             }
         }
 
-        void visit(ast::ParamDecl &n) override {
+        void visit(ast::ParamDecl& n) override
+        {
             pad();
             os << "ParamDecl name#" << n.name << '\n';
 
-            if (n.type) {
+            if (n.type)
+            {
                 indent++;
                 pad();
                 os << "type@" << n.type << "\n";
@@ -211,24 +246,28 @@ namespace ast::visitor {
             }
         }
 
-        void visit(ast::FunctionDecl &n) override {
+        void visit(ast::FunctionDecl& n) override
+        {
             pad();
             os << "FunctionDecl name#" << n.name << "\n";
             indent++;
-            if (n.type) {
+            if (n.type)
+            {
                 pad();
                 os << "callable-type@" << n.type << "\n";
             }
-            if (n.ret) {
+            if (n.ret)
+            {
                 pad();
                 os << "ret-type@" << n.ret << "\n";
             }
             pad();
             os << "params:\n";
             indent++;
-            for (auto *p: n.params_) if (p) p->accept(*this);
+            for (auto* p : n.params_) if (p) p->accept(*this);
             indent--;
-            if (n.body_) {
+            if (n.body_)
+            {
                 pad();
                 os << "body:\n";
                 indent++;
@@ -238,10 +277,12 @@ namespace ast::visitor {
             indent--;
         }
 
-        void visit(ast::TypeAliasDecl &n) override {
+        void visit(ast::TypeAliasDecl& n) override
+        {
             pad();
             os << "TypeAliasDecl name#" << n.type_name << "\n";
-            if (n.type_alias) {
+            if (n.type_alias)
+            {
                 indent++;
                 pad();
                 os << "aliased-type@" << n.type_alias << "\n";
@@ -249,11 +290,13 @@ namespace ast::visitor {
             }
         }
 
-        void visit(ast::ImportDecl &n) override {
+        void visit(ast::ImportDecl& n) override
+        {
             pad();
             os << "ImportDecl ";
             if (n.is_public) os << "pub ";
-            for (size_t i = 0; i < n.path.size(); ++i) {
+            for (size_t i = 0; i < n.path.size(); ++i)
+            {
                 if (i) os << ".";
                 os << n.path[i];
             }
@@ -261,11 +304,13 @@ namespace ast::visitor {
             os << "\n";
         }
 
-        void visit(ast::VarDecl &n) override {
+        void visit(ast::VarDecl& n) override
+        {
             pad();
             os << "VarDecl region=" << static_cast<int>(n.region) << "\n";
             indent++;
-            if (n.type) {
+            if (n.type)
+            {
                 pad();
                 os << "type@" << n.type << "\n";
             }
@@ -277,18 +322,21 @@ namespace ast::visitor {
             indent--;
         }
 
-        void visit(ast::IfStatement &n) override {
+        void visit(ast::IfStatement& n) override
+        {
             pad();
             os << "IfStatement\n";
             indent++;
-            if (n.condition_) {
+            if (n.condition_)
+            {
                 pad();
                 os << "cond:\n";
                 indent++;
                 n.condition_->accept(*this);
                 indent--;
             }
-            if (n.thenBody_) {
+            if (n.thenBody_)
+            {
                 pad();
                 os << "then:\n";
                 indent++;
@@ -305,30 +353,35 @@ namespace ast::visitor {
             indent--;
         }
 
-        void visit(VarDeclStatement &v) override {
+        void visit(VarDeclStatement& v) override
+        {
             v.decl_->accept(*this);
         }
 
-        void visit(ast::BlockStatement &n) override {
+        void visit(ast::BlockStatement& n) override
+        {
             pad();
             os << "Block\n";
             indent++;
-            for (auto *s: n.statements_) if (s) s->accept(*this);
+            for (auto* s : n.statements_) if (s) s->accept(*this);
             indent--;
         }
 
-        void visit(ast::WhileStatement &n) override {
+        void visit(ast::WhileStatement& n) override
+        {
             pad();
             os << "While\n";
             indent++;
-            if (n.condition_) {
+            if (n.condition_)
+            {
                 pad();
                 os << "cond:\n";
                 indent++;
                 n.condition_->accept(*this);
                 indent--;
             }
-            if (n.body_) {
+            if (n.body_)
+            {
                 pad();
                 os << "body:\n";
                 indent++;
@@ -339,48 +392,57 @@ namespace ast::visitor {
         }
 
 
-        void visit(ast::ReturnStatement &n) override {
+        void visit(ast::ReturnStatement& n) override
+        {
             pad();
             os << "Return\n";
-            if (n.expr_) {
+            if (n.expr_)
+            {
                 indent++;
                 n.expr_->accept(*this);
                 indent--;
             }
         }
 
-        void visit(ast::ExprStatement &n) override {
+        void visit(ast::ExprStatement& n) override
+        {
             pad();
             os << "ExprStmt\n";
-            if (n.expr_) {
+            if (n.expr_)
+            {
                 indent++;
                 n.expr_->accept(*this);
                 indent--;
             }
         }
 
-        void visit(ast::ContinueStatement & /*n*/) override {
+        void visit(ast::ContinueStatement& /*n*/) override
+        {
             pad();
             os << "Continue\n";
         }
 
-        void visit(ast::BreakStatement & /*n*/) override {
+        void visit(ast::BreakStatement& /*n*/) override
+        {
             pad();
             os << "Break\n";
         }
 
-        void visit(ast::DoWhileStatement &n) override {
+        void visit(ast::DoWhileStatement& n) override
+        {
             pad();
             os << "DoWhile\n";
             indent++;
-            if (n.body_) {
+            if (n.body_)
+            {
                 pad();
                 os << "body:\n";
                 indent++;
                 n.body_->accept(*this);
                 indent--;
             }
-            if (n.condition_) {
+            if (n.condition_)
+            {
                 pad();
                 os << "cond:\n";
                 indent++;
@@ -390,14 +452,16 @@ namespace ast::visitor {
             indent--;
         }
 
-        void visit(ast::Module &m) override {
+        void visit(ast::Module& m) override
+        {
             pad();
             os << "Module\n";
             indent++;
             // package
             pad();
             os << "package: ";
-            for (size_t i = 0; i < m.package_path.size(); ++i) {
+            for (size_t i = 0; i < m.package_path.size(); ++i)
+            {
                 if (i) os << ".";
                 os << m.package_path[i];
             }
@@ -407,25 +471,27 @@ namespace ast::visitor {
             pad();
             os << "imports:\n";
             indent++;
-            for (auto *imp: m.imports) if (imp) imp->accept(*this);
+            for (auto* imp : m.imports) if (imp) imp->accept(*this);
             indent--;
 
             // decls
             pad();
             os << "decls:\n";
             indent++;
-            for (auto *d: m.decls) if (d) d->accept(*this);
+            for (auto* d : m.decls) if (d) d->accept(*this);
             indent--;
 
             indent--;
         }
 
-        void visit(StructDecl &n) override {
+        void visit(StructDecl& n) override
+        {
             pad();
             os << "struct " << (n.name) << " {\n";
             ++indent;
 
-            for (auto *d: n.fields_) {
+            for (auto* d : n.fields_)
+            {
                 if (!d) continue;
                 d->accept(*this); // Will dispatch to visit(FieldDecl&) below
             }
@@ -435,24 +501,42 @@ namespace ast::visitor {
             os << "}\n";
         }
 
-        void visit(FieldDecl &n) override {
+        void visit(FieldDecl& n) override
+        {
             pad();
 
-            if (n.is_public) {
+            if (n.is_public)
+            {
                 os << "pub ";
             }
 
-            if (n.type) {
+            if (n.type)
+            {
                 pad();
                 os << "type@" << n.type << "\n";
             }
             os << ' ' << n.name << ";\n";
         }
 
-        void visit(VarsDecl &) override {
+        void visit(VarsDecl&) override
+        {
         }
 
-        void visit(VarsDeclStatement &) override {
+        void visit(VarsDeclStatement&) override
+        {
+        }
+
+        void visit(Project& p) override
+        {
+            pad();
+            os << "project \n";
+
+            for (const auto& module : p.modules)
+            {
+                pad();
+                os << "module: " << "\n";
+                module->accept(*this);
+            }
         }
     };
 }
