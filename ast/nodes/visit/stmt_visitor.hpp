@@ -7,7 +7,8 @@
 
 #include "visitor.hpp"
 
-namespace ast {
+namespace ast
+{
     struct IfStatement;
     struct WhileStatement;
     struct DoWhileStatement;
@@ -17,15 +18,15 @@ namespace ast {
     struct ContinueStatement;
     struct BreakStatement;
     struct VarDeclStatement;
-    struct VarsDeclStatement;
 }
 
-namespace ast::visitor {
+namespace ast::visitor
+{
     struct StmtVisitor
-            : Visitor<IfStatement, BlockStatement, WhileStatement,
-                ReturnStatement, ExprStatement, VarDeclStatement,
-                ContinueStatement, BreakStatement, DoWhileStatement,
-                VarsDeclStatement> {
+        : Visitor<IfStatement, BlockStatement, WhileStatement,
+                  ReturnStatement, ExprStatement, VarDeclStatement,
+                  ContinueStatement, BreakStatement, DoWhileStatement>
+    {
     };
 }
 

@@ -32,7 +32,7 @@ namespace sema::pass
     void ScopeAstVisitor::visit(ast::FunctionDecl& decl)
     {
         ScopeGuard guard{controller_};
-        decl.id = controller_.enterScope(decl.name, scope::ScopeKind::Function);
+        decl.id = controller_.enterScope(decl.name_, scope::ScopeKind::Function);
 
 
         for (auto* param : decl.params_)
@@ -96,7 +96,7 @@ namespace sema::pass
     void ScopeAstVisitor::visit(ast::UnaryExpr& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::BinaryExpr& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::StringLiteralExpr& e) { AstIteratorVisitor::visit(e); }
-    void ScopeAstVisitor::visit(ast::ObjLiteralExpr& e) { AstIteratorVisitor::visit(e); }
+    void ScopeAstVisitor::visit(ast::PathLiteralExpr& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::AssignExpr& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::InitDeclarator& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::FieldExpr& e) { AstIteratorVisitor::visit(e); }
@@ -115,9 +115,6 @@ namespace sema::pass
     void ScopeAstVisitor::visit(ast::BreakStatement& s) { AstIteratorVisitor::visit(s); }
 
     void ScopeAstVisitor::visit(ast::VarDeclStatement& s) { AstIteratorVisitor::visit(s); }
-    void ScopeAstVisitor::visit(ast::VarsDecl& s) { AstIteratorVisitor::visit(s); }
-    void ScopeAstVisitor::visit(ast::VarsDeclStatement& s) { AstIteratorVisitor::visit(s); }
-
     void ScopeAstVisitor::visit(ast::Project& project)
     {
         ScopeGuard guard{controller_};
@@ -131,6 +128,22 @@ namespace sema::pass
 
     ScopeAstVisitor::~ScopeAstVisitor()
     = default;
+
+    void ScopeAstVisitor::visit(ast::ArrayTypeExpr&)
+    {
+    }
+
+    void ScopeAstVisitor::visit(ast::PathTypeExpr&)
+    {
+    }
+
+    void ScopeAstVisitor::visit(ast::RefTypeExpr&)
+    {
+    }
+
+    void ScopeAstVisitor::visit(ast::BuiltinTypeExpr&)
+    {
+    }
 
     ScopePass::ScopePass(ast::Project* root, ScopeController& controller)
         : Pass(root, ScopeAstVisitor{controller})

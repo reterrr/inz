@@ -6,22 +6,27 @@
 #define PARAM_DECL_HPP
 
 #include "decl.hpp"
-#include "../type/type.hpp"
 #include "../visit/decl_visitor.hpp"
 
-namespace ast {
-    struct ParamDecl final : Decl {
-        Type *type{nullptr};
-        lex::SymId name;
+namespace ast
+{
+    struct TypeExpr;
+    struct ParamDecl final : Decl
+    {
+        TypeExpr* type_;
+        lex::SymId name_;
 
-        ParamDecl(const lex::SymId name, Type *ty, const lex::Loc &L)
-            : Decl(NodeKind::Decl_Param, L), type(ty), name(name) {
+        ParamDecl(const lex::SymId name, TypeExpr* type, const lex::Loc& L)
+            : Decl(NodeKind::Decl_Param, L),
+              type_(type), name_(name)
+        {
         }
 
-        void accept(visitor::DeclVisitor &) override;
+        void accept(visitor::DeclVisitor&) override;
     };
 
-    inline void ParamDecl::accept(visitor::DeclVisitor &v) {
+    inline void ParamDecl::accept(visitor::DeclVisitor& v)
+    {
         v.visit(*this);
     }
 }

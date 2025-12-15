@@ -7,25 +7,23 @@
 
 #include "../../node.hpp"
 #include "../visit/visitable.hpp"
-#include "../visit/expr_visitor.hpp"
 
-#include "../type/type.hpp"
 
-namespace ast {
-    enum class ExprRole {
-        Unknown, Place, Value
-    };
+namespace ast
+{
+    namespace visitor
+    {
+        struct ExprVisitor;
+    }
 
-    struct Expr : Node, Visitable<visitor::ExprVisitor> {
+    struct Expr : Node, Visitable<visitor::ExprVisitor>
+    {
         using Node::Node, Visitable::accept;
-
-        Type *type_;
-        ExprRole role{ExprRole::Unknown};
 
         virtual ~Expr() = default;
     };
 
-    typedef Expr *ExprPtr;
+    typedef Expr* ExprPtr;
 }
 
 

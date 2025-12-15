@@ -19,60 +19,76 @@ namespace lex {
         TOK_LET = 10, // let
         TOK_RETURN = 11, // return
         TOK_MUT = 12, // mut
-        TOK_STATIC = 13, // static
-        TOK_PUB = 14, // pub
-        TOK_INT = 15, // int
-        TOK_BIGINT = 16, // bigint
-        TOK_MAGICINT = 17, // magicint
-        TOK_DOUBLE = 18, // double
-        TOK_BOOL = 19, // bool
-        TOK_VOID = 20, // void
-        TOK_STRING = 21, // string
-        TOK_BREAK = 22, // break
-        TOK_CONTINUE = 23, // continue
-        TOK_IMPORT = 24, // import
-        TOK_EXPORT = 25, // export
-        TOK_PACKAGE = 26, // package
-        TOK_AS = 27, // as
-        TOK_INC = 28, // ++
-        TOK_DEC = 29, // --
-        TOK_NEGATION = 30, // !
-        TOK_NEG = 31, // -
-        TOK_STAR = 32, // *
-        TOK_SLASH = 33, // /
-        TOK_MODULO = 34, // %
-        TOK_PLUS = 35, // +
-        TOK_MINUS = 36, // -
-        TOK_LESS = 37, // <
-        TOK_LEQ = 38, // <=
-        TOK_GREATER = 39, // >
-        TOK_GEQ = 40, // >=
-        TOK_EQUAL = 41, // ==
-        TOK_NEQUAL = 42, // !=
-        TOK_BOOL_AND = 43, // &&
-        TOK_BOOL_OR = 44, // ||
-        TOK_ASSIGN = 45, // =
-        TOK_PLUS_ASSIGN = 46, // +=
-        TOK_MIN_ASSIGN = 47, // -=
-        TOK_MUL_ASSIGN = 48, // *=
-        TOK_DIV_ASSIGN = 49, // /=
-        TOK_LPAR = 50, // (
-        TOK_RPAR = 51, // )
-        TOK_LBRACK = 52, // [
-        TOK_RBRACK = 53, // ]
-        TOK_LCBRA = 54, // {
-        TOK_RCBRA = 55, // }
-        TOK_COMMA = 56, // ,
-        TOK_SMCLN = 57, // ;
-        TOK_COLON = 58, // :
-        TOK_DOT = 59, // .
-        TOK_QUESTION = 60, // ?
-        TOK_ARROW = 61, // ->
-        TOK_IDENTIFIER = 62,
-        TOK_INT_LITERAL = 63,
-        TOK_FLOAT_LITERAL = 64,
-        TOK_STRING_LITERAL = 65,
-        TOK_UNKNOWN = 66
+        TOK_IMM = 13, // imm
+        TOK_STATIC = 14, // static
+        TOK_PUB = 15, // pub
+        TOK_INT = 16, // int
+        TOK_BIGINT = 17, // bigint
+        TOK_MAGICINT = 18, // magicint
+        TOK_DOUBLE = 19, // double
+        TOK_BOOL = 20, // bool
+        TOK_VOID = 21, // void
+        TOK_STRING = 22, // string
+        TOK_I8 = 23, // type
+        TOK_U8 = 24, // type
+        TOK_I16 = 25, // type
+        TOK_U16 = 26, // type
+        TOK_I32 = 27, // type
+        TOK_U32 = 28, // type
+        TOK_I64 = 29, // type
+        TOK_U64 = 30, // type
+        TOK_I128 = 31, // type
+        TOK_U128 = 32, // type
+        TOK_F32 = 33, // type
+        TOK_F64 = 34, // type
+        TOK_Bool = 35, // type
+        TOK_Char = 36, // type
+        TOK_BREAK = 37, // break
+        TOK_CONTINUE = 38, // continue
+        TOK_IMPORT = 39, // import
+        TOK_EXPORT = 40, // export
+        TOK_PACKAGE = 41, // package
+        TOK_AS = 42, // as
+        TOK_AMP = 43, // &
+        TOK_INC = 44, // ++
+        TOK_DEC = 45, // --
+        TOK_NEGATION = 46, // !
+        TOK_NEG = 47, // -
+        TOK_STAR = 48, // *
+        TOK_SLASH = 49, // /
+        TOK_MODULO = 50, // %
+        TOK_PLUS = 51, // +
+        TOK_MINUS = 52, // -
+        TOK_LESS = 53, // <
+        TOK_LEQ = 54, // <=
+        TOK_GREATER = 55, // >
+        TOK_GEQ = 56, // >=
+        TOK_EQUAL = 57, // ==
+        TOK_NEQUAL = 58, // !=
+        TOK_BOOL_AND = 59, // &&
+        TOK_BOOL_OR = 60, // ||
+        TOK_ASSIGN = 61, // =
+        TOK_PLUS_ASSIGN = 62, // +=
+        TOK_MIN_ASSIGN = 63, // -=
+        TOK_MUL_ASSIGN = 64, // *=
+        TOK_DIV_ASSIGN = 65, // /=
+        TOK_LPAR = 66, // (
+        TOK_RPAR = 67, // )
+        TOK_LBRACK = 68, // [
+        TOK_RBRACK = 69, // ]
+        TOK_LCBRA = 70, // {
+        TOK_RCBRA = 71, // }
+        TOK_COMMA = 72, // ,
+        TOK_SMCLN = 73, // ;
+        TOK_COLON = 74, // :
+        TOK_DOT = 75, // .
+        TOK_QUESTION = 76, // ?
+        TOK_ARROW = 77, // ->
+        TOK_IDENTIFIER = 78,
+        TOK_INT_LITERAL = 79,
+        TOK_FLOAT_LITERAL = 80,
+        TOK_STRING_LITERAL = 81,
+        TOK_UNKNOWN = 82
     };
 
    struct Pos final {

@@ -4,9 +4,9 @@
 
 #ifndef ASSIGN_EXPR_HPP
 #define ASSIGN_EXPR_HPP
-#include "expr.hpp"
 
-#include "../visit/expr_visitor.hpp"
+#include "expr.hpp"
+#include "visit/expr_visitor.hpp"
 
 namespace ast {
     struct AssignExpr final : Expr {

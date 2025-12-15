@@ -7,43 +7,23 @@
 
 #include <cstdint>
 
-enum class NodeType {
-    expression,
-    int_,
-    float_,
-    bool_,
-    string,
-
-    function, //as well as either simple function or lambda
-    call, // invokable things like function, lambda, maybe some functor
-
-    sys_call, // ????? do i even need this?
-
-    if_block,
-    while_block,
-    for_block,
-    do_while_block,
-    match_block,
-
-    struct_block, // ?
-    enum_block, // ?
-
-    comment_block // do i even need this?
-};
-
-enum class RefType {
+enum class RefType
+{
     Mut, NotMut
 };
 
-enum class PostOp {
+enum class PostOp
+{
     Increment, Decrement
 };
 
-enum class AssignOp {
+enum class AssignOp
+{
     Assign, Add, Subtract, Multiply, Divide, Modulo
 };
 
-enum class NodeKind : uint16_t {
+enum class NodeKind : uint16_t
+{
     Project,
     // ---- Expressions: literals
     Expr_IntLiteral,
@@ -76,7 +56,7 @@ enum class NodeKind : uint16_t {
 
     // ---- Statements
     Stmt_VarDecl,
-    Stmt_VarsDecl_Sugar,// (qualifiers + type) name [= init], ...
+    Stmt_VarsDecl_Sugar, // (qualifiers + type) name [= init], ...
     Stmt_Return,
     Stmt_If,
     Stmt_While,
@@ -106,6 +86,7 @@ enum class NodeKind : uint16_t {
     Type_Array, // [T]
 
     // ---- Sentinels
+    Expr_Type,
 };
 
 #endif //NODE_TYPE_HPP

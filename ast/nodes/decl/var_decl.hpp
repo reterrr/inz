@@ -8,29 +8,35 @@
 #include "decl.hpp"
 #include "../visit/decl_visitor.hpp"
 
-namespace ast {
+namespace ast
+{
     struct Type;
     struct InitDeclarator;
 
-    struct VarDecl final : Decl {
-        Type *type{nullptr};
-        TypeRegion region{TypeRegion::Auto};
-        InitDeclarator *declarator;
+    struct VarDecl final : Decl
+    {
+        enum class Mutability { Imm, Mut };
 
-        VarDecl(InitDeclarator *decl,
-                Type *ty,
-                const TypeRegion reg,
-                const lex::Loc &loc)
-            : Decl(NodeKind::Decl_Var, loc)
-              , type(ty)
-              , region(reg)
-              , declarator(decl) {
+        lex::SymId name_;
+        TypeExpr* type_;
+        Mutability mut_;
+
+        VarDecl(
+            lex::SymId name,
+            TypeExpr* type,
+            Mutability mut,
+            const lex::Loc& loc)
+            : Decl(NodeKind::Decl_Var, loc),
+              name_(name), type_(type), mut_(mut)
+        {
+            type_->parent = this;
         }
 
-        void accept(visitor::DeclVisitor &v) override;
+        void accept(visitor::DeclVisitor& v) override;
     };
 
-    inline void VarDecl::accept(visitor::DeclVisitor &v) {
+    inline void VarDecl::accept(visitor::DeclVisitor& v)
+    {
         v.visit(*this);
     }
 }

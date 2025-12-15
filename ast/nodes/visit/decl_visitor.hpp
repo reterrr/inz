@@ -16,7 +16,6 @@ namespace ast {
     struct VarDecl;
     struct StructDecl;
     struct FieldDecl;
-    struct VarsDecl;
 }
 
 namespace ast::visitor {
@@ -27,8 +26,7 @@ namespace ast::visitor {
                 ImportDecl,
                 VarDecl,
                 StructDecl,
-                FieldDecl,
-                VarsDecl> {
+                FieldDecl> {
     };
 }
 

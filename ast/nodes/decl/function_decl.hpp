@@ -7,47 +7,49 @@
 
 
 #include "decl.hpp"
-#include "../type/type.hpp"
 
 #include "../visit/decl_visitor.hpp"
-
+#include "expr/type_expr.hpp"
 #include "decl/param_decl.hpp"
 #include "stmt/block_statement.hpp"
 
 
-namespace ast {
+namespace ast
+{
     struct ParamDecl;
     struct BlockStatement;
 
-    struct FunctionDecl final : Decl {
-        CallableType *type{nullptr};
-        lex::SymId name;
-        BlockStatement *body_; //prototype or definition
-        std::vector<ParamDecl *> params_;
-        Type *ret;
+    struct FunctionDecl final : Decl
+    {
+        lex::SymId name_;
+        std::vector<ParamDecl*> params_;
+        TypeExpr* ret_;
+        BlockStatement* body_;
 
         FunctionDecl(const lex::SymId name,
-                     CallableType *type,
-                     std::vector<ParamDecl *> &&params,
-                     Type *ret,
-                     BlockStatement *body,
-                     const lex::Loc &loc)
+                     std::vector<ParamDecl*>&& params,
+                     TypeExpr* ret,
+                     BlockStatement* body,
+                     const lex::Loc& loc)
             : Decl(NodeKind::Decl_Fn, loc),
-              type(type),
-              name(name),
-              body_(body),
+              name_(name),
               params_(std::move(params)),
-              ret(ret) {
+              ret_(ret),
+              body_(body)
+        {
             body_->parent = this;
-            std::ranges::for_each(params_, [this](ParamDecl *&p) {
+            std::ranges::for_each(params_, [this](ParamDecl*& p)
+            {
                 p->parent = this;
             });
+            ret_->parent = this;
         }
 
-        void accept(visitor::DeclVisitor &) override;
+        void accept(visitor::DeclVisitor&) override;
     };
 
-    inline void FunctionDecl::accept(visitor::DeclVisitor &v) {
+    inline void FunctionDecl::accept(visitor::DeclVisitor& v)
+    {
         v.visit(*this);
     }
 }

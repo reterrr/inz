@@ -170,10 +170,13 @@
 
 /* =============================== TYPED TOKENS ===================================== */
 %token TOK_IF TOK_WHILE TOK_DO TOK_ELSE
-%token TOK_STRUCT TOK_ENUM TOK_TRAIT TOK_FN TOK_TYPE TOK_LET TOK_RETURN
-%token TOK_INT TOK_BIGINT TOK_MAGICINT TOK_DOUBLE TOK_BOOL TOK_VOID TOK_STRING TOK_MUT TOK_STATIC TOK_PUB
+%token TOK_STRUCT TOK_ENUM TOK_TRAIT TOK_FN TOK_TYPE TOK_LET TOK_RETURN TOK_IMM
+%token TOK_INT TOK_BIGINT TOK_MAGICINT TOK_DOUBLE TOK_VOID TOK_STRING TOK_MUT TOK_STATIC TOK_PUB
 %token TOK_BREAK TOK_CONTINUE
 %token TOK_IMPORT TOK_EXPORT TOK_PACKAGE TOK_AS
+
+%token TOK_I8 TOK_U8 TOK_I16 TOK_U16 TOK_I32 TOK_U32 TOK_I64 TOK_U64 TOK_I128 TOK_U128
+%token TOK_F32 TOK_F64 TOK_BOOL TOK_CHAR
 
 %token <Str>        TOK_IDENTIFIER
 %token <Str>        TOK_TYPE_NAME
@@ -186,7 +189,7 @@
 %token TOK_COMMA TOK_SMCLN TOK_COLON
 %token TOK_DOT TOK_QUESTION TOK_ARROW
 
-%token TOK_NEGATION TOK_NEG TOK_INC TOK_DEC
+%token TOK_NEGATION TOK_NEG TOK_INC TOK_DEC TOK_AMP
 %token TOK_STAR TOK_SLASH TOK_MODULO
 %token TOK_PLUS TOK_MINUS
 %token TOK_LESS TOK_LEQ TOK_GREATER TOK_GEQ
@@ -216,26 +219,22 @@
 %type <ast::ImportDecl*>                  import_decl
 %type <std::vector<ast::ImportDecl*>>     import_list
 %type <std::vector<Str>>                  opt_package
-%type <int>                               maybe_export  /* 0/1 flag is easier */
 
 /* decls */
 %type <std::vector<ast::DeclPtr>>         decl_list
 %type <ast::DeclPtr>                      decl
 %type <ast::FunctionDecl*>                fn_decl
 %type <ast::VarDecl*>                     var_decl   /* top-level var decl */
-%type <ast::VarsDecl*>                    vars_decl
-%type <std::vector<Str>>                  vars_group
 %type <ast::DeclPtr>                      top_decl
 
+%type <ast::RefTypeExpr::Mutability>      ref_mutability
+%type <ast::VarDecl::Mutability>          var_mutability
 /* types */
-%type <ast::TypeSpecifier>                type_specifier_opt
-%type <ast::TypeRegion>                   type_region_opt
-%type <ast::TypePtr>                      type_spec ret_type
-%type <ast::TypePtr>                      type_with_spec
-%type <ast::FixedArrayType*>              fixed_array_type
-%type <ast::BuiltinType *>                builtin_type
-%type <ast::PathTypePtr>                  type_path
-%type <Str>                               type_atom
+%type <ast::TypeExpr*>                    type_expr ret_type_expr
+%type <ast::ArrayTypeExpr*>               array_type_expr
+%type <ast::BuiltinTypeExpr*>             builtin_type_expr
+%type <ast::PathTypeExpr*>                path_type_expr
+%type <ast::RefTypeExpr*>                 ref_type_expr
 
 /* statements */
 %type <ast::StatementPtr>                 stmt
@@ -245,8 +244,6 @@
 
 /* local var decls (statement-level) */
 %type <ast::VarDeclStatement*>            var_decl_stmt
-%type <ast::VarsDeclStatement*>           vars_decl_stmt
-
 /* top-level var decls (declaration-level) */
 
 /* parameters */
@@ -258,7 +255,7 @@
 
 /* expressions */
 %type <ast::ExprPtr>                      expr assign cond logic_or logic_and equality relational additive multiplicative unary postfix primary expr_opt
-%type <ast::ObjLiteralExpr*>              struct_lit
+%type <ast::PathLiteralExpr*>             struct_lit
 %type <std::vector<ast::ExprPtr>>         arg_list arg_list_opt
 
 /* struct literal fields */
@@ -296,18 +293,12 @@ import_list
   ;
 
 /* import path;                -> no alias, not public
-   import path as name;        -> alias, not public
-   export import path;         -> public re-export (no alias)
-   export import path as name; -> public re-export with alias */
+   import path as name;        -> alias, not public */
 import_decl
   : TOK_IMPORT names_separated_by_dots TOK_SMCLN
     { $$ = ast.mk_import_decl(std::move($2), std::nullopt, /*is_public*/false, combine(@1, @3)); }
   | TOK_IMPORT names_separated_by_dots TOK_AS name TOK_SMCLN
     { $$ = ast.mk_import_decl(std::move($2), std::optional<lex::SymId>{$4}, /*is_public*/false, combine(@1, @5)); }
-  | TOK_EXPORT TOK_IMPORT names_separated_by_dots TOK_SMCLN
-    { $$ = ast.mk_import_decl(std::move($3), std::nullopt, /*is_public*/true,  combine(@1, @4)); }
-  | TOK_EXPORT TOK_IMPORT names_separated_by_dots TOK_AS name TOK_SMCLN
-    { $$ = ast.mk_import_decl(std::move($3), std::optional<lex::SymId>{$5}, /*is_public*/true,  combine(@1, @6)); }
   ;
 
 /* dotted path → vector<SymId> */
@@ -330,24 +321,19 @@ decl_list
   ;
 
 decl
-  : maybe_export fn_decl      { $$ = static_cast<ast::DeclPtr>($2); }
-  | maybe_export top_decl     { $$ = static_cast<ast::DeclPtr>($2); }
-  | maybe_export struct_decl  { $$ = static_cast<ast::DeclPtr>($2); }
-  ;
-
-maybe_export
-  : /* empty */   { $$ = 0; }
-  | TOK_EXPORT    { $$ = 1; }
+  : fn_decl      { $$ = static_cast<ast::DeclPtr>($1); }
+  | top_decl     { $$ = static_cast<ast::DeclPtr>($1); }
+  | struct_decl  { $$ = static_cast<ast::DeclPtr>($1); }
   ;
 
 fn_decl
-  : TOK_FN ident TOK_LPAR param_list_opt TOK_RPAR ret_type block
+  : TOK_FN ident TOK_LPAR param_list_opt TOK_RPAR ret_type_expr block
     {
-      $$ = ast.mk_fn_decl($2,/*callable type*/ nullptr, std::move($4), $6, $7, combine(@1, @7));
+      $$ = ast.mk_fn_decl($2, std::move($4), $6, $7, combine(@1, @7));
     }
-  | TOK_FN ident TOK_LPAR param_list_opt TOK_RPAR ret_type TOK_SMCLN
+  | TOK_FN ident TOK_LPAR param_list_opt TOK_RPAR ret_type_expr TOK_SMCLN
     {
-      $$ = ast.mk_fn_decl($2, /*callable type*/ nullptr, std::move($4), $6, nullptr, combine(@1, @6)); /* prototype */
+      $$ = ast.mk_fn_decl($2, std::move($4), $6, nullptr, combine(@1, @6)); /* prototype */
     }
   ;
 
@@ -369,14 +355,14 @@ field_decl_list
     ;
 
 field_decl
-    : type_with_spec ident TOK_SMCLN
-        { $$ = ast.mk_field_decl($2, $1, false, combine(@1, @3)); }
-    | TOK_PUB type_with_spec ident TOK_SMCLN
-        { $$ = ast.mk_field_decl($3, $2, true, combine(@1, @4)); }
+    : type_expr ident TOK_SMCLN
+        { $$ = ast.mk_field_decl($2, $1, ast::FieldDecl::Visibility::Priv, combine(@1, @3)); }
+    | TOK_PUB type_expr ident TOK_SMCLN
+        { $$ = ast.mk_field_decl($3, $2, ast::FieldDecl::Visibility::Publ, combine(@1, @4)); }
     ;
 
-ret_type
-    : TOK_ARROW type_with_spec                { $$ = $2; }
+ret_type_expr
+    : TOK_ARROW type_expr                { $$ = $2; }
     ;
 
 param_list_opt
@@ -391,66 +377,58 @@ param_list
     ;
 
 param
-    : type_with_spec ident                { $$ = ast.mk_param_decl($2, $1, combine(@1, @2)); }
+    : type_expr ident                { $$ = ast.mk_param_decl($2, $1, combine(@1, @2)); }
     ;
-
 
 /* ================================= types ==================================== */
 
-type_specifier_opt
-    :
-    { $$ = ast::TypeSpecifier::Imm; }
-    | TOK_MUT
-    { $$ = ast::TypeSpecifier::Mut; }
+type_expr
+  : builtin_type_expr      { $$ = static_cast<ast::TypeExpr*>($1); }
+  | path_type_expr        { $$ = static_cast<ast::TypeExpr*>($1); }
+  | array_type_expr  { $$ = static_cast<ast::TypeExpr*>($1); }
+  | ref_type_expr     { $$ = static_cast<ast::TypeExpr*>($1); }
+  ;
+
+builtin_type_expr
+  : TOK_I8    { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::I8,   @1); }
+  | TOK_U8    { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::U8,   @1); }
+  | TOK_I16   { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::I16,  @1); }
+  | TOK_U16   { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::U16,  @1); }
+  | TOK_I32   { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::I32,  @1); }
+  | TOK_U32   { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::U32,  @1); }
+  | TOK_I64   { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::I64,  @1); }
+  | TOK_U64   { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::U64,  @1); }
+  | TOK_I128  { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::I128, @1); }
+  | TOK_U128  { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::U128, @1); }
+  | TOK_F32   { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::F32,  @1); }
+  | TOK_F64   { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::F64,  @1); }
+  | TOK_BOOL  { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::Bool, @1); }
+  | TOK_CHAR  { $$ = ast.mk_builtin_type_expr(ast::BuiltinTypeExpr::Kind::Char, @1); }
+  ;
+
+path_type_expr
+    : ident_list    { $$ = ast.mk_path_type_expr(std::move($1), @1); }
     ;
 
-type_region_opt
-    :
-    { $$ = ast::TypeRegion::Auto; }
-    | TOK_STATIC
-    { $$ = ast::TypeRegion::Static; }
+array_type_expr
+    : type_expr TOK_LBRACK expr TOK_RBRACK
+    { $$ = ast.mk_array_type_expr($1, $3, combine(@1, @3)); }
     ;
 
-type_with_spec
-    : type_specifier_opt type_spec
-    { $2->specifier = $1; $$ = $2; }
+ref_mutability
+    :           { $$ = ast::RefTypeExpr::Mutability::Imm; }
+    | TOK_IMM   { $$ = ast::RefTypeExpr::Mutability::Imm; }
+    | TOK_MUT   { $$ = ast::RefTypeExpr::Mutability::Mut; }
     ;
 
-type_spec
-  : builtin_type      { $$ = static_cast<ast::TypePtr>($1); }
-  | type_path         { $$ = static_cast<ast::TypePtr>(ast.mk_type_from_path($1, @1)); }
-  | fixed_array_type  { $$ = static_cast<ast::TypePtr>($1); }
-  ;
-
-builtin_type
-  : TOK_INT       { $$ = ast.mk_builtin_type(ast::BuiltinTy::Int, @1); }
-  | TOK_BIGINT    { $$ = ast.mk_builtin_type(ast::BuiltinTy::BigInt, @1); }
-  | TOK_MAGICINT  { $$ = ast.mk_builtin_type(ast::BuiltinTy::MagicInt, @1); }
-  | TOK_DOUBLE    { $$ = ast.mk_builtin_type(ast::BuiltinTy::Double, @1); }
-  | TOK_BOOL      { $$ = ast.mk_builtin_type(ast::BuiltinTy::Bool, @1); }
-  | TOK_VOID      { $$ = ast.mk_builtin_type(ast::BuiltinTy::Void, @1); }
-  | TOK_STRING    { $$ = ast.mk_builtin_type(ast::BuiltinTy::String, @1); }
-  ;
-
-type_path
-  : type_atom
-    { $$ = ast.mk_type_path_single($1, @1); }
-  | type_path TOK_DOT type_atom
-    { $$ = ast.mk_type_path_append($1, $3, combine(@1, @3)); }
-  ;
-
-type_atom
-  : TOK_IDENTIFIER    { $$ = std::move($1); } /* keep until lexer distinguishes */
-  ;
-
-fixed_array_type
-    : type_spec TOK_LBRACK TOK_INT_LITERAL TOK_RBRACK
-    { $$ = ast.mk_fixed_array_type($1, $3, combine(@1, @3)); }
+ref_type_expr
+    : TOK_AMP ref_mutability type_expr
+    { $$ = ast.mk_ref_type_expr($3, $2, combine(@1, @3)); }
     ;
 
 ident
-  : TOK_IDENTIFIER    { $$ = std::move($1); }
-  ;
+    : TOK_IDENTIFIER    { $$ = std::move($1); }
+    ;
 
 ident_list
     : ident                        { $$ = std::vector<Str>(std::move($1)); }
@@ -471,7 +449,6 @@ stmt_list
 
 stmt
   : var_decl_stmt                         { $$ = static_cast<ast::StatementPtr>($1); }
-  | vars_decl_stmt                        { $$ = static_cast<ast::StatementPtr>($1); }
   | TOK_RETURN expr_opt TOK_SMCLN         { $$ = ast.mk_return_stmt($2, @1); }
   | TOK_IF TOK_LPAR expr TOK_RPAR stmt
       { $$ = ast.mk_if_stmt($3, $5, combine(@1, @5)); }
@@ -503,54 +480,25 @@ var_decl_stmt
     { $$ = ast.mk_var_decl_stmt($2, @2); }
   ;
 
-vars_decl_stmt
-  : TOK_LET vars_decl
-  { $$ = ast.mk_vars_decl_stmt($2, @2); }
-;
-
 /* ================== top-level (declaration-level) var declarations ============ */
-
-vars_group
-  : TOK_LPAR ident_list TOK_RPAR
-    { $$ = std::move($2); }
-  ;
-
 top_decl
   : TOK_LET var_decl      { $$ = static_cast<ast::DeclPtr>($2); }
-  | TOK_LET vars_decl     { $$ = static_cast<ast::DeclPtr>($2); }
   ;
 
-vars_decl
-  : type_region_opt type_with_spec vars_group TOK_SMCLN
-    {
-      // No initializers
-      $$ = ast.mk_vars_decl(/*names*/std::move($3),
-                            /*assignments*/std::vector<ast::ExprPtr>{},
-                            /*type*/$2,
-                            /*region*/$1,
-                            /*range*/combine(@1, @3));
-    }
-  | type_region_opt type_with_spec vars_group TOK_ASSIGN arg_list_opt TOK_SMCLN
-    {
-      // Initializers: either empty, one expr, or N exprs
-      $$ = ast.mk_vars_decl(/*names*/std::move($3),
-                            /*assignments*/std::move($5),
-                            /*type*/$2,
-                            /*region*/$1,
-                            /*range*/combine(@1, @3));
-    }
-  ;
+var_mutability
+    :          { $$ = ast::VarDecl::Mutability::Imm; }
+    | TOK_IMM  { $$ = ast::VarDecl::Mutability::Imm; }
+    | TOK_MUT  { $$ = ast::VarDecl::Mutability::Mut; }
+    ;
 
 var_decl
-  : type_region_opt type_with_spec ident TOK_SMCLN
+  : type_expr var_mutability ident TOK_SMCLN
     {
-      auto decl = ast.mk_var_declarator_expr($3, nullptr, @3);
-      $$ = ast.mk_var_decl(std::move(decl), $2, $1, combine(@1, @3));
+      $$ = ast.mk_var_decl($3, $1, $2, combine(@1, @3));
     }
-  | type_region_opt type_with_spec ident TOK_ASSIGN assign TOK_SMCLN
+  | type_expr var_mutability ident TOK_ASSIGN assign TOK_SMCLN
     {
-      auto decl = ast.mk_var_declarator_expr($3, std::move($5), combine(@3, @5));
-      $$ = ast.mk_var_decl(std::move(decl), $2, $1, combine(@1, @5));
+      $$ = ast.mk_var_decl($3, $1, $2, combine(@1, @5));
     }
   ;
 
@@ -659,7 +607,7 @@ primary
   ;
 
 struct_lit
-  : type_path TOK_LCBRA field_inits_opt TOK_RCBRA
+  : path_type_expr TOK_LCBRA field_inits_opt TOK_RCBRA
     { $$ = ast.mk_obj_literal_expr($1, std::move($3), combine(@1, @4)); }
   ;
 

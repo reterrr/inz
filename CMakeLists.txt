@@ -46,8 +46,6 @@ add_executable(inz main.cpp
         ast/nodes/expr/binary_op_expr.hpp
         ast/ast.hpp
         ast/allocator.hpp
-        ast/nodes/expr/type_node.hpp
-        ast/nodes/expr/path_type_node.hpp
         ast/nodes/expr/ref_expr.hpp
         ast/nodes/decl/function_decl.hpp
         ast/nodes/decl/decl.hpp
@@ -80,7 +78,6 @@ add_executable(inz main.cpp
         ast/nodes/expr/init_declarator_expr.hpp
         ast/nodes/expr/call_expr.hpp
         ast/nodes/expr/index_expr.hpp
-        ast/ast_dumper.hpp
         ast/ast_iterator.hpp
         ast/nodes/project.hpp
         ast/nodes/visit/dump_visitor.hpp
@@ -98,11 +95,14 @@ add_executable(inz main.cpp
         sema/scope_stack.hpp
         sema/symbol.hpp
         sema/type_interner.hpp
-        ast/nodes/decl/vars_decl.hpp
-        ast/nodes/stmt/vars_decl_statement.hpp
         sema/sema.cpp
         sema/sema.hpp
         ast/nodes/visit/project_visitor.hpp
+        ast/nodes/expr/type_expr.hpp
+        ast/nodes/expr/array_type_expression.hpp
+        ast/nodes/expr/path_type_expr.hpp
+        ast/nodes/expr/ref_type_expr.hpp
+        ast/nodes/expr/builtin_type_expr.hpp
 )
 
 target_include_directories(inz PRIVATE

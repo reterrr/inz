@@ -11,20 +11,26 @@
 
 #include "../visit/stmt_visitor.hpp"
 
-namespace ast {
-    struct VarDeclStatement final : Statement {
-        VarDecl *decl_;
+namespace ast
+{
+    struct VarDecl;
 
-        VarDeclStatement(VarDecl *decl, const lex::Loc &loc)
+    struct VarDeclStatement final : Statement
+    {
+        VarDecl* decl_;
+
+        VarDeclStatement(VarDecl* decl, const lex::Loc& loc)
             : Statement(NodeKind::Stmt_VarDecl, loc),
-              decl_(decl) {
+              decl_(decl)
+        {
             decl_->parent = this;
         }
 
-        void accept(visitor::StmtVisitor &) override;
+        void accept(visitor::StmtVisitor&) override;
     };
 
-    inline void VarDeclStatement::accept(visitor::StmtVisitor &v) {
+    inline void VarDeclStatement::accept(visitor::StmtVisitor& v)
+    {
         v.visit(*this);
     }
 }

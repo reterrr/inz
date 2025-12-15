@@ -6,25 +6,32 @@
 #define OBJ_EXPR_HPP
 
 #include "expr.hpp"
+#include "expr/path_type_expr.hpp"
 
-namespace ast {
-    // when we write e.g. Obj eg = Obj{a, b, 1 };
-    struct ObjLiteralExpr final : Expr {
-        PathType *type;
-        std::vector<FieldInitExpr *> elements_;
+namespace ast
+{
+    // when we write e.g. Obj eg = Obj{ a, b, 1 };
+    struct PathLiteralExpr final : Expr
+    {
+        PathTypeExpr* type_;
+        std::vector<FieldInitExpr*> elements_;
 
-        ObjLiteralExpr(PathType *type, std::vector<FieldInitExpr *> &&elements, const lex::Loc &loc)
+        PathLiteralExpr(PathTypeExpr* type, std::vector<FieldInitExpr*>&& elements, const lex::Loc& loc)
             : Expr(NodeKind::Expr_ObjLiteral, loc),
-              type(type), elements_(std::move(elements)) {
-            std::ranges::for_each(elements_, [this](FieldInitExpr *&e) {
+              type_(type), elements_(std::move(elements))
+        {
+            std::ranges::for_each(elements_, [this](FieldInitExpr*& e)
+            {
                 e->parent = this;
             });
+            type_->parent = this;
         }
 
-        void accept(visitor::ExprVisitor &) override;
+        void accept(visitor::ExprVisitor&) override;
     };
 
-    inline void ObjLiteralExpr::accept(visitor::ExprVisitor &v) {
+    inline void PathLiteralExpr::accept(visitor::ExprVisitor& v)
+    {
         v.visit(*this);
     }
 }

@@ -7,8 +7,38 @@
 
 #include "decl_visitor.hpp"
 #include "expr_visitor.hpp"
+#include "function_decl.hpp"
 #include "module_visitor.hpp"
+#include "param_decl.hpp"
+#include "project.hpp"
+#include "project_visitor.hpp"
 #include "stmt_visitor.hpp"
+#include "struct_decl.hpp"
+#include "type_alias_decl.hpp"
+#include "var_decl.hpp"
+#include "expr/assign_expr.hpp"
+#include "expr/binary_op_expr.hpp"
+#include "expr/bool_expr.hpp"
+#include "expr/call_expr.hpp"
+#include "expr/field_expr.hpp"
+#include "expr/field_init_expr.hpp"
+#include "expr/float_expr.hpp"
+#include "expr/index_expr.hpp"
+#include "expr/init_declarator_expr.hpp"
+#include "expr/int_expr.hpp"
+#include "expr/obj_expr.hpp"
+#include "expr/path_type_expr.hpp"
+#include "expr/ref_expr.hpp"
+#include "expr/string_expr.hpp"
+#include "expr/unary_op_expr.hpp"
+#include "module/import_decl.hpp"
+#include "module/module.hpp"
+#include "stmt/do_while_statement.hpp"
+#include "stmt/expr_statement.hpp"
+#include "stmt/if_statement.hpp"
+#include "stmt/return_statement.hpp"
+#include "stmt/var_decl_statement.hpp"
+#include "stmt/while_statement.hpp"
 
 namespace ast::visitor
 {
@@ -89,19 +119,19 @@ namespace ast::visitor
             os << "StringLiteral sym#" << n.value << "\n";
         }
 
-        void visit(ast::ObjLiteralExpr& n) override
+        void visit(ast::PathLiteralExpr& n) override
         {
             pad();
             os << "ObjLiteral\n";
             indent++;
-            if (n.type)
+            if (n.type_)
             {
                 pad();
-                os << "type-path: ";
-                for (size_t i = 0; i < n.type->segments.size(); ++i)
+                os << "type_-path: ";
+                for (size_t i = 0; i < n.type_->path_.size(); ++i)
                 {
                     if (i) os << ".";
-                    os << n.type->segments[i];
+                    os << n.type_->path_[i];
                 }
                 os << "\n";
             }
@@ -235,13 +265,13 @@ namespace ast::visitor
         void visit(ast::ParamDecl& n) override
         {
             pad();
-            os << "ParamDecl name#" << n.name << '\n';
+            os << "ParamDecl name#" << n.name_ << '\n';
 
-            if (n.type)
+            if (n.type_)
             {
                 indent++;
                 pad();
-                os << "type@" << n.type << "\n";
+                os << "type@" << n.type_ << "\n";
                 indent--;
             }
         }
@@ -249,17 +279,12 @@ namespace ast::visitor
         void visit(ast::FunctionDecl& n) override
         {
             pad();
-            os << "FunctionDecl name#" << n.name << "\n";
+            os << "FunctionDecl name#" << n.name_ << "\n";
             indent++;
-            if (n.type)
+            if (n.ret_)
             {
                 pad();
-                os << "callable-type@" << n.type << "\n";
-            }
-            if (n.ret)
-            {
-                pad();
-                os << "ret-type@" << n.ret << "\n";
+                os << "ret-type@" << n.ret_ << "\n";
             }
             pad();
             os << "params:\n";
@@ -307,18 +332,15 @@ namespace ast::visitor
         void visit(ast::VarDecl& n) override
         {
             pad();
-            os << "VarDecl region=" << static_cast<int>(n.region) << "\n";
             indent++;
-            if (n.type)
+            if (n.type_)
             {
                 pad();
-                os << "type@" << n.type << "\n";
+                os << "type@" << n.type_ << "\n";
             }
             pad();
             os << "declarators:\n";
             indent++;
-            if (auto d = n.declarator) d->accept(*this);
-            indent--;
             indent--;
         }
 
@@ -505,25 +527,17 @@ namespace ast::visitor
         {
             pad();
 
-            if (n.is_public)
+            if (n.visibility_ == FieldDecl::Visibility::Publ)
             {
                 os << "pub ";
             }
 
-            if (n.type)
+            if (n.type_)
             {
                 pad();
-                os << "type@" << n.type << "\n";
+                os << "type@" << n.type_ << "\n";
             }
-            os << ' ' << n.name << ";\n";
-        }
-
-        void visit(VarsDecl&) override
-        {
-        }
-
-        void visit(VarsDeclStatement&) override
-        {
+            os << ' ' << n.name_ << ";\n";
         }
 
         void visit(Project& p) override
@@ -538,6 +552,11 @@ namespace ast::visitor
                 module->accept(*this);
             }
         }
+
+        void visit(ArrayTypeExpr&) override {}
+        void visit(PathTypeExpr&) override {}
+        void visit(RefTypeExpr&) override {}
+        void visit(BuiltinTypeExpr&) override {}
     };
 }
 

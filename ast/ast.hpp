@@ -17,6 +17,8 @@
 #include "nodes/decl/decl.hpp"
 
 // Include concrete nodes used by factory
+#include "expr/builtin_type_expr.hpp"
+#include "expr/ref_type_expr.hpp"
 #include "nodes/project.hpp"
 #include "nodes/expr/int_expr.hpp"
 #include "nodes/expr/bool_expr.hpp"
@@ -54,7 +56,6 @@
 #include "nodes/decl/param_decl.hpp"
 #include "nodes/decl/function_decl.hpp"
 #include "nodes/decl/var_decl.hpp"
-#include "nodes/decl/vars_decl.hpp"
 #include "nodes/decl/type_alias_decl.hpp"
 #include "nodes/decl/struct_decl.hpp"
 #include "nodes/decl/field_decl.hpp"
@@ -64,37 +65,41 @@
 
 
 #include "nodes/type/type.hpp"              // Type, CallableType
-#include "nodes/expr/path_type_node.hpp"    // PathType (if that's where it lives)
 #include "nodes/expr/ref_expr.hpp"
 
 #include "nodes/module/module.hpp"
 
 #include "nodes/stmt/var_decl_statement.hpp"
-#include "nodes/stmt/vars_decl_statement.hpp"
 #include "sema/type_interner.hpp"
+#include "nodes/expr/array_type_expression.hpp"
+#include "nodes/expr/path_type_expr.hpp"
 
 
-namespace ast {
+namespace ast
+{
     // ===== forward declarations (keep header light) =====
-    struct Dtor final {
-        void (*dtor)(void *);
+    struct Dtor final
+    {
+        void (*dtor)(void*);
 
-        void *obj;
+        void* obj;
 
-        void operator()() const noexcept {
+        void operator()() const noexcept
+        {
             dtor(obj);
         }
     };
 
     // ====================================================
 
-    class AST final {
+    class AST final
+    {
         sema::type::TypeInterner type_interner_{};
 
         llvm::BumpPtrAllocator alloc_{};
         std::vector<Dtor> dtors_{};
 
-        Project *project = nullptr;
+        Project* project = nullptr;
 
         std::size_t expr_count_ = 0;
         std::size_t stmt_count_ = 0;
@@ -102,21 +107,22 @@ namespace ast {
         std::size_t module_count_ = 0;
 
 
+        template <typename T, typename... Args>
+        T* make(Args&&... args)
+        {
+            void* mem = alloc_.Allocate<T>();
 
-        template<typename T, typename... Args>
-        T *make(Args &&... args) {
-            void *mem = alloc_.Allocate<T>();
-
-            T *obj = ::new(mem) T(std::forward<Args>(args)...);
+            T* obj = ::new(mem) T(std::forward<Args>(args)...);
 
             if constexpr (std::is_base_of_v<Expr, T>) ++expr_count_;
             if constexpr (std::is_base_of_v<Statement, T>) ++stmt_count_;
             if constexpr (std::is_base_of_v<Decl, T>) ++decl_count_;
             if constexpr (std::is_base_of_v<Module, T>) ++module_count_;
 
-            if constexpr (!std::is_trivially_destructible_v<T>) {
+            if constexpr (!std::is_trivially_destructible_v<T>)
+            {
                 dtors_.push_back({
-                    +[](void *o) { static_cast<T *>(o)->~T(); },
+                    +[](void* o) { static_cast<T*>(o)->~T(); },
                     obj
                 });
             }
@@ -124,9 +130,10 @@ namespace ast {
             return obj;
         }
 
-        void destroy_all() {
+        void destroy_all()
+        {
             std::for_each(dtors_.rbegin(), dtors_.rend(),
-                          [](const Dtor &dtor) { dtor(); }
+                          [](const Dtor& dtor) { dtor(); }
             );
 
             dtors_.clear();
@@ -135,127 +142,118 @@ namespace ast {
 
     public:
         AST()
-            : project(mk_project(std::vector<ModulePtr>{}, lex::Loc{})) {
+            : project(mk_project(std::vector<ModulePtr>{}, lex::Loc{}))
+        {
         }
 
-        ~AST() {
+        ~AST()
+        {
             destroy_all();
         }
 
-        [[nodiscard]] Project *get_project() const { return project; }
+        [[nodiscard]] Project* get_project() const { return project; }
 
         void project_add_module(ModulePtr module) const;
 
-        Project *mk_project(std::vector<ModulePtr> &&modules, const lex::Loc &l);
+        Project* mk_project(std::vector<ModulePtr>&& modules, const lex::Loc& l);
 
         // ========= Expressions =========
-        IntLiteralExpr *mk_int_literal_expr(kl_int v, const lex::Loc &loc);
+        IntLiteralExpr* mk_int_literal_expr(kl_int v, const lex::Loc& loc);
 
-        BoolLiteralExpr *mk_bool_literal_expr(kl_bool v, const lex::Loc &loc);
+        BoolLiteralExpr* mk_bool_literal_expr(kl_bool v, const lex::Loc& loc);
 
-        StringLiteralExpr *mk_str_literal_expr(lex::SymId sym, const lex::Loc &loc);
+        StringLiteralExpr* mk_str_literal_expr(lex::SymId sym, const lex::Loc& loc);
 
-        FloatLiteralExpr *mk_float_literal_expr(kl_float v, const lex::Loc &loc);
+        FloatLiteralExpr* mk_float_literal_expr(kl_float v, const lex::Loc& loc);
 
         // Field init for struct literals (return concrete pointer)
-        FieldInitExpr *mk_field_init_expr(lex::SymId name, ExprPtr value, const lex::Loc &loc);
+        FieldInitExpr* mk_field_init_expr(lex::SymId name, ExprPtr value, const lex::Loc& loc);
 
         // Object/struct literal
-        ObjLiteralExpr *mk_obj_literal_expr(PathType *tyPath, std::vector<FieldInitExpr *> &&elems,
-                                            const lex::Loc &loc);
+        PathLiteralExpr* mk_obj_literal_expr(PathTypeExpr* pathTypeExpr,
+                                             std::vector<FieldInitExpr*>&& elems, const lex::Loc& loc);
+
+        PathTypeExpr* mk_path_type_expr(std::vector<lex::SymId>&& segments, const lex::Loc& loc);
+        ArrayTypeExpr* mk_array_type_expr(TypeExpr* typeExpr, ExprPtr sizeExpr, const lex::Loc& loc);
+        RefTypeExpr* mk_ref_type_expr(TypeExpr* typeExpr, RefTypeExpr::Mutability mutability, const lex::Loc& loc);
+        BuiltinTypeExpr* mk_builtin_type_expr(BuiltinTypeExpr::Kind kind, const lex::Loc& loc);
 
         // Unary / Binary ops
-        UnaryExpr *mk_unary_op_expr(UnaryOp op, ExprPtr v, const lex::Loc &loc);
+        UnaryExpr* mk_unary_op_expr(UnaryOp op, ExprPtr v, const lex::Loc& loc);
 
-        BinaryExpr *mk_binary_op_expr(BinaryOp op, ExprPtr lhs, ExprPtr rhs, const lex::Loc &loc);
+        BinaryExpr* mk_binary_op_expr(BinaryOp op, ExprPtr lhs, ExprPtr rhs, const lex::Loc& loc);
 
-        AssignExpr *mk_assign_expr(ExprPtr lhs, ExprPtr rhs, AssignOp op, const lex::Loc &loc);
+        AssignExpr* mk_assign_expr(ExprPtr lhs, ExprPtr rhs, AssignOp op, const lex::Loc& loc);
 
-        FieldExpr *mk_field_expr(ExprPtr base, lex::SymId field, const lex::Loc &loc);
+        FieldExpr* mk_field_expr(ExprPtr base, lex::SymId field, const lex::Loc& loc);
 
-        InitDeclarator *mk_var_declarator_expr(lex::SymId name, ExprPtr init, const lex::Loc &loc);
 
-        IndexExpr *mk_index(ExprPtr base, ExprPtr idx, const lex::Loc &loc);
+        IndexExpr* mk_index(ExprPtr base, ExprPtr idx, const lex::Loc& loc);
 
         // ========= Statements =========
-        BlockStatement *mk_block_stmt(std::vector<StatementPtr> &&stmts, const lex::Loc &loc);
+        BlockStatement* mk_block_stmt(std::vector<StatementPtr>&& stmts, const lex::Loc& loc);
 
-        ReturnStatement *mk_return_stmt(ExprPtr expr, const lex::Loc &loc);
+        ReturnStatement* mk_return_stmt(ExprPtr expr, const lex::Loc& loc);
 
         // if (cond) then;              // no else
-        IfStatement *mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, const lex::Loc &loc);
+        IfStatement* mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, const lex::Loc& loc);
 
-        ExprStatement *mk_expr_stmt(ExprPtr expr, const lex::Loc &loc);
+        ExprStatement* mk_expr_stmt(ExprPtr expr, const lex::Loc& loc);
 
-        VarDeclStatement *mk_var_decl_stmt(VarDecl *decl, const lex::Loc &loc);
+        VarDeclStatement* mk_var_decl_stmt(VarDecl* decl, const lex::Loc& loc);
 
-        VarsDeclStatement *mk_vars_decl_stmt(VarsDecl *decl, const lex::Loc &loc);
+        ContinueStatement* mk_continue_stmt(const lex::Loc& loc);
 
-        ContinueStatement *mk_continue_stmt(const lex::Loc &loc);
+        WhileStatement* mk_while_stmt(ExprPtr condition, BlockStatement* body, const lex::Loc& loc);
 
-        WhileStatement *mk_while_stmt(ExprPtr condition, BlockStatement *body, const lex::Loc &loc);
+        DoWhileStatement* mk_do_while_stmt(ExprPtr condition, BlockStatement* body, const lex::Loc& loc);
 
-        DoWhileStatement *mk_do_while_stmt(ExprPtr condition, BlockStatement *body, const lex::Loc &loc);
-
-        BreakStatement *mk_break_stmt(const lex::Loc &loc);
+        BreakStatement* mk_break_stmt(const lex::Loc& loc);
 
 
         // if (cond) then else other;   // with else
         //StatementPtr mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, StatementPtr elseStmt, const lex::Loc &loc);
 
-        ParamDecl *mk_param_decl(lex::SymId name, Type *type, const lex::Loc &loc);
+        ParamDecl* mk_param_decl(lex::SymId name, TypeExpr* typeExpr, const lex::Loc& loc);
 
-        VarDecl *mk_var_decl(InitDeclarator *decl,
-                             Type *ty,
-                             TypeRegion reg,
-                             const lex::Loc &loc);
-
-        VarsDecl *mk_vars_decl(std::vector<lex::SymId> &&names,
-                               std::vector<Expr *> &&assignments,
-                               Type *type,
-                               TypeRegion region,
-                               const lex::Loc &loc);
+        VarDecl* mk_var_decl(
+            lex::SymId name,
+            TypeExpr* tyExpr, VarDecl::Mutability mutability, const lex::Loc& loc);
 
         // ========= Declarations =========
-        FunctionDecl *mk_fn_decl(lex::SymId name,
-                                 CallableType *type,
-                                 std::vector<ParamDecl *> &&params,
-                                 Type *ret,
-                                 BlockStatement *body, // nullptr => prototype
-                                 const lex::Loc &loc);
+        FunctionDecl* mk_fn_decl(lex::SymId name,
+                                 std::vector<ParamDecl*>&& params,
+                                 TypeExpr* ret,
+                                 BlockStatement* body,
+                                 // nullptr => prototype
+                                 const lex::Loc& loc);
 
-        FieldDecl *mk_field_decl(lex::SymId name, Type *type, bool is_public, const lex::Loc &loc);
+        FieldDecl* mk_field_decl(lex::SymId name, TypeExpr* type, FieldDecl::Visibility visibility,
+                                 const lex::Loc& loc);
 
-        StructDecl *mk_struct_decl(lex::SymId name, std::vector<FieldDecl *> &&fields, const lex::Loc &loc);
+        StructDecl* mk_struct_decl(lex::SymId name, std::vector<FieldDecl*>&& fields, const lex::Loc& loc);
 
-        Module *mk_module(std::vector<lex::SymId> &&package_path,
-                          std::vector<ImportDecl *> &&imports,
-                          std::vector<Decl *> &&decls,
-                          const lex::Loc &loc);
-
-
-        ImportDecl *mk_import_decl(std::vector<lex::SymId> &&path, std::optional<lex::SymId> alias, bool is_public,
-                                   const lex::Loc &loc);
+        Module* mk_module(std::vector<lex::SymId>&& package_path,
+                          std::vector<ImportDecl*>&& imports,
+                          std::vector<Decl*>&& decls,
+                          const lex::Loc& loc);
 
 
-        RefExpr *mk_ref_expr(lex::SymId name, const lex::Loc &loc);
+        ImportDecl* mk_import_decl(std::vector<lex::SymId>&& path, std::optional<lex::SymId> alias, bool is_public,
+                                   const lex::Loc& loc);
 
-        CallExpr *mk_call_expr(ExprPtr callee, std::vector<ExprPtr> &&args, const lex::Loc &loc);
+
+        RefExpr* mk_ref_expr(lex::SymId name, const lex::Loc& loc);
+
+        CallExpr* mk_call_expr(ExprPtr callee, std::vector<ExprPtr>&& args, const lex::Loc& loc);
 
         // statements
 
-        //types
-        CallableType *mk_callable_type(std::vector<Type *> &&param_types, Type *ret, const lex::Loc &loc);
+        PathType* mk_type_path_single(lex::SymId segment, const lex::Loc& loc);
 
-        BuiltinType *mk_builtin_type(BuiltinTy type, const lex::Loc &loc);
+        PathType* mk_type_path_append(PathType* base, lex::SymId segment, const lex::Loc& loc);
 
-        FixedArrayType *mk_fixed_array_type(Type *type, std::uint64_t length, const lex::Loc &loc);
-
-        PathType *mk_type_path_single(lex::SymId segment, const lex::Loc &loc);
-
-        PathType *mk_type_path_append(PathType *base, lex::SymId segment, const lex::Loc &loc);
-
-        Type *mk_type_from_path(PathType *path, const lex::Loc &loc);
+        Type* mk_type_from_path(PathType* path, const lex::Loc& loc);
 
 
         // ======== Introspection (optional) ========

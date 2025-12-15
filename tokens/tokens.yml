@@ -21,6 +21,7 @@ tokens:
       LET: "let"
       RETURN: "return"
       MUT: "mut"
+      IMM: "imm"
       STATIC: "static"
       PUB: "pub"
     type_kw:
@@ -31,6 +32,30 @@ tokens:
       BOOL: "bool"
       VOID: "void"
       STRING: "string"
+
+      I8: "type"
+      U8: "type"
+
+      I16: "type"
+      U16: "type"
+
+      I32: "type"
+      U32: "type"
+
+      I64: "type"
+      U64: "type"
+
+      I128: "type"
+      U128: "type"
+
+      F32: "type"
+      F64: "type"
+
+      Bool: "type"
+
+      Char: "type"
+
+
     misc_flow:
       BREAK: "break"
       CONTINUE: "continue"
@@ -72,6 +97,12 @@ tokens:
     LCBRA: RCBRA
 
   operators:
+    AMP:
+      lit: "&"
+      precedence: 90
+      assoc: right
+      arity: 1
+      fixity: prefix
     INC:
       lit: "++"
       precedence: 90

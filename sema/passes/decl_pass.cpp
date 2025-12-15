@@ -87,7 +87,7 @@ namespace sema::pass
         sym.id = init->name;
         sym.kind = SymbolKind::Var;
         sym.loc = init->location_;
-        sym.type = v.type;
+        sym.type = v.type_;
         sym.decl = &v;
 
         sym.mutability = Mutability::Imm;

@@ -15,9 +15,6 @@
 
 
 namespace ast {
-    /**
-     *
-     */
     struct StructDecl final : Decl {
         lex::SymId name;
         std::vector<FieldDecl *> fields_;

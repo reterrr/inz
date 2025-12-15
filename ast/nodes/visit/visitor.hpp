@@ -5,22 +5,21 @@
 #ifndef VISITOR_HPP
 #define VISITOR_HPP
 
-namespace ast::visitor {
-    template<typename T>
-    struct VisitSlot {
-        virtual void visit(T &) = 0;
+namespace ast::visitor
+{
+    template <typename T>
+    struct VisitSlot
+    {
+        virtual ~VisitSlot() = default;
+        virtual void visit(T&) = 0;
     };
 
-    template<typename... Ts>
-    struct Visitor : VisitSlot<Ts>... {
+    template <typename... Ts>
+    struct Visitor : VisitSlot<Ts>...
+    {
         using VisitSlot<Ts>::visit...;
 
-        virtual ~Visitor() = default;
-    };
-
-    template<>
-    struct Visitor<> {
-
+        ~Visitor() override = default;
     };
 }
 

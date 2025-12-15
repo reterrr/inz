@@ -44,7 +44,7 @@ namespace ast::visitor
 
         void visit(StringLiteralExpr&) override;
 
-        void visit(ObjLiteralExpr&) override;
+        void visit(PathLiteralExpr&) override;
 
         void visit(AssignExpr&) override;
 
@@ -82,9 +82,6 @@ namespace ast::visitor
 
         void visit(Module&) override;
 
-        void visit(VarsDecl&) override;
-
-        void visit(VarsDeclStatement&) override;
         void visit(Project&) override;
     };
 }

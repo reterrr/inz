@@ -10,8 +10,10 @@
 #include "statement.hpp"
 #include "../visit/stmt_visitor.hpp"
 
-namespace ast {
-    struct BlockStatement final : Statement {
+namespace ast
+{
+    struct BlockStatement final : Statement
+    {
         std::vector<StatementPtr> statements_;
 
         // lex::Loc lbrace;
@@ -23,18 +25,21 @@ namespace ast {
         //       lbrace(lbrace), rbrace(rbrace) {
         // }
 
-        BlockStatement(std::vector<StatementPtr> &&statements, const lex::Loc &loc)
+        BlockStatement(std::vector<StatementPtr>&& statements, const lex::Loc& loc)
             : Statement(NodeKind::Stmt_Block, loc),
-              statements_(std::move(statements)) {
-            std::ranges::for_each(statements, [this](auto &stmt) {
+              statements_(std::move(statements))
+        {
+            std::ranges::for_each(statements, [this](auto& stmt)
+            {
                 stmt->parent = this;
             });
         }
 
-        void accept(visitor::StmtVisitor &) override;
+        void accept(visitor::StmtVisitor&) override;
     };
 
-    inline void BlockStatement::accept(visitor::StmtVisitor &v) {
+    inline void BlockStatement::accept(visitor::StmtVisitor& v)
+    {
         v.visit(*this);
     }
 }

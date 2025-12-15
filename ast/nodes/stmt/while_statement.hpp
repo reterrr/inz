@@ -8,26 +8,29 @@
 #include "statement.hpp"
 #include "../expr/expr.hpp"
 #include "../visit/stmt_visitor.hpp"
+#include "block_statement.hpp"
 
-namespace ast {
-    struct BlockStatement;
-
-    struct WhileStatement final : Statement {
+namespace ast
+{
+    struct WhileStatement final : Statement
+    {
         ExprPtr condition_;
-        BlockStatement *body_;
+        BlockStatement* body_;
 
-        WhileStatement(ExprPtr condition, BlockStatement *body, const lex::Loc &loc)
+        WhileStatement(ExprPtr condition, BlockStatement* body, const lex::Loc& loc)
             : Statement(NodeKind::Stmt_While, loc),
               condition_(condition),
-              body_(body) {
+              body_(body)
+        {
             condition_->parent = this;
             body_->parent = this;
         }
 
-        void accept(visitor::StmtVisitor &) override;
+        void accept(visitor::StmtVisitor&) override;
     };
 
-    inline void WhileStatement::accept(visitor::StmtVisitor &v) {
+    inline void WhileStatement::accept(visitor::StmtVisitor& v)
+    {
         v.visit(*this);
     }
 }

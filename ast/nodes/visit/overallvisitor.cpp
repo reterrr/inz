@@ -53,9 +53,8 @@ void ast::visitor::OverallVisitor::visit(ImportDecl& i)
     (void)i;
 }
 
-void ast::visitor::OverallVisitor::visit(VarDecl& v)
+void ast::visitor::OverallVisitor::visit(VarDecl&)
 {
-    v.declarator->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(StructDecl& s)
@@ -94,7 +93,7 @@ void ast::visitor::OverallVisitor::visit(StringLiteralExpr& s)
     (void)s;
 }
 
-void ast::visitor::OverallVisitor::visit(ObjLiteralExpr& o)
+void ast::visitor::OverallVisitor::visit(PathLiteralExpr& o)
 {
     std::ranges::for_each(o.elements_, [this](auto& f) { f->accept(*this); });
 }
@@ -194,14 +193,6 @@ void ast::visitor::OverallVisitor::visit(Module& m)
 {
     std::ranges::for_each(m.decls, [this](auto& d) { d->accept(*this); });
     std::ranges::for_each(m.imports, [this](auto& i) { i->accept(*this); });
-}
-
-void ast::visitor::OverallVisitor::visit(VarsDecl&)
-{
-}
-
-void ast::visitor::OverallVisitor::visit(VarsDeclStatement&)
-{
 }
 
 void ast::visitor::OverallVisitor::visit(Project& p)

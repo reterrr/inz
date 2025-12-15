@@ -32,7 +32,7 @@ namespace sema::pass
         void visit(ast::UnaryExpr&) override;
         void visit(ast::BinaryExpr&) override;
         void visit(ast::StringLiteralExpr&) override;
-        void visit(ast::ObjLiteralExpr&) override;
+        void visit(ast::PathLiteralExpr&) override;
         void visit(ast::AssignExpr&) override;
         void visit(ast::InitDeclarator&) override;
         void visit(ast::FieldExpr&) override;
@@ -49,10 +49,12 @@ namespace sema::pass
         void visit(ast::BreakStatement&) override;
         void visit(ast::DoWhileStatement&) override;
         void visit(ast::VarDeclStatement&) override;
-        void visit(ast::VarsDecl&) override;
-        void visit(ast::VarsDeclStatement&) override;
         void visit(ast::Project&) override;
         ~ScopeAstVisitor() override;
+        void visit(ast::ArrayTypeExpr&) override;
+        void visit(ast::PathTypeExpr&) override;
+        void visit(ast::RefTypeExpr&) override;
+        void visit(ast::BuiltinTypeExpr&) override;
     };
 
     class ScopePass final : public Pass<ScopeAstVisitor>
