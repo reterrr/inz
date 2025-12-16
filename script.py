@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import sys
-import yaml
-import click
 from pathlib import Path
-from typing import Any, Dict, List, Optional,   Tuple, Set
-from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Any, Dict, List, Optional, Tuple, Set
+
+import click
+import yaml
 from jinja2 import Environment, FileSystemLoader
+from pydantic import BaseModel, Field, model_validator
+
 
 # ----------------------------- Models ---------------------------------------
 
@@ -254,7 +256,6 @@ def main(config, template_dir, out_dir):
     mapping = {
         "token.hpp.jinja2":      "token.hpp",
         "lexer_rules.l.jinja2":  "lexer/lexer_rules.l",
-        "parser_rules.y.jinja2": "parser/parser_rules.y",
     }
 
     out_path = Path(out_dir)
