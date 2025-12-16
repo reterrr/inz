@@ -9,7 +9,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(LLVM REQUIRED)
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 find_package(Boost REQUIRED)
-find_package(CLI11 CONFIG REQUIRED)
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
@@ -99,6 +98,7 @@ add_executable(inz main.cpp
         sema/type_interner.hpp
         ast/nodes/decl/vars_decl.hpp
         ast/nodes/stmt/vars_decl_statement.hpp
+        some.c
 )
 
 target_include_directories(inz PRIVATE
@@ -116,4 +116,4 @@ add_definitions(${LLVM_DEFINITIONS})
 
 
 #target_link_libraries(inz PRIVATE parser_obj lexer_obj)
-target_link_libraries(inz PRIVATE LLVMSupport)
+target_link_libraries(inz PRIVATE LLVM)
