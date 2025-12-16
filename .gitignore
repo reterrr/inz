@@ -25,4 +25,4 @@ some.c
 lib
 lib64
 .venv
-bin 
+bin

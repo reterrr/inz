@@ -80,11 +80,6 @@ enum class NodeKind : uint16_t
     Decl_Vars_Sugar,
     Decl_Field,
 
-    // ---- Type syntax
-    Type_Builtin, // int, double, bool, string, void, etc.
-    Type_Path, // pkg.sub.Type
-    Type_Array, // [T]
-
     // ---- Sentinels
     Expr_Type,
 };
