@@ -7,30 +7,6 @@
 
 #include <cstdint>
 
-enum class NodeType {
-    expression,
-    int_,
-    float_,
-    bool_,
-    string,
-
-    function, //as well as either simple function or lambda
-    call, // invokable things like function, lambda, maybe some functor
-
-    sys_call, // ????? do i even need this?
-
-    if_block,
-    while_block,
-    for_block,
-    do_while_block,
-    match_block,
-
-    struct_block, // ?
-    enum_block, // ?
-
-    comment_block // do i even need this?
-};
-
 enum class RefType {
     Mut, NotMut
 };
@@ -98,14 +74,7 @@ enum class NodeKind : uint16_t {
     Decl_Param,
     Decl_Var,
     Decl_Vars_Sugar,
-    Decl_Field,
-
-    // ---- Type syntax
-    Type_Builtin, // int, double, bool, string, void, etc.
-    Type_Path, // pkg.sub.Type
-    Type_Array, // [T]
-
-    // ---- Sentinels
+    Decl_Field
 };
 
 #endif //NODE_TYPE_HPP

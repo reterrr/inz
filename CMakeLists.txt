@@ -43,7 +43,6 @@ add_executable(inz main.cpp
         ast/nodes/expr/unary_op_expr.hpp
         ast/nodes/expr/binary_op_expr.hpp
         ast/ast.hpp
-        ast/allocator.hpp
         ast/nodes/expr/type_node.hpp
         ast/nodes/expr/path_type_node.hpp
         ast/nodes/expr/ref_expr.hpp
