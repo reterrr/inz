@@ -7,13 +7,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(LLVM REQUIRED)
-find_package(Python3 COMPONENTS Interpreter REQUIRED)
 find_package(Boost REQUIRED)
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
 
 set(TOKEN_DIR ${CMAKE_SOURCE_DIR}/tokens)
-set(TEMPLATES_DIR ${CMAKE_SOURCE_DIR}/templates)
 set(GEN_DIR ${CMAKE_SOURCE_DIR}/generated)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
@@ -98,7 +96,6 @@ add_executable(inz main.cpp
         sema/type_interner.hpp
         ast/nodes/decl/vars_decl.hpp
         ast/nodes/stmt/vars_decl_statement.hpp
-        some.c
 )
 
 target_include_directories(inz PRIVATE
@@ -112,8 +109,6 @@ target_include_directories(inz PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/ast/nodes/decl
         ${LLVM_INCLUDE_DIRS}
 )
+
 add_definitions(${LLVM_DEFINITIONS})
-
-
-#target_link_libraries(inz PRIVATE parser_obj lexer_obj)
 target_link_libraries(inz PRIVATE LLVM)
