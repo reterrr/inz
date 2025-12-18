@@ -47,46 +47,18 @@
 // "%code requires" blocks.
 #line 17 "parser/parser_rules.y"
 
-  #include "../generated/token.hpp"   // defines lex::Loc, lex::SymId, token enum
-  #include "../types.hpp"             // kl_int, kl_double, kl_bool, etc.
-  #include <memory>
+  #include "generated/token.hpp"
+  #include "ast/ast.hpp"
+  #include "types.hpp"
   #include <vector>
   #include <string>
-  #include "../ast/ast.hpp"
+  #include <optional>
 
-  class Scanner;                      // forward only (no lexer.hpp here)
-
-  /* Keep the header light: only forward decls + pointer aliases. */
-  namespace ast {
-    class AST;                        // factory passed via %parse-param
-
-    /* base node categories */
-    struct Expr;          using ExprPtr      = Expr*;
-    struct Statement;     using StatementPtr = Statement*;
-    struct Decl;          using DeclPtr      = Decl*;
-    struct Module;        using ModulePtr    = Module*;
-
-    /* specific statements / decls used in %type */
-    struct BlockStatement;
-    struct VarDeclStatement;
-    struct FunctionDecl;
-    struct TypeAliasDecl;
-    struct VarDecl;
-
-    /* helper node used for top-level var declarators */
-
-    /* types */
-    struct Type;          using TypePtr      = Type*;
-    struct PathType;      using PathTypePtr  = PathType*;
-
-    /* params & struct field inits */
-    struct ParamDecl;     using ParamDeclPtr = ParamDecl*;
-    struct FieldInitExpr; using FieldInitPtr = FieldInitExpr*;
-  }
+  class Scanner;
 
   using Str = lex::SymId;
 
-#line 90 "parser/parser.hpp"
+#line 62 "parser/parser.hpp"
 
 
 # include <cstdlib> // std::abort
@@ -222,7 +194,7 @@
 
 #line 4 "parser/parser_rules.y"
 namespace yy {
-#line 226 "parser/parser.hpp"
+#line 198 "parser/parser.hpp"
 
 
 
@@ -419,7 +391,8 @@ namespace yy {
     union union_type
     {
       // TOK_IDENTIFIER
-      // TOK_TYPE_NAME
+      // TOK_INT_LITERAL
+      // TOK_FLOAT_LITERAL
       // TOK_STRING_LITERAL
       // name
       // ident
@@ -435,8 +408,13 @@ namespace yy {
       char dummy4[sizeof (ast::BuiltinTypeExpr*)];
 
       // decl
-      // top_decl
-      char dummy5[sizeof (ast::DeclPtr)];
+      char dummy5[sizeof (ast::Decl*)];
+
+      // elseif
+      char dummy6[sizeof (ast::ElseIfStatement*)];
+
+      // else_part
+      char dummy7[sizeof (ast::ElseStatement*)];
 
       // expr_opt
       // expr
@@ -451,95 +429,106 @@ namespace yy {
       // unary
       // postfix
       // primary
-      char dummy6[sizeof (ast::ExprPtr)];
+      char dummy8[sizeof (ast::Expr*)];
 
       // field_decl
-      char dummy7[sizeof (ast::FieldDecl*)];
+      char dummy9[sizeof (ast::FieldDecl*)];
 
       // field_init
-      char dummy8[sizeof (ast::FieldInitPtr)];
+      char dummy10[sizeof (ast::FieldInitExpr*)];
 
       // fn_decl
-      char dummy9[sizeof (ast::FunctionDecl*)];
+      char dummy11[sizeof (ast::FunctionDecl*)];
+
+      // if_stmt
+      char dummy12[sizeof (ast::IfStatement*)];
 
       // import_decl
-      char dummy10[sizeof (ast::ImportDecl*)];
+      char dummy13[sizeof (ast::ImportDecl*)];
 
       // translation_unit
-      char dummy11[sizeof (ast::ModulePtr)];
+      char dummy14[sizeof (ast::Module*)];
 
       // param
-      char dummy12[sizeof (ast::ParamDeclPtr)];
+      char dummy15[sizeof (ast::ParamDecl*)];
 
-      // struct_lit
-      char dummy13[sizeof (ast::PathLiteralExpr*)];
+      // path_expr
+      char dummy16[sizeof (ast::PathExpr*)];
 
       // path_type_expr
-      char dummy14[sizeof (ast::PathTypeExpr*)];
+      char dummy17[sizeof (ast::PathTypeExpr*)];
 
       // ref_type_expr
-      char dummy15[sizeof (ast::RefTypeExpr*)];
+      char dummy18[sizeof (ast::RefTypeExpr*)];
 
       // ref_mutability
-      char dummy16[sizeof (ast::RefTypeExpr::Mutability)];
+      char dummy19[sizeof (ast::RefTypeExpr::Mutability)];
 
       // stmt
-      char dummy17[sizeof (ast::StatementPtr)];
+      char dummy20[sizeof (ast::Statement*)];
 
       // struct_decl
-      char dummy18[sizeof (ast::StructDecl*)];
+      char dummy21[sizeof (ast::StructDecl*)];
+
+      // struct_lit
+      char dummy22[sizeof (ast::StructLiteralExpr*)];
 
       // ret_type_expr
       // type_expr
-      char dummy19[sizeof (ast::TypeExpr*)];
+      char dummy23[sizeof (ast::TypeExpr*)];
 
       // var_decl
-      char dummy20[sizeof (ast::VarDecl*)];
+      char dummy24[sizeof (ast::VarDecl*)];
 
       // var_mutability
-      char dummy21[sizeof (ast::VarDecl::Mutability)];
+      char dummy25[sizeof (ast::VarDecl::Mutability)];
 
       // var_decl_stmt
-      char dummy22[sizeof (ast::VarDeclStatement*)];
+      char dummy26[sizeof (ast::VarDeclStatement*)];
 
       // TOK_BOOL_LITERAL
-      char dummy23[sizeof (kl_bool)];
+      char dummy27[sizeof (kl::rt::boolean)];
 
-      // TOK_FLOAT_LITERAL
-      char dummy24[sizeof (kl_float)];
+      // TOK_CHAR_LITERAL
+      char dummy28[sizeof (kl::rt::character)];
 
-      // TOK_INT_LITERAL
-      char dummy25[sizeof (kl_int)];
+      // float_literal_type_opt
+      char dummy29[sizeof (std::optional<kl::rt::FloatKind>)];
+
+      // int_literal_type_opt
+      char dummy30[sizeof (std::optional<kl::rt::IntKind>)];
 
       // opt_package
       // names_separated_by_dots
-      // ident_list
-      char dummy26[sizeof (std::vector<Str>)];
+      char dummy31[sizeof (std::vector<Str>)];
 
       // decl_list
-      char dummy27[sizeof (std::vector<ast::DeclPtr>)];
+      char dummy32[sizeof (std::vector<ast::Decl*>)];
+
+      // elseif_list
+      char dummy33[sizeof (std::vector<ast::ElseIfStatement*>)];
 
       // arg_list_opt
       // arg_list
-      char dummy28[sizeof (std::vector<ast::ExprPtr>)];
+      char dummy34[sizeof (std::vector<ast::Expr*>)];
 
       // field_decl_list_opt
       // field_decl_list
-      char dummy29[sizeof (std::vector<ast::FieldDecl*>)];
+      char dummy35[sizeof (std::vector<ast::FieldDecl*>)];
 
       // field_inits_opt
       // field_inits
-      char dummy30[sizeof (std::vector<ast::FieldInitPtr>)];
+      char dummy36[sizeof (std::vector<ast::FieldInitExpr*>)];
 
       // import_list
-      char dummy31[sizeof (std::vector<ast::ImportDecl*>)];
+      char dummy37[sizeof (std::vector<ast::ImportDecl*>)];
 
       // param_list_opt
       // param_list
-      char dummy32[sizeof (std::vector<ast::ParamDeclPtr>)];
+      char dummy38[sizeof (std::vector<ast::ParamDecl*>)];
 
       // stmt_list
-      char dummy33[sizeof (std::vector<ast::StatementPtr>)];
+      char dummy39[sizeof (std::vector<ast::Statement*>)];
     };
 
     /// The size of the largest semantic type.
@@ -598,82 +587,74 @@ namespace yy {
     TOK_TRAIT = 264,               // TOK_TRAIT
     TOK_FN = 265,                  // TOK_FN
     TOK_TYPE = 266,                // TOK_TYPE
-    TOK_LET = 267,                 // TOK_LET
-    TOK_RETURN = 268,              // TOK_RETURN
+    TOK_RETURN = 267,              // TOK_RETURN
+    TOK_MUT = 268,                 // TOK_MUT
     TOK_IMM = 269,                 // TOK_IMM
-    TOK_INT = 270,                 // TOK_INT
-    TOK_BIGINT = 271,              // TOK_BIGINT
-    TOK_MAGICINT = 272,            // TOK_MAGICINT
-    TOK_DOUBLE = 273,              // TOK_DOUBLE
-    TOK_VOID = 274,                // TOK_VOID
-    TOK_STRING = 275,              // TOK_STRING
-    TOK_MUT = 276,                 // TOK_MUT
-    TOK_STATIC = 277,              // TOK_STATIC
-    TOK_PUB = 278,                 // TOK_PUB
-    TOK_BREAK = 279,               // TOK_BREAK
-    TOK_CONTINUE = 280,            // TOK_CONTINUE
-    TOK_IMPORT = 281,              // TOK_IMPORT
-    TOK_EXPORT = 282,              // TOK_EXPORT
-    TOK_PACKAGE = 283,             // TOK_PACKAGE
-    TOK_AS = 284,                  // TOK_AS
-    TOK_I8 = 285,                  // TOK_I8
-    TOK_U8 = 286,                  // TOK_U8
-    TOK_I16 = 287,                 // TOK_I16
-    TOK_U16 = 288,                 // TOK_U16
-    TOK_I32 = 289,                 // TOK_I32
-    TOK_U32 = 290,                 // TOK_U32
-    TOK_I64 = 291,                 // TOK_I64
-    TOK_U64 = 292,                 // TOK_U64
-    TOK_I128 = 293,                // TOK_I128
-    TOK_U128 = 294,                // TOK_U128
-    TOK_F32 = 295,                 // TOK_F32
-    TOK_F64 = 296,                 // TOK_F64
-    TOK_BOOL = 297,                // TOK_BOOL
-    TOK_CHAR = 298,                // TOK_CHAR
-    TOK_IDENTIFIER = 299,          // TOK_IDENTIFIER
-    TOK_TYPE_NAME = 300,           // TOK_TYPE_NAME
-    TOK_INT_LITERAL = 301,         // TOK_INT_LITERAL
-    TOK_FLOAT_LITERAL = 302,       // TOK_FLOAT_LITERAL
-    TOK_STRING_LITERAL = 303,      // TOK_STRING_LITERAL
-    TOK_BOOL_LITERAL = 304,        // TOK_BOOL_LITERAL
-    TOK_LPAR = 305,                // TOK_LPAR
-    TOK_RPAR = 306,                // TOK_RPAR
-    TOK_LBRACK = 307,              // TOK_LBRACK
-    TOK_RBRACK = 308,              // TOK_RBRACK
-    TOK_LCBRA = 309,               // TOK_LCBRA
-    TOK_RCBRA = 310,               // TOK_RCBRA
-    TOK_COMMA = 311,               // TOK_COMMA
-    TOK_SMCLN = 312,               // TOK_SMCLN
-    TOK_COLON = 313,               // TOK_COLON
-    TOK_DOT = 314,                 // TOK_DOT
-    TOK_QUESTION = 315,            // TOK_QUESTION
-    TOK_ARROW = 316,               // TOK_ARROW
-    TOK_NEGATION = 317,            // TOK_NEGATION
-    TOK_NEG = 318,                 // TOK_NEG
-    TOK_INC = 319,                 // TOK_INC
-    TOK_DEC = 320,                 // TOK_DEC
-    TOK_AMP = 321,                 // TOK_AMP
-    TOK_STAR = 322,                // TOK_STAR
-    TOK_SLASH = 323,               // TOK_SLASH
-    TOK_MODULO = 324,              // TOK_MODULO
-    TOK_PLUS = 325,                // TOK_PLUS
-    TOK_MINUS = 326,               // TOK_MINUS
-    TOK_LESS = 327,                // TOK_LESS
-    TOK_LEQ = 328,                 // TOK_LEQ
-    TOK_GREATER = 329,             // TOK_GREATER
-    TOK_GEQ = 330,                 // TOK_GEQ
-    TOK_EQUAL = 331,               // TOK_EQUAL
-    TOK_NEQUAL = 332,              // TOK_NEQUAL
-    TOK_BOOL_AND = 333,            // TOK_BOOL_AND
-    TOK_BOOL_OR = 334,             // TOK_BOOL_OR
-    TOK_ASSIGN = 335,              // TOK_ASSIGN
-    TOK_PLUS_ASSIGN = 336,         // TOK_PLUS_ASSIGN
-    TOK_MIN_ASSIGN = 337,          // TOK_MIN_ASSIGN
-    TOK_MUL_ASSIGN = 338,          // TOK_MUL_ASSIGN
-    TOK_DIV_ASSIGN = 339,          // TOK_DIV_ASSIGN
-    TERNARY = 340,                 // TERNARY
-    UMINUS = 341,                  // UMINUS
-    UPRE = 342                     // UPRE
+    TOK_STATIC = 270,              // TOK_STATIC
+    TOK_PUB = 271,                 // TOK_PUB
+    TOK_BREAK = 272,               // TOK_BREAK
+    TOK_CONTINUE = 273,            // TOK_CONTINUE
+    TOK_IMPORT = 274,              // TOK_IMPORT
+    TOK_EXPORT = 275,              // TOK_EXPORT
+    TOK_PACKAGE = 276,             // TOK_PACKAGE
+    TOK_AS = 277,                  // TOK_AS
+    TOK_I8 = 278,                  // TOK_I8
+    TOK_U8 = 279,                  // TOK_U8
+    TOK_I16 = 280,                 // TOK_I16
+    TOK_U16 = 281,                 // TOK_U16
+    TOK_I32 = 282,                 // TOK_I32
+    TOK_U32 = 283,                 // TOK_U32
+    TOK_I64 = 284,                 // TOK_I64
+    TOK_U64 = 285,                 // TOK_U64
+    TOK_I128 = 286,                // TOK_I128
+    TOK_U128 = 287,                // TOK_U128
+    TOK_F32 = 288,                 // TOK_F32
+    TOK_F64 = 289,                 // TOK_F64
+    TOK_BOOL = 290,                // TOK_BOOL
+    TOK_CHAR = 291,                // TOK_CHAR
+    TOK_IDENTIFIER = 292,          // TOK_IDENTIFIER
+    TOK_INT_LITERAL = 293,         // TOK_INT_LITERAL
+    TOK_FLOAT_LITERAL = 294,       // TOK_FLOAT_LITERAL
+    TOK_STRING_LITERAL = 295,      // TOK_STRING_LITERAL
+    TOK_BOOL_LITERAL = 296,        // TOK_BOOL_LITERAL
+    TOK_CHAR_LITERAL = 297,        // TOK_CHAR_LITERAL
+    TOK_LPAR = 298,                // TOK_LPAR
+    TOK_RPAR = 299,                // TOK_RPAR
+    TOK_LBRACK = 300,              // TOK_LBRACK
+    TOK_RBRACK = 301,              // TOK_RBRACK
+    TOK_LCBRA = 302,               // TOK_LCBRA
+    TOK_RCBRA = 303,               // TOK_RCBRA
+    TOK_COMMA = 304,               // TOK_COMMA
+    TOK_SMCLN = 305,               // TOK_SMCLN
+    TOK_COLON = 306,               // TOK_COLON
+    TOK_DOT = 307,                 // TOK_DOT
+    TOK_QUESTION = 308,            // TOK_QUESTION
+    TOK_ARROW = 309,               // TOK_ARROW
+    TOK_NEGATION = 310,            // TOK_NEGATION
+    TOK_INC = 311,                 // TOK_INC
+    TOK_DEC = 312,                 // TOK_DEC
+    TOK_AMP = 313,                 // TOK_AMP
+    TOK_STAR = 314,                // TOK_STAR
+    TOK_SLASH = 315,               // TOK_SLASH
+    TOK_MODULO = 316,              // TOK_MODULO
+    TOK_PLUS = 317,                // TOK_PLUS
+    TOK_MINUS = 318,               // TOK_MINUS
+    TOK_LESS = 319,                // TOK_LESS
+    TOK_LEQ = 320,                 // TOK_LEQ
+    TOK_GREATER = 321,             // TOK_GREATER
+    TOK_GEQ = 322,                 // TOK_GEQ
+    TOK_EQUAL = 323,               // TOK_EQUAL
+    TOK_NEQUAL = 324,              // TOK_NEQUAL
+    TOK_BOOL_AND = 325,            // TOK_BOOL_AND
+    TOK_BOOL_OR = 326,             // TOK_BOOL_OR
+    TOK_ASSIGN = 327,              // TOK_ASSIGN
+    TOK_PLUS_ASSIGN = 328,         // TOK_PLUS_ASSIGN
+    TOK_MIN_ASSIGN = 329,          // TOK_MIN_ASSIGN
+    TOK_MUL_ASSIGN = 330,          // TOK_MUL_ASSIGN
+    TOK_DIV_ASSIGN = 331,          // TOK_DIV_ASSIGN
+    TERNARY = 332,                 // TERNARY
+    UMINUS = 333,                  // UMINUS
+    UPRE = 334                     // UPRE
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -690,7 +671,7 @@ namespace yy {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 88, ///< Number of tokens.
+        YYNTOKENS = 80, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // "end of file"
         S_YYerror = 1,                           // error
@@ -704,134 +685,131 @@ namespace yy {
         S_TOK_TRAIT = 9,                         // TOK_TRAIT
         S_TOK_FN = 10,                           // TOK_FN
         S_TOK_TYPE = 11,                         // TOK_TYPE
-        S_TOK_LET = 12,                          // TOK_LET
-        S_TOK_RETURN = 13,                       // TOK_RETURN
+        S_TOK_RETURN = 12,                       // TOK_RETURN
+        S_TOK_MUT = 13,                          // TOK_MUT
         S_TOK_IMM = 14,                          // TOK_IMM
-        S_TOK_INT = 15,                          // TOK_INT
-        S_TOK_BIGINT = 16,                       // TOK_BIGINT
-        S_TOK_MAGICINT = 17,                     // TOK_MAGICINT
-        S_TOK_DOUBLE = 18,                       // TOK_DOUBLE
-        S_TOK_VOID = 19,                         // TOK_VOID
-        S_TOK_STRING = 20,                       // TOK_STRING
-        S_TOK_MUT = 21,                          // TOK_MUT
-        S_TOK_STATIC = 22,                       // TOK_STATIC
-        S_TOK_PUB = 23,                          // TOK_PUB
-        S_TOK_BREAK = 24,                        // TOK_BREAK
-        S_TOK_CONTINUE = 25,                     // TOK_CONTINUE
-        S_TOK_IMPORT = 26,                       // TOK_IMPORT
-        S_TOK_EXPORT = 27,                       // TOK_EXPORT
-        S_TOK_PACKAGE = 28,                      // TOK_PACKAGE
-        S_TOK_AS = 29,                           // TOK_AS
-        S_TOK_I8 = 30,                           // TOK_I8
-        S_TOK_U8 = 31,                           // TOK_U8
-        S_TOK_I16 = 32,                          // TOK_I16
-        S_TOK_U16 = 33,                          // TOK_U16
-        S_TOK_I32 = 34,                          // TOK_I32
-        S_TOK_U32 = 35,                          // TOK_U32
-        S_TOK_I64 = 36,                          // TOK_I64
-        S_TOK_U64 = 37,                          // TOK_U64
-        S_TOK_I128 = 38,                         // TOK_I128
-        S_TOK_U128 = 39,                         // TOK_U128
-        S_TOK_F32 = 40,                          // TOK_F32
-        S_TOK_F64 = 41,                          // TOK_F64
-        S_TOK_BOOL = 42,                         // TOK_BOOL
-        S_TOK_CHAR = 43,                         // TOK_CHAR
-        S_TOK_IDENTIFIER = 44,                   // TOK_IDENTIFIER
-        S_TOK_TYPE_NAME = 45,                    // TOK_TYPE_NAME
-        S_TOK_INT_LITERAL = 46,                  // TOK_INT_LITERAL
-        S_TOK_FLOAT_LITERAL = 47,                // TOK_FLOAT_LITERAL
-        S_TOK_STRING_LITERAL = 48,               // TOK_STRING_LITERAL
-        S_TOK_BOOL_LITERAL = 49,                 // TOK_BOOL_LITERAL
-        S_TOK_LPAR = 50,                         // TOK_LPAR
-        S_TOK_RPAR = 51,                         // TOK_RPAR
-        S_TOK_LBRACK = 52,                       // TOK_LBRACK
-        S_TOK_RBRACK = 53,                       // TOK_RBRACK
-        S_TOK_LCBRA = 54,                        // TOK_LCBRA
-        S_TOK_RCBRA = 55,                        // TOK_RCBRA
-        S_TOK_COMMA = 56,                        // TOK_COMMA
-        S_TOK_SMCLN = 57,                        // TOK_SMCLN
-        S_TOK_COLON = 58,                        // TOK_COLON
-        S_TOK_DOT = 59,                          // TOK_DOT
-        S_TOK_QUESTION = 60,                     // TOK_QUESTION
-        S_TOK_ARROW = 61,                        // TOK_ARROW
-        S_TOK_NEGATION = 62,                     // TOK_NEGATION
-        S_TOK_NEG = 63,                          // TOK_NEG
-        S_TOK_INC = 64,                          // TOK_INC
-        S_TOK_DEC = 65,                          // TOK_DEC
-        S_TOK_AMP = 66,                          // TOK_AMP
-        S_TOK_STAR = 67,                         // TOK_STAR
-        S_TOK_SLASH = 68,                        // TOK_SLASH
-        S_TOK_MODULO = 69,                       // TOK_MODULO
-        S_TOK_PLUS = 70,                         // TOK_PLUS
-        S_TOK_MINUS = 71,                        // TOK_MINUS
-        S_TOK_LESS = 72,                         // TOK_LESS
-        S_TOK_LEQ = 73,                          // TOK_LEQ
-        S_TOK_GREATER = 74,                      // TOK_GREATER
-        S_TOK_GEQ = 75,                          // TOK_GEQ
-        S_TOK_EQUAL = 76,                        // TOK_EQUAL
-        S_TOK_NEQUAL = 77,                       // TOK_NEQUAL
-        S_TOK_BOOL_AND = 78,                     // TOK_BOOL_AND
-        S_TOK_BOOL_OR = 79,                      // TOK_BOOL_OR
-        S_TOK_ASSIGN = 80,                       // TOK_ASSIGN
-        S_TOK_PLUS_ASSIGN = 81,                  // TOK_PLUS_ASSIGN
-        S_TOK_MIN_ASSIGN = 82,                   // TOK_MIN_ASSIGN
-        S_TOK_MUL_ASSIGN = 83,                   // TOK_MUL_ASSIGN
-        S_TOK_DIV_ASSIGN = 84,                   // TOK_DIV_ASSIGN
-        S_TERNARY = 85,                          // TERNARY
-        S_UMINUS = 86,                           // UMINUS
-        S_UPRE = 87,                             // UPRE
-        S_YYACCEPT = 88,                         // $accept
-        S_translation_unit = 89,                 // translation_unit
-        S_opt_package = 90,                      // opt_package
-        S_import_list = 91,                      // import_list
-        S_import_decl = 92,                      // import_decl
-        S_names_separated_by_dots = 93,          // names_separated_by_dots
-        S_name = 94,                             // name
-        S_decl_list = 95,                        // decl_list
-        S_decl = 96,                             // decl
-        S_fn_decl = 97,                          // fn_decl
-        S_struct_decl = 98,                      // struct_decl
-        S_field_decl_list_opt = 99,              // field_decl_list_opt
-        S_field_decl_list = 100,                 // field_decl_list
-        S_field_decl = 101,                      // field_decl
-        S_ret_type_expr = 102,                   // ret_type_expr
-        S_param_list_opt = 103,                  // param_list_opt
-        S_param_list = 104,                      // param_list
-        S_param = 105,                           // param
-        S_type_expr = 106,                       // type_expr
-        S_builtin_type_expr = 107,               // builtin_type_expr
-        S_path_type_expr = 108,                  // path_type_expr
-        S_array_type_expr = 109,                 // array_type_expr
-        S_ref_mutability = 110,                  // ref_mutability
-        S_ref_type_expr = 111,                   // ref_type_expr
-        S_ident = 112,                           // ident
-        S_ident_list = 113,                      // ident_list
-        S_block = 114,                           // block
-        S_stmt_list = 115,                       // stmt_list
-        S_stmt = 116,                            // stmt
-        S_expr_opt = 117,                        // expr_opt
-        S_var_decl_stmt = 118,                   // var_decl_stmt
-        S_top_decl = 119,                        // top_decl
-        S_var_mutability = 120,                  // var_mutability
-        S_var_decl = 121,                        // var_decl
-        S_expr = 122,                            // expr
-        S_assign = 123,                          // assign
-        S_cond = 124,                            // cond
-        S_logic_or = 125,                        // logic_or
-        S_logic_and = 126,                       // logic_and
-        S_equality = 127,                        // equality
-        S_relational = 128,                      // relational
-        S_additive = 129,                        // additive
-        S_multiplicative = 130,                  // multiplicative
-        S_unary = 131,                           // unary
-        S_postfix = 132,                         // postfix
-        S_arg_list_opt = 133,                    // arg_list_opt
-        S_arg_list = 134,                        // arg_list
-        S_primary = 135,                         // primary
-        S_struct_lit = 136,                      // struct_lit
-        S_field_inits_opt = 137,                 // field_inits_opt
-        S_field_inits = 138,                     // field_inits
-        S_field_init = 139                       // field_init
+        S_TOK_STATIC = 15,                       // TOK_STATIC
+        S_TOK_PUB = 16,                          // TOK_PUB
+        S_TOK_BREAK = 17,                        // TOK_BREAK
+        S_TOK_CONTINUE = 18,                     // TOK_CONTINUE
+        S_TOK_IMPORT = 19,                       // TOK_IMPORT
+        S_TOK_EXPORT = 20,                       // TOK_EXPORT
+        S_TOK_PACKAGE = 21,                      // TOK_PACKAGE
+        S_TOK_AS = 22,                           // TOK_AS
+        S_TOK_I8 = 23,                           // TOK_I8
+        S_TOK_U8 = 24,                           // TOK_U8
+        S_TOK_I16 = 25,                          // TOK_I16
+        S_TOK_U16 = 26,                          // TOK_U16
+        S_TOK_I32 = 27,                          // TOK_I32
+        S_TOK_U32 = 28,                          // TOK_U32
+        S_TOK_I64 = 29,                          // TOK_I64
+        S_TOK_U64 = 30,                          // TOK_U64
+        S_TOK_I128 = 31,                         // TOK_I128
+        S_TOK_U128 = 32,                         // TOK_U128
+        S_TOK_F32 = 33,                          // TOK_F32
+        S_TOK_F64 = 34,                          // TOK_F64
+        S_TOK_BOOL = 35,                         // TOK_BOOL
+        S_TOK_CHAR = 36,                         // TOK_CHAR
+        S_TOK_IDENTIFIER = 37,                   // TOK_IDENTIFIER
+        S_TOK_INT_LITERAL = 38,                  // TOK_INT_LITERAL
+        S_TOK_FLOAT_LITERAL = 39,                // TOK_FLOAT_LITERAL
+        S_TOK_STRING_LITERAL = 40,               // TOK_STRING_LITERAL
+        S_TOK_BOOL_LITERAL = 41,                 // TOK_BOOL_LITERAL
+        S_TOK_CHAR_LITERAL = 42,                 // TOK_CHAR_LITERAL
+        S_TOK_LPAR = 43,                         // TOK_LPAR
+        S_TOK_RPAR = 44,                         // TOK_RPAR
+        S_TOK_LBRACK = 45,                       // TOK_LBRACK
+        S_TOK_RBRACK = 46,                       // TOK_RBRACK
+        S_TOK_LCBRA = 47,                        // TOK_LCBRA
+        S_TOK_RCBRA = 48,                        // TOK_RCBRA
+        S_TOK_COMMA = 49,                        // TOK_COMMA
+        S_TOK_SMCLN = 50,                        // TOK_SMCLN
+        S_TOK_COLON = 51,                        // TOK_COLON
+        S_TOK_DOT = 52,                          // TOK_DOT
+        S_TOK_QUESTION = 53,                     // TOK_QUESTION
+        S_TOK_ARROW = 54,                        // TOK_ARROW
+        S_TOK_NEGATION = 55,                     // TOK_NEGATION
+        S_TOK_INC = 56,                          // TOK_INC
+        S_TOK_DEC = 57,                          // TOK_DEC
+        S_TOK_AMP = 58,                          // TOK_AMP
+        S_TOK_STAR = 59,                         // TOK_STAR
+        S_TOK_SLASH = 60,                        // TOK_SLASH
+        S_TOK_MODULO = 61,                       // TOK_MODULO
+        S_TOK_PLUS = 62,                         // TOK_PLUS
+        S_TOK_MINUS = 63,                        // TOK_MINUS
+        S_TOK_LESS = 64,                         // TOK_LESS
+        S_TOK_LEQ = 65,                          // TOK_LEQ
+        S_TOK_GREATER = 66,                      // TOK_GREATER
+        S_TOK_GEQ = 67,                          // TOK_GEQ
+        S_TOK_EQUAL = 68,                        // TOK_EQUAL
+        S_TOK_NEQUAL = 69,                       // TOK_NEQUAL
+        S_TOK_BOOL_AND = 70,                     // TOK_BOOL_AND
+        S_TOK_BOOL_OR = 71,                      // TOK_BOOL_OR
+        S_TOK_ASSIGN = 72,                       // TOK_ASSIGN
+        S_TOK_PLUS_ASSIGN = 73,                  // TOK_PLUS_ASSIGN
+        S_TOK_MIN_ASSIGN = 74,                   // TOK_MIN_ASSIGN
+        S_TOK_MUL_ASSIGN = 75,                   // TOK_MUL_ASSIGN
+        S_TOK_DIV_ASSIGN = 76,                   // TOK_DIV_ASSIGN
+        S_TERNARY = 77,                          // TERNARY
+        S_UMINUS = 78,                           // UMINUS
+        S_UPRE = 79,                             // UPRE
+        S_YYACCEPT = 80,                         // $accept
+        S_translation_unit = 81,                 // translation_unit
+        S_opt_package = 82,                      // opt_package
+        S_import_list = 83,                      // import_list
+        S_import_decl = 84,                      // import_decl
+        S_path_expr = 85,                        // path_expr
+        S_names_separated_by_dots = 86,          // names_separated_by_dots
+        S_name = 87,                             // name
+        S_decl_list = 88,                        // decl_list
+        S_decl = 89,                             // decl
+        S_fn_decl = 90,                          // fn_decl
+        S_struct_decl = 91,                      // struct_decl
+        S_field_decl_list_opt = 92,              // field_decl_list_opt
+        S_field_decl_list = 93,                  // field_decl_list
+        S_field_decl = 94,                       // field_decl
+        S_ret_type_expr = 95,                    // ret_type_expr
+        S_param_list_opt = 96,                   // param_list_opt
+        S_param_list = 97,                       // param_list
+        S_param = 98,                            // param
+        S_type_expr = 99,                        // type_expr
+        S_builtin_type_expr = 100,               // builtin_type_expr
+        S_path_type_expr = 101,                  // path_type_expr
+        S_array_type_expr = 102,                 // array_type_expr
+        S_ref_mutability = 103,                  // ref_mutability
+        S_ref_type_expr = 104,                   // ref_type_expr
+        S_ident = 105,                           // ident
+        S_block = 106,                           // block
+        S_stmt_list = 107,                       // stmt_list
+        S_stmt = 108,                            // stmt
+        S_if_stmt = 109,                         // if_stmt
+        S_elseif_list = 110,                     // elseif_list
+        S_elseif = 111,                          // elseif
+        S_else_part = 112,                       // else_part
+        S_expr_opt = 113,                        // expr_opt
+        S_var_decl_stmt = 114,                   // var_decl_stmt
+        S_var_mutability = 115,                  // var_mutability
+        S_var_decl = 116,                        // var_decl
+        S_expr = 117,                            // expr
+        S_assign = 118,                          // assign
+        S_cond = 119,                            // cond
+        S_logic_or = 120,                        // logic_or
+        S_logic_and = 121,                       // logic_and
+        S_equality = 122,                        // equality
+        S_relational = 123,                      // relational
+        S_additive = 124,                        // additive
+        S_multiplicative = 125,                  // multiplicative
+        S_unary = 126,                           // unary
+        S_postfix = 127,                         // postfix
+        S_arg_list_opt = 128,                    // arg_list_opt
+        S_arg_list = 129,                        // arg_list
+        S_int_literal_type_opt = 130,            // int_literal_type_opt
+        S_float_literal_type_opt = 131,          // float_literal_type_opt
+        S_primary = 132,                         // primary
+        S_struct_lit = 133,                      // struct_lit
+        S_field_inits_opt = 134,                 // field_inits_opt
+        S_field_inits = 135,                     // field_inits
+        S_field_init = 136                       // field_init
       };
     };
 
@@ -869,7 +847,8 @@ namespace yy {
         switch (this->kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
-      case symbol_kind::S_TOK_TYPE_NAME: // TOK_TYPE_NAME
+      case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
+      case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
       case symbol_kind::S_name: // name
       case symbol_kind::S_ident: // ident
@@ -889,8 +868,15 @@ namespace yy {
         break;
 
       case symbol_kind::S_decl: // decl
-      case symbol_kind::S_top_decl: // top_decl
-        value.move< ast::DeclPtr > (std::move (that.value));
+        value.move< ast::Decl* > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_elseif: // elseif
+        value.move< ast::ElseIfStatement* > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_else_part: // else_part
+        value.move< ast::ElseStatement* > (std::move (that.value));
         break;
 
       case symbol_kind::S_expr_opt: // expr_opt
@@ -906,7 +892,7 @@ namespace yy {
       case symbol_kind::S_unary: // unary
       case symbol_kind::S_postfix: // postfix
       case symbol_kind::S_primary: // primary
-        value.move< ast::ExprPtr > (std::move (that.value));
+        value.move< ast::Expr* > (std::move (that.value));
         break;
 
       case symbol_kind::S_field_decl: // field_decl
@@ -914,11 +900,15 @@ namespace yy {
         break;
 
       case symbol_kind::S_field_init: // field_init
-        value.move< ast::FieldInitPtr > (std::move (that.value));
+        value.move< ast::FieldInitExpr* > (std::move (that.value));
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
         value.move< ast::FunctionDecl* > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_if_stmt: // if_stmt
+        value.move< ast::IfStatement* > (std::move (that.value));
         break;
 
       case symbol_kind::S_import_decl: // import_decl
@@ -926,15 +916,15 @@ namespace yy {
         break;
 
       case symbol_kind::S_translation_unit: // translation_unit
-        value.move< ast::ModulePtr > (std::move (that.value));
+        value.move< ast::Module* > (std::move (that.value));
         break;
 
       case symbol_kind::S_param: // param
-        value.move< ast::ParamDeclPtr > (std::move (that.value));
+        value.move< ast::ParamDecl* > (std::move (that.value));
         break;
 
-      case symbol_kind::S_struct_lit: // struct_lit
-        value.move< ast::PathLiteralExpr* > (std::move (that.value));
+      case symbol_kind::S_path_expr: // path_expr
+        value.move< ast::PathExpr* > (std::move (that.value));
         break;
 
       case symbol_kind::S_path_type_expr: // path_type_expr
@@ -950,11 +940,15 @@ namespace yy {
         break;
 
       case symbol_kind::S_stmt: // stmt
-        value.move< ast::StatementPtr > (std::move (that.value));
+        value.move< ast::Statement* > (std::move (that.value));
         break;
 
       case symbol_kind::S_struct_decl: // struct_decl
         value.move< ast::StructDecl* > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_struct_lit: // struct_lit
+        value.move< ast::StructLiteralExpr* > (std::move (that.value));
         break;
 
       case symbol_kind::S_ret_type_expr: // ret_type_expr
@@ -975,30 +969,37 @@ namespace yy {
         break;
 
       case symbol_kind::S_TOK_BOOL_LITERAL: // TOK_BOOL_LITERAL
-        value.move< kl_bool > (std::move (that.value));
+        value.move< kl::rt::boolean > (std::move (that.value));
         break;
 
-      case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
-        value.move< kl_float > (std::move (that.value));
+      case symbol_kind::S_TOK_CHAR_LITERAL: // TOK_CHAR_LITERAL
+        value.move< kl::rt::character > (std::move (that.value));
         break;
 
-      case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
-        value.move< kl_int > (std::move (that.value));
+      case symbol_kind::S_float_literal_type_opt: // float_literal_type_opt
+        value.move< std::optional<kl::rt::FloatKind> > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_int_literal_type_opt: // int_literal_type_opt
+        value.move< std::optional<kl::rt::IntKind> > (std::move (that.value));
         break;
 
       case symbol_kind::S_opt_package: // opt_package
       case symbol_kind::S_names_separated_by_dots: // names_separated_by_dots
-      case symbol_kind::S_ident_list: // ident_list
         value.move< std::vector<Str> > (std::move (that.value));
         break;
 
       case symbol_kind::S_decl_list: // decl_list
-        value.move< std::vector<ast::DeclPtr> > (std::move (that.value));
+        value.move< std::vector<ast::Decl*> > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_elseif_list: // elseif_list
+        value.move< std::vector<ast::ElseIfStatement*> > (std::move (that.value));
         break;
 
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
-        value.move< std::vector<ast::ExprPtr> > (std::move (that.value));
+        value.move< std::vector<ast::Expr*> > (std::move (that.value));
         break;
 
       case symbol_kind::S_field_decl_list_opt: // field_decl_list_opt
@@ -1008,7 +1009,7 @@ namespace yy {
 
       case symbol_kind::S_field_inits_opt: // field_inits_opt
       case symbol_kind::S_field_inits: // field_inits
-        value.move< std::vector<ast::FieldInitPtr> > (std::move (that.value));
+        value.move< std::vector<ast::FieldInitExpr*> > (std::move (that.value));
         break;
 
       case symbol_kind::S_import_list: // import_list
@@ -1017,11 +1018,11 @@ namespace yy {
 
       case symbol_kind::S_param_list_opt: // param_list_opt
       case symbol_kind::S_param_list: // param_list
-        value.move< std::vector<ast::ParamDeclPtr> > (std::move (that.value));
+        value.move< std::vector<ast::ParamDecl*> > (std::move (that.value));
         break;
 
       case symbol_kind::S_stmt_list: // stmt_list
-        value.move< std::vector<ast::StatementPtr> > (std::move (that.value));
+        value.move< std::vector<ast::Statement*> > (std::move (that.value));
         break;
 
       default:
@@ -1104,13 +1105,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::DeclPtr&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, ast::Decl*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const ast::DeclPtr& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const ast::Decl*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1118,13 +1119,41 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::ExprPtr&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, ast::ElseIfStatement*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const ast::ExprPtr& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const ast::ElseIfStatement*& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, ast::ElseStatement*&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const ast::ElseStatement*& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, ast::Expr*&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const ast::Expr*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1146,13 +1175,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::FieldInitPtr&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, ast::FieldInitExpr*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const ast::FieldInitPtr& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const ast::FieldInitExpr*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1174,6 +1203,20 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, ast::IfStatement*&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const ast::IfStatement*& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
       basic_symbol (typename Base::kind_type t, ast::ImportDecl*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
@@ -1188,13 +1231,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::ModulePtr&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, ast::Module*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const ast::ModulePtr& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const ast::Module*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1202,13 +1245,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::ParamDeclPtr&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, ast::ParamDecl*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const ast::ParamDeclPtr& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const ast::ParamDecl*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1216,13 +1259,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::PathLiteralExpr*&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, ast::PathExpr*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const ast::PathLiteralExpr*& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const ast::PathExpr*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1272,13 +1315,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::StatementPtr&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, ast::Statement*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const ast::StatementPtr& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const ast::Statement*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1293,6 +1336,20 @@ namespace yy {
       {}
 #else
       basic_symbol (typename Base::kind_type t, const ast::StructDecl*& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, ast::StructLiteralExpr*&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const ast::StructLiteralExpr*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1356,13 +1413,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, kl_bool&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, kl::rt::boolean&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const kl_bool& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const kl::rt::boolean& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1370,13 +1427,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, kl_float&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, kl::rt::character&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const kl_float& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const kl::rt::character& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1384,13 +1441,27 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, kl_int&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, std::optional<kl::rt::FloatKind>&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const kl_int& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const std::optional<kl::rt::FloatKind>& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, std::optional<kl::rt::IntKind>&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const std::optional<kl::rt::IntKind>& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1412,13 +1483,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, std::vector<ast::DeclPtr>&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, std::vector<ast::Decl*>&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const std::vector<ast::DeclPtr>& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const std::vector<ast::Decl*>& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1426,13 +1497,27 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, std::vector<ast::ExprPtr>&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, std::vector<ast::ElseIfStatement*>&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const std::vector<ast::ExprPtr>& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const std::vector<ast::ElseIfStatement*>& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, std::vector<ast::Expr*>&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const std::vector<ast::Expr*>& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1454,13 +1539,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, std::vector<ast::FieldInitPtr>&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, std::vector<ast::FieldInitExpr*>&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const std::vector<ast::FieldInitPtr>& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const std::vector<ast::FieldInitExpr*>& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1482,13 +1567,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, std::vector<ast::ParamDeclPtr>&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, std::vector<ast::ParamDecl*>&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const std::vector<ast::ParamDeclPtr>& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const std::vector<ast::ParamDecl*>& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1496,13 +1581,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, std::vector<ast::StatementPtr>&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, std::vector<ast::Statement*>&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const std::vector<ast::StatementPtr>& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const std::vector<ast::Statement*>& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1534,7 +1619,8 @@ namespace yy {
 switch (yykind)
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
-      case symbol_kind::S_TOK_TYPE_NAME: // TOK_TYPE_NAME
+      case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
+      case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
       case symbol_kind::S_name: // name
       case symbol_kind::S_ident: // ident
@@ -1554,8 +1640,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_decl: // decl
-      case symbol_kind::S_top_decl: // top_decl
-        value.template destroy< ast::DeclPtr > ();
+        value.template destroy< ast::Decl* > ();
+        break;
+
+      case symbol_kind::S_elseif: // elseif
+        value.template destroy< ast::ElseIfStatement* > ();
+        break;
+
+      case symbol_kind::S_else_part: // else_part
+        value.template destroy< ast::ElseStatement* > ();
         break;
 
       case symbol_kind::S_expr_opt: // expr_opt
@@ -1571,7 +1664,7 @@ switch (yykind)
       case symbol_kind::S_unary: // unary
       case symbol_kind::S_postfix: // postfix
       case symbol_kind::S_primary: // primary
-        value.template destroy< ast::ExprPtr > ();
+        value.template destroy< ast::Expr* > ();
         break;
 
       case symbol_kind::S_field_decl: // field_decl
@@ -1579,11 +1672,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_field_init: // field_init
-        value.template destroy< ast::FieldInitPtr > ();
+        value.template destroy< ast::FieldInitExpr* > ();
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
         value.template destroy< ast::FunctionDecl* > ();
+        break;
+
+      case symbol_kind::S_if_stmt: // if_stmt
+        value.template destroy< ast::IfStatement* > ();
         break;
 
       case symbol_kind::S_import_decl: // import_decl
@@ -1591,15 +1688,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_translation_unit: // translation_unit
-        value.template destroy< ast::ModulePtr > ();
+        value.template destroy< ast::Module* > ();
         break;
 
       case symbol_kind::S_param: // param
-        value.template destroy< ast::ParamDeclPtr > ();
+        value.template destroy< ast::ParamDecl* > ();
         break;
 
-      case symbol_kind::S_struct_lit: // struct_lit
-        value.template destroy< ast::PathLiteralExpr* > ();
+      case symbol_kind::S_path_expr: // path_expr
+        value.template destroy< ast::PathExpr* > ();
         break;
 
       case symbol_kind::S_path_type_expr: // path_type_expr
@@ -1615,11 +1712,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_stmt: // stmt
-        value.template destroy< ast::StatementPtr > ();
+        value.template destroy< ast::Statement* > ();
         break;
 
       case symbol_kind::S_struct_decl: // struct_decl
         value.template destroy< ast::StructDecl* > ();
+        break;
+
+      case symbol_kind::S_struct_lit: // struct_lit
+        value.template destroy< ast::StructLiteralExpr* > ();
         break;
 
       case symbol_kind::S_ret_type_expr: // ret_type_expr
@@ -1640,30 +1741,37 @@ switch (yykind)
         break;
 
       case symbol_kind::S_TOK_BOOL_LITERAL: // TOK_BOOL_LITERAL
-        value.template destroy< kl_bool > ();
+        value.template destroy< kl::rt::boolean > ();
         break;
 
-      case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
-        value.template destroy< kl_float > ();
+      case symbol_kind::S_TOK_CHAR_LITERAL: // TOK_CHAR_LITERAL
+        value.template destroy< kl::rt::character > ();
         break;
 
-      case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
-        value.template destroy< kl_int > ();
+      case symbol_kind::S_float_literal_type_opt: // float_literal_type_opt
+        value.template destroy< std::optional<kl::rt::FloatKind> > ();
+        break;
+
+      case symbol_kind::S_int_literal_type_opt: // int_literal_type_opt
+        value.template destroy< std::optional<kl::rt::IntKind> > ();
         break;
 
       case symbol_kind::S_opt_package: // opt_package
       case symbol_kind::S_names_separated_by_dots: // names_separated_by_dots
-      case symbol_kind::S_ident_list: // ident_list
         value.template destroy< std::vector<Str> > ();
         break;
 
       case symbol_kind::S_decl_list: // decl_list
-        value.template destroy< std::vector<ast::DeclPtr> > ();
+        value.template destroy< std::vector<ast::Decl*> > ();
+        break;
+
+      case symbol_kind::S_elseif_list: // elseif_list
+        value.template destroy< std::vector<ast::ElseIfStatement*> > ();
         break;
 
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
-        value.template destroy< std::vector<ast::ExprPtr> > ();
+        value.template destroy< std::vector<ast::Expr*> > ();
         break;
 
       case symbol_kind::S_field_decl_list_opt: // field_decl_list_opt
@@ -1673,7 +1781,7 @@ switch (yykind)
 
       case symbol_kind::S_field_inits_opt: // field_inits_opt
       case symbol_kind::S_field_inits: // field_inits
-        value.template destroy< std::vector<ast::FieldInitPtr> > ();
+        value.template destroy< std::vector<ast::FieldInitExpr*> > ();
         break;
 
       case symbol_kind::S_import_list: // import_list
@@ -1682,11 +1790,11 @@ switch (yykind)
 
       case symbol_kind::S_param_list_opt: // param_list_opt
       case symbol_kind::S_param_list: // param_list
-        value.template destroy< std::vector<ast::ParamDeclPtr> > ();
+        value.template destroy< std::vector<ast::ParamDecl*> > ();
         break;
 
       case symbol_kind::S_stmt_list: // stmt_list
-        value.template destroy< std::vector<ast::StatementPtr> > ();
+        value.template destroy< std::vector<ast::Statement*> > ();
         break;
 
       default:
@@ -1794,26 +1902,18 @@ switch (yykind)
 #endif
       {}
 #if 201103L <= YY_CPLUSPLUS
-      symbol_type (int tok, kl_bool v, location_type l)
+      symbol_type (int tok, kl::rt::boolean v, location_type l)
         : super_type (token_kind_type (tok), std::move (v), std::move (l))
 #else
-      symbol_type (int tok, const kl_bool& v, const location_type& l)
+      symbol_type (int tok, const kl::rt::boolean& v, const location_type& l)
         : super_type (token_kind_type (tok), v, l)
 #endif
       {}
 #if 201103L <= YY_CPLUSPLUS
-      symbol_type (int tok, kl_float v, location_type l)
+      symbol_type (int tok, kl::rt::character v, location_type l)
         : super_type (token_kind_type (tok), std::move (v), std::move (l))
 #else
-      symbol_type (int tok, const kl_float& v, const location_type& l)
-        : super_type (token_kind_type (tok), v, l)
-#endif
-      {}
-#if 201103L <= YY_CPLUSPLUS
-      symbol_type (int tok, kl_int v, location_type l)
-        : super_type (token_kind_type (tok), std::move (v), std::move (l))
-#else
-      symbol_type (int tok, const kl_int& v, const location_type& l)
+      symbol_type (int tok, const kl::rt::character& v, const location_type& l)
         : super_type (token_kind_type (tok), v, l)
 #endif
       {}
@@ -2048,21 +2148,6 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_TOK_LET (location_type l)
-      {
-        return symbol_type (token::TOK_LET, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_LET (const location_type& l)
-      {
-        return symbol_type (token::TOK_LET, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
       make_TOK_RETURN (location_type l)
       {
         return symbol_type (token::TOK_RETURN, std::move (l));
@@ -2078,111 +2163,6 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_TOK_IMM (location_type l)
-      {
-        return symbol_type (token::TOK_IMM, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_IMM (const location_type& l)
-      {
-        return symbol_type (token::TOK_IMM, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_INT (location_type l)
-      {
-        return symbol_type (token::TOK_INT, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_INT (const location_type& l)
-      {
-        return symbol_type (token::TOK_INT, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_BIGINT (location_type l)
-      {
-        return symbol_type (token::TOK_BIGINT, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_BIGINT (const location_type& l)
-      {
-        return symbol_type (token::TOK_BIGINT, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_MAGICINT (location_type l)
-      {
-        return symbol_type (token::TOK_MAGICINT, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_MAGICINT (const location_type& l)
-      {
-        return symbol_type (token::TOK_MAGICINT, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_DOUBLE (location_type l)
-      {
-        return symbol_type (token::TOK_DOUBLE, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_DOUBLE (const location_type& l)
-      {
-        return symbol_type (token::TOK_DOUBLE, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_VOID (location_type l)
-      {
-        return symbol_type (token::TOK_VOID, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_VOID (const location_type& l)
-      {
-        return symbol_type (token::TOK_VOID, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_STRING (location_type l)
-      {
-        return symbol_type (token::TOK_STRING, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_STRING (const location_type& l)
-      {
-        return symbol_type (token::TOK_STRING, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
       make_TOK_MUT (location_type l)
       {
         return symbol_type (token::TOK_MUT, std::move (l));
@@ -2193,6 +2173,21 @@ switch (yykind)
       make_TOK_MUT (const location_type& l)
       {
         return symbol_type (token::TOK_MUT, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_TOK_IMM (location_type l)
+      {
+        return symbol_type (token::TOK_IMM, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_TOK_IMM (const location_type& l)
+      {
+        return symbol_type (token::TOK_IMM, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -2543,29 +2538,14 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_TOK_TYPE_NAME (Str v, location_type l)
-      {
-        return symbol_type (token::TOK_TYPE_NAME, std::move (v), std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_TYPE_NAME (const Str& v, const location_type& l)
-      {
-        return symbol_type (token::TOK_TYPE_NAME, v, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_INT_LITERAL (kl_int v, location_type l)
+      make_TOK_INT_LITERAL (Str v, location_type l)
       {
         return symbol_type (token::TOK_INT_LITERAL, std::move (v), std::move (l));
       }
 #else
       static
       symbol_type
-      make_TOK_INT_LITERAL (const kl_int& v, const location_type& l)
+      make_TOK_INT_LITERAL (const Str& v, const location_type& l)
       {
         return symbol_type (token::TOK_INT_LITERAL, v, l);
       }
@@ -2573,14 +2553,14 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_TOK_FLOAT_LITERAL (kl_float v, location_type l)
+      make_TOK_FLOAT_LITERAL (Str v, location_type l)
       {
         return symbol_type (token::TOK_FLOAT_LITERAL, std::move (v), std::move (l));
       }
 #else
       static
       symbol_type
-      make_TOK_FLOAT_LITERAL (const kl_float& v, const location_type& l)
+      make_TOK_FLOAT_LITERAL (const Str& v, const location_type& l)
       {
         return symbol_type (token::TOK_FLOAT_LITERAL, v, l);
       }
@@ -2603,16 +2583,31 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_TOK_BOOL_LITERAL (kl_bool v, location_type l)
+      make_TOK_BOOL_LITERAL (kl::rt::boolean v, location_type l)
       {
         return symbol_type (token::TOK_BOOL_LITERAL, std::move (v), std::move (l));
       }
 #else
       static
       symbol_type
-      make_TOK_BOOL_LITERAL (const kl_bool& v, const location_type& l)
+      make_TOK_BOOL_LITERAL (const kl::rt::boolean& v, const location_type& l)
       {
         return symbol_type (token::TOK_BOOL_LITERAL, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_TOK_CHAR_LITERAL (kl::rt::character v, location_type l)
+      {
+        return symbol_type (token::TOK_CHAR_LITERAL, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_TOK_CHAR_LITERAL (const kl::rt::character& v, const location_type& l)
+      {
+        return symbol_type (token::TOK_CHAR_LITERAL, v, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -2808,21 +2803,6 @@ switch (yykind)
       make_TOK_NEGATION (const location_type& l)
       {
         return symbol_type (token::TOK_NEGATION, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_NEG (location_type l)
-      {
-        return symbol_type (token::TOK_NEG, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_NEG (const location_type& l)
-      {
-        return symbol_type (token::TOK_NEG, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -3247,7 +3227,7 @@ switch (yykind)
     /// \param yyvalue   the value to check
     static bool yy_table_value_is_error_ (int yyvalue) YY_NOEXCEPT;
 
-    static const short yypact_ninf_;
+    static const signed char yypact_ninf_;
     static const signed char yytable_ninf_;
 
     /// Convert a scanner token kind \a t to a symbol kind.
@@ -3534,8 +3514,8 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 270,     ///< Last index in yytable_.
-      yynnts_ = 52,  ///< Number of nonterminal symbols.
+      yylast_ = 245,     ///< Last index in yytable_.
+      yynnts_ = 57,  ///< Number of nonterminal symbols.
       yyfinal_ = 7 ///< Termination state number.
     };
 
@@ -3589,11 +3569,10 @@ switch (yykind)
       45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
       55,    56,    57,    58,    59,    60,    61,    62,    63,    64,
       65,    66,    67,    68,    69,    70,    71,    72,    73,    74,
-      75,    76,    77,    78,    79,    80,    81,    82,    83,    84,
-      85,    86,    87
+      75,    76,    77,    78,    79
     };
     // Last valid token kind.
-    const int code_max = 342;
+    const int code_max = 334;
 
     if (t <= 0)
       return symbol_kind::S_YYEOF;
@@ -3613,7 +3592,8 @@ switch (yykind)
     switch (this->kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
-      case symbol_kind::S_TOK_TYPE_NAME: // TOK_TYPE_NAME
+      case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
+      case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
       case symbol_kind::S_name: // name
       case symbol_kind::S_ident: // ident
@@ -3633,8 +3613,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_decl: // decl
-      case symbol_kind::S_top_decl: // top_decl
-        value.copy< ast::DeclPtr > (YY_MOVE (that.value));
+        value.copy< ast::Decl* > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_elseif: // elseif
+        value.copy< ast::ElseIfStatement* > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_else_part: // else_part
+        value.copy< ast::ElseStatement* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_expr_opt: // expr_opt
@@ -3650,7 +3637,7 @@ switch (yykind)
       case symbol_kind::S_unary: // unary
       case symbol_kind::S_postfix: // postfix
       case symbol_kind::S_primary: // primary
-        value.copy< ast::ExprPtr > (YY_MOVE (that.value));
+        value.copy< ast::Expr* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_field_decl: // field_decl
@@ -3658,11 +3645,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_field_init: // field_init
-        value.copy< ast::FieldInitPtr > (YY_MOVE (that.value));
+        value.copy< ast::FieldInitExpr* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
         value.copy< ast::FunctionDecl* > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_if_stmt: // if_stmt
+        value.copy< ast::IfStatement* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_import_decl: // import_decl
@@ -3670,15 +3661,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_translation_unit: // translation_unit
-        value.copy< ast::ModulePtr > (YY_MOVE (that.value));
+        value.copy< ast::Module* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_param: // param
-        value.copy< ast::ParamDeclPtr > (YY_MOVE (that.value));
+        value.copy< ast::ParamDecl* > (YY_MOVE (that.value));
         break;
 
-      case symbol_kind::S_struct_lit: // struct_lit
-        value.copy< ast::PathLiteralExpr* > (YY_MOVE (that.value));
+      case symbol_kind::S_path_expr: // path_expr
+        value.copy< ast::PathExpr* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_path_type_expr: // path_type_expr
@@ -3694,11 +3685,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_stmt: // stmt
-        value.copy< ast::StatementPtr > (YY_MOVE (that.value));
+        value.copy< ast::Statement* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_struct_decl: // struct_decl
         value.copy< ast::StructDecl* > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_struct_lit: // struct_lit
+        value.copy< ast::StructLiteralExpr* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_ret_type_expr: // ret_type_expr
@@ -3719,30 +3714,37 @@ switch (yykind)
         break;
 
       case symbol_kind::S_TOK_BOOL_LITERAL: // TOK_BOOL_LITERAL
-        value.copy< kl_bool > (YY_MOVE (that.value));
+        value.copy< kl::rt::boolean > (YY_MOVE (that.value));
         break;
 
-      case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
-        value.copy< kl_float > (YY_MOVE (that.value));
+      case symbol_kind::S_TOK_CHAR_LITERAL: // TOK_CHAR_LITERAL
+        value.copy< kl::rt::character > (YY_MOVE (that.value));
         break;
 
-      case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
-        value.copy< kl_int > (YY_MOVE (that.value));
+      case symbol_kind::S_float_literal_type_opt: // float_literal_type_opt
+        value.copy< std::optional<kl::rt::FloatKind> > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_int_literal_type_opt: // int_literal_type_opt
+        value.copy< std::optional<kl::rt::IntKind> > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_opt_package: // opt_package
       case symbol_kind::S_names_separated_by_dots: // names_separated_by_dots
-      case symbol_kind::S_ident_list: // ident_list
         value.copy< std::vector<Str> > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_decl_list: // decl_list
-        value.copy< std::vector<ast::DeclPtr> > (YY_MOVE (that.value));
+        value.copy< std::vector<ast::Decl*> > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_elseif_list: // elseif_list
+        value.copy< std::vector<ast::ElseIfStatement*> > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
-        value.copy< std::vector<ast::ExprPtr> > (YY_MOVE (that.value));
+        value.copy< std::vector<ast::Expr*> > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_field_decl_list_opt: // field_decl_list_opt
@@ -3752,7 +3754,7 @@ switch (yykind)
 
       case symbol_kind::S_field_inits_opt: // field_inits_opt
       case symbol_kind::S_field_inits: // field_inits
-        value.copy< std::vector<ast::FieldInitPtr> > (YY_MOVE (that.value));
+        value.copy< std::vector<ast::FieldInitExpr*> > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_import_list: // import_list
@@ -3761,11 +3763,11 @@ switch (yykind)
 
       case symbol_kind::S_param_list_opt: // param_list_opt
       case symbol_kind::S_param_list: // param_list
-        value.copy< std::vector<ast::ParamDeclPtr> > (YY_MOVE (that.value));
+        value.copy< std::vector<ast::ParamDecl*> > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_stmt_list: // stmt_list
-        value.copy< std::vector<ast::StatementPtr> > (YY_MOVE (that.value));
+        value.copy< std::vector<ast::Statement*> > (YY_MOVE (that.value));
         break;
 
       default:
@@ -3800,7 +3802,8 @@ switch (yykind)
     switch (this->kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
-      case symbol_kind::S_TOK_TYPE_NAME: // TOK_TYPE_NAME
+      case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
+      case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
       case symbol_kind::S_name: // name
       case symbol_kind::S_ident: // ident
@@ -3820,8 +3823,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_decl: // decl
-      case symbol_kind::S_top_decl: // top_decl
-        value.move< ast::DeclPtr > (YY_MOVE (s.value));
+        value.move< ast::Decl* > (YY_MOVE (s.value));
+        break;
+
+      case symbol_kind::S_elseif: // elseif
+        value.move< ast::ElseIfStatement* > (YY_MOVE (s.value));
+        break;
+
+      case symbol_kind::S_else_part: // else_part
+        value.move< ast::ElseStatement* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_expr_opt: // expr_opt
@@ -3837,7 +3847,7 @@ switch (yykind)
       case symbol_kind::S_unary: // unary
       case symbol_kind::S_postfix: // postfix
       case symbol_kind::S_primary: // primary
-        value.move< ast::ExprPtr > (YY_MOVE (s.value));
+        value.move< ast::Expr* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_field_decl: // field_decl
@@ -3845,11 +3855,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_field_init: // field_init
-        value.move< ast::FieldInitPtr > (YY_MOVE (s.value));
+        value.move< ast::FieldInitExpr* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
         value.move< ast::FunctionDecl* > (YY_MOVE (s.value));
+        break;
+
+      case symbol_kind::S_if_stmt: // if_stmt
+        value.move< ast::IfStatement* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_import_decl: // import_decl
@@ -3857,15 +3871,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_translation_unit: // translation_unit
-        value.move< ast::ModulePtr > (YY_MOVE (s.value));
+        value.move< ast::Module* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_param: // param
-        value.move< ast::ParamDeclPtr > (YY_MOVE (s.value));
+        value.move< ast::ParamDecl* > (YY_MOVE (s.value));
         break;
 
-      case symbol_kind::S_struct_lit: // struct_lit
-        value.move< ast::PathLiteralExpr* > (YY_MOVE (s.value));
+      case symbol_kind::S_path_expr: // path_expr
+        value.move< ast::PathExpr* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_path_type_expr: // path_type_expr
@@ -3881,11 +3895,15 @@ switch (yykind)
         break;
 
       case symbol_kind::S_stmt: // stmt
-        value.move< ast::StatementPtr > (YY_MOVE (s.value));
+        value.move< ast::Statement* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_struct_decl: // struct_decl
         value.move< ast::StructDecl* > (YY_MOVE (s.value));
+        break;
+
+      case symbol_kind::S_struct_lit: // struct_lit
+        value.move< ast::StructLiteralExpr* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_ret_type_expr: // ret_type_expr
@@ -3906,30 +3924,37 @@ switch (yykind)
         break;
 
       case symbol_kind::S_TOK_BOOL_LITERAL: // TOK_BOOL_LITERAL
-        value.move< kl_bool > (YY_MOVE (s.value));
+        value.move< kl::rt::boolean > (YY_MOVE (s.value));
         break;
 
-      case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
-        value.move< kl_float > (YY_MOVE (s.value));
+      case symbol_kind::S_TOK_CHAR_LITERAL: // TOK_CHAR_LITERAL
+        value.move< kl::rt::character > (YY_MOVE (s.value));
         break;
 
-      case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
-        value.move< kl_int > (YY_MOVE (s.value));
+      case symbol_kind::S_float_literal_type_opt: // float_literal_type_opt
+        value.move< std::optional<kl::rt::FloatKind> > (YY_MOVE (s.value));
+        break;
+
+      case symbol_kind::S_int_literal_type_opt: // int_literal_type_opt
+        value.move< std::optional<kl::rt::IntKind> > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_opt_package: // opt_package
       case symbol_kind::S_names_separated_by_dots: // names_separated_by_dots
-      case symbol_kind::S_ident_list: // ident_list
         value.move< std::vector<Str> > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_decl_list: // decl_list
-        value.move< std::vector<ast::DeclPtr> > (YY_MOVE (s.value));
+        value.move< std::vector<ast::Decl*> > (YY_MOVE (s.value));
+        break;
+
+      case symbol_kind::S_elseif_list: // elseif_list
+        value.move< std::vector<ast::ElseIfStatement*> > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
-        value.move< std::vector<ast::ExprPtr> > (YY_MOVE (s.value));
+        value.move< std::vector<ast::Expr*> > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_field_decl_list_opt: // field_decl_list_opt
@@ -3939,7 +3964,7 @@ switch (yykind)
 
       case symbol_kind::S_field_inits_opt: // field_inits_opt
       case symbol_kind::S_field_inits: // field_inits
-        value.move< std::vector<ast::FieldInitPtr> > (YY_MOVE (s.value));
+        value.move< std::vector<ast::FieldInitExpr*> > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_import_list: // import_list
@@ -3948,11 +3973,11 @@ switch (yykind)
 
       case symbol_kind::S_param_list_opt: // param_list_opt
       case symbol_kind::S_param_list: // param_list
-        value.move< std::vector<ast::ParamDeclPtr> > (YY_MOVE (s.value));
+        value.move< std::vector<ast::ParamDecl*> > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_stmt_list: // stmt_list
-        value.move< std::vector<ast::StatementPtr> > (YY_MOVE (s.value));
+        value.move< std::vector<ast::Statement*> > (YY_MOVE (s.value));
         break;
 
       default:
@@ -4022,15 +4047,15 @@ switch (yykind)
 
 #line 4 "parser/parser_rules.y"
 } // yy
-#line 4026 "parser/parser.hpp"
+#line 4051 "parser/parser.hpp"
 
 
 // "%code provides" blocks.
-#line 59 "parser/parser_rules.y"
+#line 32 "parser/parser_rules.y"
 
   yy::parser::symbol_type yylex(Scanner& scanner);
 
-#line 4034 "parser/parser.hpp"
+#line 4059 "parser/parser.hpp"
 
 
 #endif // !YY_YY_PARSER_PARSER_HPP_INCLUDED

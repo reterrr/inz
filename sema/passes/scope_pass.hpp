@@ -32,9 +32,8 @@ namespace sema::pass
         void visit(ast::UnaryExpr&) override;
         void visit(ast::BinaryExpr&) override;
         void visit(ast::StringLiteralExpr&) override;
-        void visit(ast::PathLiteralExpr&) override;
+        void visit(ast::StructLiteralExpr&) override;
         void visit(ast::AssignExpr&) override;
-        void visit(ast::InitDeclarator&) override;
         void visit(ast::FieldExpr&) override;
         void visit(ast::CallExpr&) override;
         void visit(ast::RefExpr&) override;
