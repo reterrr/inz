@@ -1,82 +1,89 @@
 // Auto-generated token.hpp
 #ifndef TOKEN_HPP
 #define TOKEN_HPP
+
 #include <cstdint>
 #include <ostream>
 
 namespace lex {
-    enum Type {
+
+    using SymId = std::uint32_t;
+
+    enum Type : std::uint32_t {
         TOK_END = 0,
+
         {% set nc = namespace(val=starting_token_value) %}
+
+        {# ---- keywords (grouped) ---- #}
         {% for _, group in tokens.keywords.items() %}
         {% for name, lit in group.items() %}
         TOK_{{ name }} = {{ nc.val }}, // {{ lit }}
         {% set nc.val = nc.val + 1 %}
         {% endfor %}
         {% endfor %}
-        {% for name, info in tokens.operators.items() %}
-        TOK_{{ name }} = {{ nc.val }}, // {{ info.lit }}
+
+        {# ---- operators (name -> "lexeme") ---- #}
+        {% for name, lit in tokens.operators.items() %}
+        TOK_{{ name }} = {{ nc.val }}, // {{ lit }}
         {% set nc.val = nc.val + 1 %}
         {% endfor %}
-        {% for _, group in tokens.punct.items() %}
-        {% for name, lit in group.items() %}
+
+        {# ---- punctuation (only these subgroups) ---- #}
+        {% for subgroup in ["delimiters","separators","misc"] %}
+        {% for name, lit in tokens.punct.get(subgroup, {}).items() %}
         TOK_{{ name }} = {{ nc.val }}, // {{ lit }}
         {% set nc.val = nc.val + 1 %}
         {% endfor %}
         {% endfor %}
-        TOK_IDENTIFIER = {{ nc.val }},
+
+        {# ---- identifiers ---- #}
+        {% for name, _ in tokens.identifiers.items() %}
+        TOK_{{ name }} = {{ nc.val }},
         {% set nc.val = nc.val + 1 %}
-        TOK_INT_LITERAL = {{ nc.val }},
+        {% endfor %}
+
+        {# ---- literals ---- #}
+        {% for name, _ in tokens.literals.items() %}
+        TOK_{{ name }} = {{ nc.val }},
         {% set nc.val = nc.val + 1 %}
-        TOK_FLOAT_LITERAL = {{ nc.val }},
-        {% set nc.val = nc.val + 1 %}
-        TOK_STRING_LITERAL = {{ nc.val }},
-        {% set nc.val = nc.val + 1 %}
+        {% endfor %}
+
         TOK_UNKNOWN = {{ nc.val }}
     };
 
-   struct Pos final {
-       uint32_t line = 1;
-       uint32_t column = 1;
-       uint64_t offset = 0;
-   };
+    struct Pos final {
+        std::uint32_t line   = 1;
+        std::uint32_t column = 1;
+        std::uint64_t offset = 0;
+    };
 
-   struct Loc final {
-       Pos begin;
-       Pos end;
-   };
+    struct Loc final {
+        Pos begin;
+        Pos end;
+    };
 
-   inline Loc &operator+=(Loc &a, const Loc &b) {
-       a.end = b.end;
-       return a;
-   }
+    inline Loc& operator+=(Loc& a, const Loc& b) { a.end = b.end; return a; }
+    inline Loc  operator+(Loc a, const Loc& b)   { a += b; return a; }
 
-   inline Loc operator+(Loc a, const Loc &b) {
-       a += b;
-       return a;
-   }
+    inline std::ostream& operator<<(std::ostream& os, const Pos& pos) {
+        return os << "(line: " << pos.line << ", column: " << pos.column << ", offset: " << pos.offset << ")";
+    }
 
-   inline std::ostream& operator<<(std::ostream &os, const Pos &pos) {
-        return os << "\n(line: " << pos.line << ", column: " << pos.column << ", offset: " << pos.offset << ")\n";
-   }
+    inline std::ostream& operator<<(std::ostream& os, const Loc& loc) {
+        return os << "(begin: " << loc.begin << ", end: " << loc.end << ")";
+    }
 
-   inline std::ostream& operator<<(std::ostream &os, const Loc &loc) {
-        return os << "\n(begin: " << loc.begin << ", end: " << loc.end << ")\n";
-   }
+    struct Token final {
+        Type type_;
+        Loc  loc_;
 
-   using SymId = uint32_t;
+        union {
+            SymId    sym;      // IDENTIFIER, INT_LITERAL, FLOAT_LITERAL, STRING_LITERAL
+            bool     boolean;  // BOOL_LITERAL
+            char32_t ch;       // CHAR_LITERAL
+        } u_{};
+    };
 
-   struct Token final {
-           Type type_;
-           Loc loc_;
-
-           union {
-               int64_t i64;
-               double f64;
-               SymId sym;
-           } u_{};
-   };
-}
-
+} // namespace lex
 
 #endif // TOKEN_HPP

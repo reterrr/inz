@@ -1,10 +1,5 @@
 starting_token_value: 1
 
-conventions:
-  precedence:
-    higher_is_tighter: true
-  assoc_values: [ left, right, none ]
-
 tokens:
   keywords:
     control_flow:
@@ -12,53 +7,39 @@ tokens:
       WHILE: "while"
       DO: "do"
       ELSE: "else"
+
     declarations:
       STRUCT: "struct"
       TRAIT: "trait"
       ENUM: "enum"
       FN: "fn"
       TYPE: "type"
-      LET: "let"
       RETURN: "return"
       MUT: "mut"
       IMM: "imm"
       STATIC: "static"
       PUB: "pub"
+
     type_kw:
-      INT: "int"
-      BIGINT: "bigint"
-      MAGICINT: "magicint"
-      DOUBLE: "double"
+      I8: "i8"
+      U8: "u8"
+      I16: "i16"
+      U16: "u16"
+      I32: "i32"
+      U32: "u32"
+      I64: "i64"
+      U64: "u64"
+      I128: "i128"
+      U128: "u128"
+      F32: "f32"
+      F64: "f64"
       BOOL: "bool"
-      VOID: "void"
-      STRING: "string"
-
-      I8: "type"
-      U8: "type"
-
-      I16: "type"
-      U16: "type"
-
-      I32: "type"
-      U32: "type"
-
-      I64: "type"
-      U64: "type"
-
-      I128: "type"
-      U128: "type"
-
-      F32: "type"
-      F64: "type"
-
-      Bool: "type"
-
-      Char: "type"
-
+      CHAR: "char"
 
     misc_flow:
       BREAK: "break"
       CONTINUE: "continue"
+
     modules:
       IMPORT: "import"
       EXPORT: "export"
@@ -66,13 +47,14 @@ tokens:
       AS: "as"
 
   identifiers:
-    IDENTIFIER: ~
+    IDENTIFIER: "~"
 
   literals:
-    INT_LITERAL: ~
-    FLOAT_LITERAL: ~
-    STRING_LITERAL: ~
-    BOOL_LITERAL: ~
+    INT_LITERAL: "~"
+    FLOAT_LITERAL: "~"
+    STRING_LITERAL: "~"
+    BOOL_LITERAL: "~"
+    CHAR_LITERAL: "~"
 
   punct:
     delimiters:
@@ -91,70 +73,26 @@ tokens:
       QUESTION: "?"
       ARROW: "->"
 
-  pairs:
-    LPAR: RPAR
-    LBRACK: RBRACK
-    LCBRA: RCBRA
-
   operators:
-    AMP:
-      lit: "&"
-      precedence: 90
-      assoc: right
-      arity: 1
-      fixity: prefix
-    INC:
-      lit: "++"
-      precedence: 90
-      assoc: left
-      arity: 1
-      fixity: postfix
-    DEC:
-      lit: "--"
-      precedence: 90
-      assoc: left
-      arity: 1
-      fixity: postfix
-
-    NEGATION:
-      lit: "!"
-      precedence: 80
-      assoc: right
-      arity: 1
-      fixity: prefix
-    NEG:
-      lit: "-"
-      precedence: 80
-      assoc: right
-      arity: 1
-      fixity: prefix
-
-    STAR: { lit: "*", precedence: 70, assoc: left,  arity: 2 }
-    SLASH: { lit: "/", precedence: 70, assoc: left,  arity: 2 }
-    MODULO: { lit: "%", precedence: 70, assoc: left,  arity: 2 }
-
-    PLUS: { lit: "+", precedence: 60, assoc: left,  arity: 2 }
-    MINUS: { lit: "-", precedence: 60, assoc: left,  arity: 2 }
-
-    LESS: { lit: "<",  precedence: 50, assoc: left, arity: 2 }
-    LEQ: { lit: "<=", precedence: 50, assoc: left, arity: 2 }
-    GREATER: { lit: ">",  precedence: 50, assoc: left, arity: 2 }
-    GEQ: { lit: ">=", precedence: 50, assoc: left, arity: 2 }
-
-    EQUAL: { lit: "==", precedence: 45, assoc: left, arity: 2 }
-    NEQUAL: { lit: "!=", precedence: 45, assoc: left, arity: 2 }
-
-    BOOL_AND: { lit: "&&", precedence: 40, assoc: left, arity: 2 }
-    BOOL_OR: { lit: "||", precedence: 35, assoc: left, arity: 2 }
-
-    #    TERNARY:
-    #      tokens: [ QUESTION, COLON ]
-    #      precedence: 30
-    #      assoc: right
-    #      arity: 3
-
-    ASSIGN: { lit: "=",  precedence: 20, assoc: right, arity: 2, is_assign: true }
-    PLUS_ASSIGN: { lit: "+=", precedence: 20, assoc: right, arity: 2, is_assign: true }
-    MIN_ASSIGN: { lit: "-=", precedence: 20, assoc: right, arity: 2, is_assign: true }
-    MUL_ASSIGN: { lit: "*=", precedence: 20, assoc: right, arity: 2, is_assign: true }
-    DIV_ASSIGN: { lit: "/=", precedence: 20, assoc: right, arity: 2, is_assign: true }
+    AMP: "&"
+    INC: "++"
+    DEC: "--"
+    NEGATION: "!"
+    STAR: "*"
+    SLASH: "/"
+    MODULO: "%"
+    PLUS: "+"
+    MINUS: "-"
+    LESS: "<"
+    LEQ: "<="
+    GREATER: ">"
+    GEQ: ">="
+    EQUAL: "=="
+    NEQUAL: "!="
+    BOOL_AND: "&&"
+    BOOL_OR: "||"
+    ASSIGN: "="
+    PLUS_ASSIGN: "+="
+    MIN_ASSIGN: "-="
+    MUL_ASSIGN: "*="
+    DIV_ASSIGN: "/="

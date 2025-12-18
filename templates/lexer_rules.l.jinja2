@@ -4,7 +4,6 @@
 #include <cstring>
 
 #include "parser/parser.hpp"
-
 #include "generated/token.hpp"
 #include "lexer.hpp"
 
@@ -15,9 +14,7 @@ using lex::Pos;
 
 #define YY_DECL int Scanner::yylex()
 
-
 static Pos cur;  // { line=1, column=1, offset=0 } by default
-
 
 inline void advance(Pos& p, const char* text, size_t n) {
   for (size_t i = 0; i < n; ++i) {
@@ -38,55 +35,92 @@ static inline Loc token_loc_and_advance(const char* text, size_t n) {
   } else {
     L.end = cur;
   }
-  advance(cur, text, n);   // finally move the global cursor
+  advance(cur, text, n);
   return L;
 }
 
 #define EMIT_KIND(KIND) do { \
-  auto* self = static_cast<Scanner*>(this); \
   Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
   Token t{}; t.type_ = (KIND); t.loc_ = loc; \
-  self->setCurrentToken(t); \
+  this->setCurrentToken(t); \
   return static_cast<int>(KIND); \
 } while(0)
 
 #define EMIT_INT() do { \
-  auto* self = static_cast<Scanner*>(this); \
   Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
   Token t{}; t.type_ = Type::TOK_INT_LITERAL; t.loc_ = loc; \
-  t.u_.i64 = strtoll(yytext, nullptr, 10); \
-  self->setCurrentToken(t); \
+  t.u_.sym = this->internNumeric(yytext, (size_t)yyleng); \
+  this->setCurrentToken(t); \
   return static_cast<int>(Type::TOK_INT_LITERAL); \
 } while(0)
 
 #define EMIT_FLOAT() do { \
-  auto* self = static_cast<Scanner*>(this); \
   Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
   Token t{}; t.type_ = Type::TOK_FLOAT_LITERAL; t.loc_ = loc; \
-  t.u_.f64 = strtod(yytext, nullptr); \
-  self->setCurrentToken(t); \
+  t.u_.sym = this->internNumeric(yytext, (size_t)yyleng); \
+  this->setCurrentToken(t); \
   return static_cast<int>(Type::TOK_FLOAT_LITERAL); \
 } while(0)
 
+#define EMIT_BOOL(V) do { \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_BOOL_LITERAL; t.loc_ = loc; \
+  t.u_.boolean = (V); \
+  this->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_BOOL_LITERAL); \
+} while(0)
+
+#define EMIT_CHAR() do { \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_CHAR_LITERAL; t.loc_ = loc; \
+  t.u_.ch = decode_char_literal(yytext, (size_t)yyleng); \
+  this->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_CHAR_LITERAL); \
+} while(0)
+
+
 #define EMIT_STRING() do { \
-  auto* self = static_cast<Scanner*>(this); \
-  const char* payload = yytext + 1; size_t n = (size_t)yyleng >= 2 ? (size_t)yyleng - 2 : 0; \
-  lex::SymId sym = self->internString(payload, n); \
+  const char* payload = yytext + 1; \
+  size_t n = (size_t)yyleng >= 2 ? (size_t)yyleng - 2 : 0; \
+  lex::SymId sym = this->internString(payload, n); \
   Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
   Token t{}; t.type_ = Type::TOK_STRING_LITERAL; t.loc_ = loc; \
   t.u_.sym = sym; \
-  self->setCurrentToken(t); \
+  this->setCurrentToken(t); \
   return static_cast<int>(Type::TOK_STRING_LITERAL); \
 } while(0)
 
 #define EMIT_IDENT() do { \
-  auto* self = static_cast<Scanner*>(this); \
   Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
-  lex::SymId sym = self->internIdent(yytext, (size_t)yyleng); \
+  lex::SymId sym = this->internIdent(yytext, (size_t)yyleng); \
   Token t{}; t.type_ = Type::TOK_IDENTIFIER; t.loc_ = loc; \
   t.u_.sym = sym; \
-  self->setCurrentToken(t); \
+  this->setCurrentToken(t); \
   return static_cast<int>(Type::TOK_IDENTIFIER); \
+} while(0)
+
+static inline char32_t decode_char_literal(const char* text, size_t n) {
+  // text includes quotes: e.g.  'a' or '\n'
+  if (n < 3) return U'\0';
+  if (text[1] != '\\') return (unsigned char)text[1];
+
+  switch (text[2]) {
+    case 'n':  return U'\n';
+    case 't':  return U'\t';
+    case 'r':  return U'\r';
+    case '\\': return U'\\';
+    case '\'': return U'\'';
+    case '0':  return U'\0';
+    default:   return (unsigned char)text[2];
+  }
+}
+
+#define EMIT_CHAR() do { \
+  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_CHAR_LITERAL; t.loc_ = loc; \
+  t.u_.ch = decode_char_literal(yytext, (size_t)yyleng); \
+  this->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_CHAR_LITERAL); \
 } while(0)
 
 %}
@@ -102,41 +136,44 @@ static inline Loc token_loc_and_advance(const char* text, size_t n) {
 {% for token, lit in group.items() -%}
 "{{ lit }}" { EMIT_KIND(Type::TOK_{{ token }}); }
 {% endfor -%}
-{% endfor -%}
+{% endfor %}
 
-{% for _, group in tokens.punct.items() -%}
-{% for token, lit in group.items() -%}
+"true"  { EMIT_BOOL(true);  }
+"false" { EMIT_BOOL(false); }
+
+{% for subgroup in ["delimiters","separators","misc"] -%}
+{% for token, lit in tokens.punct.get(subgroup, {}).items() -%}
 "{{ lit }}" { EMIT_KIND(Type::TOK_{{ token }}); }
 {% endfor -%}
-{% endfor -%}
+{% endfor %}
 
-{% for token, info in tokens.operators.items() -%}
-"{{ info.lit | replace('\\', '\\\\') | replace('"','\\"') }}" { EMIT_KIND(Type::TOK_{{ token }}); }
-{% endfor -%}
+{% for lexeme, token in operators_lex_sorted -%}
+"{{ lexeme | replace('\\', '\\\\') | replace('"','\\"') }}" { EMIT_KIND(Type::TOK_{{ token }}); }
+{% endfor %}
 
-\"([^\\\n"]|\\.)*\"             { EMIT_STRING(); }
+\'([^\\\n\']|\\.)\'                 { EMIT_CHAR(); }
+\"([^\\\n"]|\\.)*\"                 { EMIT_STRING(); }
 
-[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?  { EMIT_FLOAT(); }
-\.[0-9]+([eE][+-]?[0-9]+)?        { EMIT_FLOAT(); }
-[0-9]+([eE][+-]?[0-9]+)           { EMIT_FLOAT(); }
+[0-9]+                              { EMIT_INT(); }
 
-[0-9]+                             { EMIT_INT(); }
+[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?(f32|f64)?         { EMIT_FLOAT(); }
+\.[0-9]+([eE][+-]?[0-9]+)?(f32|f64)?               { EMIT_FLOAT(); }
+[0-9]+([eE][+-]?[0-9]+)(f32|f64)?                  { EMIT_FLOAT(); }
 
-[a-zA-Z_][a-zA-Z0-9_]*             { EMIT_IDENT(); }
+[a-zA-Z_][a-zA-Z0-9_]*               { EMIT_IDENT(); }
 
-[ \t]+                              { advance(cur, yytext, (size_t)yyleng); }
-(\r\n|\r|\n)+                       { advance(cur, yytext, (size_t)yyleng); }
-"//"[^\r\n]*                        { advance(cur, yytext, (size_t)yyleng); }
-"/*"([^*]|\*+[^*/])*"*/"            { advance(cur, yytext, (size_t)yyleng); }
+[ \t]+                               { advance(cur, yytext, (size_t)yyleng); }
+(\r\n|\r|\n)+                        { advance(cur, yytext, (size_t)yyleng); }
+"//"[^\r\n]*                         { advance(cur, yytext, (size_t)yyleng); }
+"/*"([^*]|\*+[^*/])*"*/"             { advance(cur, yytext, (size_t)yyleng); }
 
-.                                   { advance(cur, yytext, (size_t)yyleng); }
+.                                    { EMIT_KIND(Type::TOK_UNKNOWN); }
 
 <<EOF>> {
-  auto* self = static_cast<Scanner*>(this);
-  Loc loc{}; loc.begin = cur; loc.end = cur;  /* zero-length at end */
+  Loc loc{}; loc.begin = cur; loc.end = cur;
   Token t{}; t.type_ = Type::TOK_END; t.loc_ = loc;
-  self->setCurrentToken(t);
-  return 0;   /* Bison EOF */
+  this->setCurrentToken(t);
+  return 0;
 }
 
 %%
