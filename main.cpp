@@ -11,7 +11,12 @@
 int main()
 {
     std::ifstream in("myfile.txt");
-    Scanner scanner{&in}; // uses stdin by default; set a stream in your .l if needed
+
+    ast::Interner<> stringInterner;
+    ast::Interner<> identInterner;
+    ast::Interner<> numericInterner;
+    Scanner scanner{stringInterner, identInterner, numericInterner, &in};
+    // uses stdin by default; set a stream in your .l if needed
     ast::AST ast;
     ast::visitor::DumpVisitor visitor(std::cout);
     sema::Sema sema(ast);
