@@ -1,6 +1,11 @@
 package www.www; //ok
 
 import os.so; //ok
+
+fn s() -> void {
+    imm a: u8 = 1231231 as i8;
+}
+
 /*
 struct K {
     int a;
