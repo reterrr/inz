@@ -110,7 +110,6 @@ add_executable(inz main.cpp
         ast/nodes/stmt/else_if_statement.hpp
         ast/nodes/stmt/else_statement.hpp
         ast/interner.hpp
-        parser_context.hpp
 )
 
 target_include_directories(inz PRIVATE
