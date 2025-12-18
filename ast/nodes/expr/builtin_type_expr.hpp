@@ -8,30 +8,17 @@
 #include "type_expr.hpp"
 #include "visit/expr_visitor.hpp"
 
+#include "types.hpp"
+
 
 namespace ast
 {
     struct BuiltinTypeExpr final : TypeExpr
     {
-        enum class Kind
-        {
-            I8, U8,
-            I16, U16,
-            I32, U32,
-            I64, U64,
-            I128, U128,
+        kl::rt::BuiltinTypeExprKind kind_;
 
-            F32, F64,
-
-            Bool,
-
-            Char
-        };
-
-        Kind kind_;
-
-        BuiltinTypeExpr(Kind kind, const lex::Loc& loc)
-            : TypeExpr(TypeExpr::Kind::Builtin, loc),
+        BuiltinTypeExpr(kl::rt::BuiltinTypeExprKind kind, const lex::Loc& loc)
+            : TypeExpr(Kind::Builtin, loc),
               kind_(kind)
         {
         }

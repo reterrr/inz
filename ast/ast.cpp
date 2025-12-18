@@ -15,14 +15,24 @@ Project* AST::mk_project(std::vector<ModulePtr>&& modules, const lex::Loc& l)
     return make<Project>(std::move(modules), l);
 }
 
-IntLiteralExpr* AST::mk_int_literal_expr(kl_int v, const lex::Loc& loc)
+IntLiteralExpr* AST::mk_int_literal_expr(lex::SymId v, std::optional<kl::rt::IntKind> kind, const lex::Loc& loc)
 {
-    return make<IntLiteralExpr>(v, loc);
+    return make<IntLiteralExpr>(v, kind, loc);
 }
 
-BoolLiteralExpr* AST::mk_bool_literal_expr(kl_bool v, const lex::Loc& loc)
+BoolLiteralExpr* AST::mk_bool_literal_expr(lex::SymId v, const lex::Loc& loc)
 {
     return make<BoolLiteralExpr>(v, loc);
+}
+
+CharLiteralExpr* AST::mk_char_literal_expr(kl::rt::character v, const lex::Loc& loc)
+{
+    return make<CharLiteralExpr>(v, loc);
+}
+
+ArrayLiteralExpr* AST::mk_array_literal_expr(std::vector<ExprPtr>&& v, const lex::Loc& loc)
+{
+    return make<ArrayLiteralExpr>(std::move(v), loc);
 }
 
 StringLiteralExpr* AST::mk_str_literal_expr(lex::SymId sym, const lex::Loc& loc)
@@ -30,9 +40,9 @@ StringLiteralExpr* AST::mk_str_literal_expr(lex::SymId sym, const lex::Loc& loc)
     return make<StringLiteralExpr>(sym, loc);
 }
 
-FloatLiteralExpr* AST::mk_float_literal_expr(kl_float v, const lex::Loc& loc)
+FloatLiteralExpr* AST::mk_float_literal_expr(lex::SymId v, std::optional<kl::rt::FloatKind> kind, const lex::Loc& loc)
 {
-    return make<FloatLiteralExpr>(v, loc);
+    return make<FloatLiteralExpr>(v, kind, loc);
 }
 
 FieldInitExpr* AST::mk_field_init_expr(lex::SymId name, ExprPtr value, const lex::Loc& loc)
@@ -40,15 +50,21 @@ FieldInitExpr* AST::mk_field_init_expr(lex::SymId name, ExprPtr value, const lex
     return make<FieldInitExpr>(name, value, loc);
 }
 
-PathLiteralExpr* AST::mk_obj_literal_expr(PathTypeExpr* pathTypeExpr, std::vector<FieldInitExpr*>&& elems,
-                                          const lex::Loc& loc)
+PathExpr* AST::mk_path_expr(std::vector<lex::SymId>&& path, const lex::Loc& loc)
 {
-    return make<PathLiteralExpr>(pathTypeExpr, std::move(elems), loc);
+    return make<PathExpr>(std::move(path), loc);
 }
 
-PathTypeExpr* AST::mk_path_type_expr(std::vector<lex::SymId>&& segments, const lex::Loc& loc)
+StructLiteralExpr* AST::mk_obj_literal_expr(PathTypeExpr* pathTypeExpr,
+                                            std::vector<FieldInitExpr*>&& elems,
+                                            const lex::Loc& loc)
 {
-    return make<PathTypeExpr>(std::move(segments), loc);
+    return make<StructLiteralExpr>(pathTypeExpr, std::move(elems), loc);
+}
+
+PathTypeExpr* AST::mk_path_type_expr(PathExpr* pathExpr, const lex::Loc& loc)
+{
+    return make<PathTypeExpr>(pathExpr, loc);
 }
 
 ArrayTypeExpr* AST::mk_array_type_expr(TypeExpr* typeExpr, ExprPtr sizeExpr, const lex::Loc& loc)
@@ -61,9 +77,8 @@ RefTypeExpr* AST::mk_ref_type_expr(TypeExpr* typeExpr, RefTypeExpr::Mutability m
     return make<RefTypeExpr>(typeExpr, mutability, loc);
 }
 
-BuiltinTypeExpr* AST::mk_builtin_type_expr(BuiltinTypeExpr::Kind kind, const lex::Loc& loc)
+BuiltinTypeExpr* AST::mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind kind, const lex::Loc& loc)
 {
-
     return make<BuiltinTypeExpr>(kind, loc);
 }
 
@@ -104,26 +119,35 @@ ReturnStatement* AST::mk_return_stmt(ExprPtr expr, const lex::Loc& loc)
     return make<ReturnStatement>(expr, loc);
 }
 
-IfStatement* AST::mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, const lex::Loc& loc)
-{
-    // If your IfStatement takes an optional else, pass nullptr
-    return make<IfStatement>(cond, thenStmt, /*else*/ loc);
-}
-
 ParamDecl* AST::mk_param_decl(lex::SymId name, TypeExpr* typeExpr, const lex::Loc& loc)
 {
     return make<ParamDecl>(name, typeExpr, loc);
 }
 
 VarDecl* AST::mk_var_decl(lex::SymId name, TypeExpr* tyExpr,
-                          VarDecl::Mutability mutability, const lex::Loc& loc)
+                          VarDecl::Mutability mutability, Expr* init, const lex::Loc& loc)
 {
-    return make<VarDecl>(name, tyExpr, mutability, loc);
+    return make<VarDecl>(name, tyExpr, mutability, init, loc);
 }
 
-// StatementPtr AST::mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, StatementPtr elseStmt, const lex::Loc& loc) {
-//     return make<IfStatement>(cond, thenStmt, elseStmt, loc);
-// }
+IfStatement* AST::mk_if_stmt(ExprPtr cond,
+                             BlockStatement* thenStmt,
+                             std::vector<ElseIfStatement*>&& elseIfs,
+                             ElseStatement* elseStmt,
+                             const lex::Loc& loc)
+{
+    return make<IfStatement>(cond, thenStmt, std::move(elseIfs), elseStmt, loc);
+}
+
+ElseIfStatement* AST::mk_else_if_stmt(ExprPtr cond, BlockStatement* thenBlk, const lex::Loc& loc)
+{
+    return make<ElseIfStatement>(cond, thenBlk, loc);
+}
+
+ElseStatement* AST::mk_else_stmt(BlockStatement* elseBlk, const lex::Loc& loc)
+{
+    return make<ElseStatement>(elseBlk, loc);
+}
 
 // ========= Declarations =========
 

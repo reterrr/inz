@@ -5,7 +5,7 @@
 #ifndef OBJ_EXPR_HPP
 #define OBJ_EXPR_HPP
 
-#include "expr.hpp"
+#include "literal_expr.hpp"
 #include "types.hpp"
 #include "expr/path_type_expr.hpp"
 
@@ -18,7 +18,7 @@ namespace ast
         std::vector<FieldInitExpr*> elements_;
 
         StructLiteralExpr(PathTypeExpr* type, std::vector<FieldInitExpr*>&& elements, const lex::Loc& loc)
-            : LiteralExpr(kl::rt::Kind::Struct,  loc),
+            : LiteralExpr(kl::rt::LiteralExprKind::Struct, loc),
               type_(type), elements_(std::move(elements))
         {
             std::ranges::for_each(elements_, [this](FieldInitExpr*& e)

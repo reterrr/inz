@@ -11,7 +11,6 @@
 namespace ast
 {
     struct Type;
-    struct InitDeclarator;
 
     struct VarDecl final : Decl
     {
@@ -20,16 +19,22 @@ namespace ast
         lex::SymId name_;
         TypeExpr* type_;
         Mutability mut_;
+        Expr* init_; //maybe nullptr
 
         VarDecl(
             lex::SymId name,
             TypeExpr* type,
             Mutability mut,
+            Expr* init,
             const lex::Loc& loc)
             : Decl(NodeKind::Decl_Var, loc),
-              name_(name), type_(type), mut_(mut)
+              name_(name),
+              type_(type),
+              mut_(mut),
+              init_(init)
         {
             type_->parent = this;
+            if (init_) init_->parent = this;
         }
 
         void accept(visitor::DeclVisitor& v) override;

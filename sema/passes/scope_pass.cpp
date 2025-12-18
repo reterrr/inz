@@ -96,9 +96,13 @@ namespace sema::pass
     void ScopeAstVisitor::visit(ast::UnaryExpr& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::BinaryExpr& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::StringLiteralExpr& e) { AstIteratorVisitor::visit(e); }
-    void ScopeAstVisitor::visit(ast::PathLiteralExpr& e) { AstIteratorVisitor::visit(e); }
+
+    void ScopeAstVisitor::visit(ast::StructLiteralExpr& struct_literal_expr)
+    {
+        AstIteratorVisitor::visit(struct_literal_expr);
+    }
+
     void ScopeAstVisitor::visit(ast::AssignExpr& e) { AstIteratorVisitor::visit(e); }
-    void ScopeAstVisitor::visit(ast::InitDeclarator& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::FieldExpr& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::CallExpr& e) { AstIteratorVisitor::visit(e); }
     void ScopeAstVisitor::visit(ast::RefExpr& e) { AstIteratorVisitor::visit(e); }
@@ -115,6 +119,7 @@ namespace sema::pass
     void ScopeAstVisitor::visit(ast::BreakStatement& s) { AstIteratorVisitor::visit(s); }
 
     void ScopeAstVisitor::visit(ast::VarDeclStatement& s) { AstIteratorVisitor::visit(s); }
+
     void ScopeAstVisitor::visit(ast::Project& project)
     {
         ScopeGuard guard{controller_};

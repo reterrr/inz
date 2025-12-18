@@ -32,12 +32,12 @@ add_executable(inz main.cpp
         parser/parser.cpp
         ast/node_type.hpp
         ast/node.hpp
-        ast/nodes/type/type.hpp
+        sema/type/type.hpp
         ast/nodes/expr/expr.hpp
         ast/nodes/visit/visitable.hpp
         ast/nodes/visit/expr_visitor.hpp
-        ast/nodes/expr/int_expr.hpp
-        ast/nodes/expr/float_expr.hpp
+        ast/nodes/expr/int_literal_expr.hpp
+        ast/nodes/expr/float_literal_expr.hpp
         ast/nodes/expr/unary_op_expression_kind.hpp
         ast/nodes/expr/binary_op_exression_kind.hpp
         ast/nodes/expr/unary_op_expr.hpp
@@ -57,9 +57,9 @@ add_executable(inz main.cpp
         ast/nodes/visit/decl_visitor.hpp
         ast/nodes/visit/stmt_visitor.hpp
         ast/nodes/visit/visitor.hpp
-        ast/nodes/expr/bool_expr.hpp
+        ast/nodes/expr/bool_literal_expr.hpp
         ast/nodes/expr/string_expr.hpp
-        ast/nodes/expr/obj_expr.hpp
+        ast/nodes/expr/struct_literal_expr.hpp
         ast/nodes/expr/field_init_expr.hpp
         ast/nodes/module/module.hpp
         ast/nodes/visit/module_visitor.hpp
@@ -73,7 +73,6 @@ add_executable(inz main.cpp
         ast/nodes/module/import_decl.hpp
         ast/nodes/decl/var_decl.hpp
         ast/nodes/expr/field_expr.hpp
-        ast/nodes/expr/init_declarator_expr.hpp
         ast/nodes/expr/call_expr.hpp
         ast/nodes/expr/index_expr.hpp
         ast/ast_iterator.hpp
@@ -101,6 +100,17 @@ add_executable(inz main.cpp
         ast/nodes/expr/path_type_expr.hpp
         ast/nodes/expr/ref_type_expr.hpp
         ast/nodes/expr/builtin_type_expr.hpp
+        ast/nodes/expr/char_literal_expr.hpp
+        ast/nodes/expr/literal_expr.hpp
+        ast/nodes/expr/string_literal_expr.hpp
+        ast/nodes/expr/array_literal_expr.hpp
+        test/test.cpp
+        ast/nodes/expr/path_expr.hpp
+        ast/nodes/expr/cast_expr.hpp
+        ast/nodes/stmt/else_if_statement.hpp
+        ast/nodes/stmt/else_statement.hpp
+        ast/interner.hpp
+        parser_context.hpp
 )
 
 target_include_directories(inz PRIVATE

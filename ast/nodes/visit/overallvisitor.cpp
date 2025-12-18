@@ -13,14 +13,12 @@
 #include "decl/function_decl.hpp"
 #include "decl/struct_decl.hpp"
 #include "decl/var_decl.hpp"
-#include "module/import_decl.hpp"
 #include "expr/assign_expr.hpp"
 #include "expr/binary_op_expr.hpp"
 #include "expr/call_expr.hpp"
 #include "expr/field_expr.hpp"
 
-#include "expr/init_declarator_expr.hpp"
-#include "expr/obj_expr.hpp"
+#include "expr/struct_literal_expr.hpp"
 #include "expr/ref_expr.hpp"
 #include "expr/unary_op_expr.hpp"
 #include "module/module.hpp"
@@ -93,7 +91,7 @@ void ast::visitor::OverallVisitor::visit(StringLiteralExpr& s)
     (void)s;
 }
 
-void ast::visitor::OverallVisitor::visit(PathLiteralExpr& o)
+void ast::visitor::OverallVisitor::visit(StructLiteralExpr& o)
 {
     std::ranges::for_each(o.elements_, [this](auto& f) { f->accept(*this); });
 }
@@ -102,11 +100,6 @@ void ast::visitor::OverallVisitor::visit(AssignExpr& a)
 {
     if (a.lhs_) a.lhs_->accept(*this);
     if (a.rhs_) a.rhs_->accept(*this);
-}
-
-void ast::visitor::OverallVisitor::visit(InitDeclarator& i)
-{
-    if (i.init_) i.init_->accept(*this);
 }
 
 void ast::visitor::OverallVisitor::visit(FieldExpr& f)
@@ -198,4 +191,44 @@ void ast::visitor::OverallVisitor::visit(Module& m)
 void ast::visitor::OverallVisitor::visit(Project& p)
 {
     std::ranges::for_each(p.modules, [this](auto& m) { m->accept(*this); });
+}
+
+void ast::visitor::OverallVisitor::visit(CastExpr&)
+{
+}
+
+void ast::visitor::OverallVisitor::visit(ArrayTypeExpr&)
+{
+}
+
+void ast::visitor::OverallVisitor::visit(PathTypeExpr&)
+{
+}
+
+void ast::visitor::OverallVisitor::visit(RefTypeExpr&)
+{
+}
+
+void ast::visitor::OverallVisitor::visit(PathExpr&)
+{
+}
+
+void ast::visitor::OverallVisitor::visit(BuiltinTypeExpr&)
+{
+}
+
+void ast::visitor::OverallVisitor::visit(CharLiteralExpr&)
+{
+}
+
+void ast::visitor::OverallVisitor::visit(ArrayLiteralExpr&)
+{
+}
+
+void ast::visitor::OverallVisitor::visit(ElseIfStatement&)
+{
+}
+
+void ast::visitor::OverallVisitor::visit(ElseStatement&)
+{
 }

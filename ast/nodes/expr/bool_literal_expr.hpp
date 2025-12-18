@@ -5,18 +5,18 @@
 #ifndef BOOL_EXPR_HPP
 #define BOOL_EXPR_HPP
 
-#include "expr.hpp"
+#include "literal_expr.hpp"
 #include "visit/expr_visitor.hpp"
 #include "types.hpp"
 
 namespace ast
 {
-    struct BoolLiteralExpr final : Expr
+    struct BoolLiteralExpr final : LiteralExpr
     {
         kl::rt::boolean v_;
 
         BoolLiteralExpr(kl::rt::boolean v, const lex::Loc& loc)
-            : Expr(NodeKind::Expr_BoolLiteral, loc),
+            : LiteralExpr(kl::rt::LiteralExprKind::Bool, loc),
               v_(v)
         {
         }

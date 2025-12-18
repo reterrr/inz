@@ -10,6 +10,8 @@
 namespace ast
 {
     struct IfStatement;
+    struct ElseIfStatement;
+    struct ElseStatement;
     struct WhileStatement;
     struct DoWhileStatement;
     struct BlockStatement;
@@ -23,7 +25,8 @@ namespace ast
 namespace ast::visitor
 {
     struct StmtVisitor
-        : Visitor<IfStatement, BlockStatement, WhileStatement,
+        : Visitor<IfStatement, ElseIfStatement, ElseStatement,
+                  BlockStatement, WhileStatement,
                   ReturnStatement, ExprStatement, VarDeclStatement,
                   ContinueStatement, BreakStatement, DoWhileStatement>
     {

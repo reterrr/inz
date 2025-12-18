@@ -26,12 +26,6 @@ enum class NodeKind : uint16_t
 {
     Project,
     // ---- Expressions: literals
-    Expr_IntLiteral,
-    Expr_FloatLiteral,
-    Expr_BoolLiteral,
-    Expr_StringLiteral,
-    Expr_ObjLiteral,
-
     // ---- Expressions: variables & references
     Expr_Var, // identifier use
     Expr_Ref, // &x / &mut x
@@ -48,6 +42,7 @@ enum class NodeKind : uint16_t
     Expr_FieldInit,
     Expr_Index, // e[i]
     Expr_Call, // f(a, b, ...)
+    Expr_Literal,
 
     // ---- Expressions: other
     Expr_Cond, // a ? b : c
@@ -82,6 +77,10 @@ enum class NodeKind : uint16_t
 
     // ---- Sentinels
     Expr_Type,
+    Expr_Path,
+    Expr_Cast,
+    Stmt_ElseIf,
+    Stmt_Else,
 };
 
 #endif //NODE_TYPE_HPP

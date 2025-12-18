@@ -44,11 +44,9 @@ namespace ast::visitor
 
         void visit(StringLiteralExpr&) override;
 
-        void visit(PathLiteralExpr&) override;
+        void visit(StructLiteralExpr&) override;
 
         void visit(AssignExpr&) override;
-
-        void visit(InitDeclarator&) override;
 
         void visit(FieldExpr&) override;
 
@@ -83,6 +81,16 @@ namespace ast::visitor
         void visit(Module&) override;
 
         void visit(Project&) override;
+        void visit(CastExpr&) override;
+        void visit(ArrayTypeExpr&) override;
+        void visit(PathTypeExpr&) override;
+        void visit(RefTypeExpr&) override;
+        void visit(PathExpr&) override;
+        void visit(BuiltinTypeExpr&) override;
+        void visit(CharLiteralExpr&) override;
+        void visit(ArrayLiteralExpr&) override;
+        void visit(ElseIfStatement&) override;
+        void visit(ElseStatement&) override;
     };
 }
 

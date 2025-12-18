@@ -5,21 +5,22 @@
 #ifndef FLOAT_EXPR_HPP
 #define FLOAT_EXPR_HPP
 
-#include "expr.hpp"
+#include "literal_expr.hpp"
 #include "types.hpp"
 #include "visit/expr_visitor.hpp"
 
 namespace ast
 {
-    struct FloatLiteralExpr final : Expr
+    struct FloatLiteralExpr final : LiteralExpr
     {
-        kl::rt::FloatValue v_;
-        BuiltinTypeExpr::Kind kind_;
+        lex::SymId v_;
+        std::optional<kl::rt::FloatKind> suffix_;
 
-        FloatLiteralExpr(kl::rt::FloatValue v, BuiltinTypeExpr::Kind kind, const lex::Loc& loc)
-            : Expr(NodeKind::Expr_FloatLiteral, loc),
-              v_(std::move(v)),
-              kind_(kind)
+        FloatLiteralExpr(lex::SymId v,
+                         std::optional<kl::rt::FloatKind> suffix,
+                         const lex::Loc& loc)
+            : LiteralExpr(kl::rt::LiteralExprKind::Float, loc),
+              v_(v), suffix_(suffix)
         {
         }
 

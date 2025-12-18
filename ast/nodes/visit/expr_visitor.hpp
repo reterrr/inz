@@ -14,12 +14,15 @@ namespace ast
     struct BinaryExpr;
     struct IntLiteralExpr;
     struct FloatLiteralExpr;
+    struct ArrayLiteralExpr;
+    struct CharLiteralExpr;
     struct StringLiteralExpr;
-    struct PathLiteralExpr;
+    struct StructLiteralExpr;
     struct AssignExpr;
-    struct InitDeclarator;
     struct FieldExpr;
+    struct PathExpr;
     struct CallExpr;
+    struct CastExpr;
     struct RefExpr;
     struct IndexExpr;
     struct BoolLiteralExpr;
@@ -35,10 +38,11 @@ namespace ast::visitor
 {
     struct ExprVisitor
         : Visitor<IntLiteralExpr, FloatLiteralExpr, UnaryExpr,
-                  BinaryExpr, StringLiteralExpr, PathLiteralExpr,
-                  AssignExpr, InitDeclarator, FieldExpr, CallExpr,
+                  BinaryExpr, StringLiteralExpr, StructLiteralExpr,
+                  AssignExpr, FieldExpr, CallExpr, CastExpr,
                   RefExpr, IndexExpr, BoolLiteralExpr, FieldInitExpr,
-                  ArrayTypeExpr, PathTypeExpr, RefTypeExpr, BuiltinTypeExpr>
+                  ArrayTypeExpr, PathTypeExpr, RefTypeExpr, PathExpr, BuiltinTypeExpr,
+                  CharLiteralExpr, ArrayLiteralExpr>
     {
     };
 }

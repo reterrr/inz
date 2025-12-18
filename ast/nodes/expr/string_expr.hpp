@@ -7,21 +7,25 @@
 
 #include "expr.hpp"
 
-#include "../visit/expr_visitor.hpp"
+#include "visit/expr_visitor.hpp"
 
-namespace ast {
-    struct StringLiteralExpr final : Expr {
-        lex::SymId value;
+namespace ast
+{
+    struct StringLiteralExpr final : Expr
+    {
+        lex::SymId value_;
 
-        StringLiteralExpr(const lex::SymId value, const lex::Loc &loc)
-            : Expr(NodeKind::Expr_StringLiteral, loc),
-              value(value) {
+        StringLiteralExpr(const lex::SymId value, const lex::Loc& loc)
+            : Expr(NodeKind::Expr_Literal, loc),
+              value_(value)
+        {
         }
 
-        void accept(visitor::ExprVisitor &) override;
+        void accept(visitor::ExprVisitor&) override;
     };
 
-    inline void StringLiteralExpr::accept(visitor::ExprVisitor &v) {
+    inline void StringLiteralExpr::accept(visitor::ExprVisitor& v)
+    {
         v.visit(*this);
     }
 }

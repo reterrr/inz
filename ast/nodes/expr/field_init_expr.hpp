@@ -6,6 +6,7 @@
 #define FIELD_INIT_EXPR_HPP
 
 #include "expr.hpp"
+#include "visit/expr_visitor.hpp"
 
 namespace ast {
     struct FieldInitExpr final : Expr {

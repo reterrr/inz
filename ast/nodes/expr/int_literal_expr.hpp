@@ -4,24 +4,23 @@
 
 #ifndef INT_EXPR_HPP
 #define INT_EXPR_HPP
-#include <token.hpp>
-
-#include "types.hpp"
-#include "expr.hpp"
 
 #include "visit/expr_visitor.hpp"
+#include "types.hpp"
+#include "literal_expr.hpp"
 
 namespace ast
 {
-    struct IntLiteralExpr final : Expr
+    struct IntLiteralExpr final : LiteralExpr
     {
-        kl::rt::IntValue v_;
-        kl::rt::Kind kind_;
+        lex::SymId v_;
+        std::optional<kl::rt::IntKind> suffix_;
 
-        IntLiteralExpr(kl::rt::IntValue v, BuiltinTypeExpr::Kind kind, const lex::Loc& loc)
-            : Expr(NodeKind::Expr_IntLiteral, loc),
-              v_(std::move(v)),
-              kind_(kind)
+        IntLiteralExpr(lex::SymId v,
+                       std::optional<kl::rt::IntKind> suffix,
+                       const lex::Loc& loc)
+            : LiteralExpr(kl::rt::LiteralExprKind::Int, loc),
+              v_(v), suffix_(suffix)
         {
         }
 

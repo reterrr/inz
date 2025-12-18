@@ -20,18 +20,19 @@
 #include "expr/builtin_type_expr.hpp"
 #include "expr/ref_type_expr.hpp"
 #include "nodes/project.hpp"
-#include "nodes/expr/int_expr.hpp"
-#include "nodes/expr/bool_expr.hpp"
+#include "nodes/expr/int_literal_expr.hpp"
+#include "nodes/expr/bool_literal_expr.hpp"
 #include "nodes/expr/string_expr.hpp"
-#include "nodes/expr/float_expr.hpp"
+#include "nodes/expr/float_literal_expr.hpp"
+#include "nodes/expr/char_literal_expr.hpp"
+#include "nodes/expr/array_literal_expr.hpp"
 
 #include "nodes/expr/field_init_expr.hpp"
-#include "nodes/expr/obj_expr.hpp"
+#include "nodes/expr/struct_literal_expr.hpp"
 #include "nodes/expr/ref_expr.hpp"
 
 #include "nodes/expr/unary_op_expression_kind.hpp"
 #include "nodes/expr/unary_op_expr.hpp"
-#include "nodes/expr/init_declarator_expr.hpp"
 
 #include "nodes/expr/binary_op_exression_kind.hpp"
 #include "nodes/expr/binary_op_expr.hpp"
@@ -63,8 +64,6 @@
 #include "nodes/module/import_decl.hpp"
 #include "nodes/module/module.hpp"
 
-
-#include "nodes/type/type.hpp"              // Type, CallableType
 #include "nodes/expr/ref_expr.hpp"
 
 #include "nodes/module/module.hpp"
@@ -94,8 +93,6 @@ namespace ast
 
     class AST final
     {
-        sema::type::TypeInterner type_interner_{};
-
         llvm::BumpPtrAllocator alloc_{};
         std::vector<Dtor> dtors_{};
 
@@ -158,25 +155,30 @@ namespace ast
         Project* mk_project(std::vector<ModulePtr>&& modules, const lex::Loc& l);
 
         // ========= Expressions =========
-        IntLiteralExpr* mk_int_literal_expr(kl_int v, const lex::Loc& loc);
+        IntLiteralExpr* mk_int_literal_expr(lex::SymId v, std::optional<kl::rt::IntKind> kind, const lex::Loc& loc);
 
-        BoolLiteralExpr* mk_bool_literal_expr(kl_bool v, const lex::Loc& loc);
+        BoolLiteralExpr* mk_bool_literal_expr(lex::SymId v, const lex::Loc& loc);
+
+        CharLiteralExpr* mk_char_literal_expr(kl::rt::character v, const lex::Loc& loc);
+
+        ArrayLiteralExpr* mk_array_literal_expr(std::vector<ExprPtr>&& v, const lex::Loc& loc);
 
         StringLiteralExpr* mk_str_literal_expr(lex::SymId sym, const lex::Loc& loc);
 
-        FloatLiteralExpr* mk_float_literal_expr(kl_float v, const lex::Loc& loc);
+        FloatLiteralExpr* mk_float_literal_expr(lex::SymId v, std::optional<kl::rt::FloatKind> kind, const lex::Loc& loc);
 
         // Field init for struct literals (return concrete pointer)
         FieldInitExpr* mk_field_init_expr(lex::SymId name, ExprPtr value, const lex::Loc& loc);
+        PathExpr* mk_path_expr(std::vector<lex::SymId>&& path, const lex::Loc& loc);
 
         // Object/struct literal
-        PathLiteralExpr* mk_obj_literal_expr(PathTypeExpr* pathTypeExpr,
-                                             std::vector<FieldInitExpr*>&& elems, const lex::Loc& loc);
+        StructLiteralExpr* mk_obj_literal_expr(PathTypeExpr* pathTypeExpr,
+                                               std::vector<FieldInitExpr*>&& elems, const lex::Loc& loc);
 
-        PathTypeExpr* mk_path_type_expr(std::vector<lex::SymId>&& segments, const lex::Loc& loc);
+        PathTypeExpr* mk_path_type_expr(PathExpr* pathExpr, const lex::Loc& loc);
         ArrayTypeExpr* mk_array_type_expr(TypeExpr* typeExpr, ExprPtr sizeExpr, const lex::Loc& loc);
         RefTypeExpr* mk_ref_type_expr(TypeExpr* typeExpr, RefTypeExpr::Mutability mutability, const lex::Loc& loc);
-        BuiltinTypeExpr* mk_builtin_type_expr(BuiltinTypeExpr::Kind kind, const lex::Loc& loc);
+        BuiltinTypeExpr* mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind kind, const lex::Loc& loc);
 
         // Unary / Binary ops
         UnaryExpr* mk_unary_op_expr(UnaryOp op, ExprPtr v, const lex::Loc& loc);
@@ -195,8 +197,11 @@ namespace ast
 
         ReturnStatement* mk_return_stmt(ExprPtr expr, const lex::Loc& loc);
 
-        // if (cond) then;              // no else
-        IfStatement* mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, const lex::Loc& loc);
+        IfStatement* mk_if_stmt(ExprPtr cond, BlockStatement* thenStmt,
+                                std::vector<ElseIfStatement*>&& elseIfs,
+                                ElseStatement* elseStmt, const lex::Loc& loc);
+        ElseIfStatement* mk_else_if_stmt(ExprPtr cond, BlockStatement* thenBlk, const lex::Loc& loc);
+        ElseStatement* mk_else_stmt(BlockStatement* elseBlk, const lex::Loc& loc);
 
         ExprStatement* mk_expr_stmt(ExprPtr expr, const lex::Loc& loc);
 
@@ -210,15 +215,11 @@ namespace ast
 
         BreakStatement* mk_break_stmt(const lex::Loc& loc);
 
-
-        // if (cond) then else other;   // with else
-        //StatementPtr mk_if_stmt(ExprPtr cond, StatementPtr thenStmt, StatementPtr elseStmt, const lex::Loc &loc);
-
         ParamDecl* mk_param_decl(lex::SymId name, TypeExpr* typeExpr, const lex::Loc& loc);
 
         VarDecl* mk_var_decl(
             lex::SymId name,
-            TypeExpr* tyExpr, VarDecl::Mutability mutability, const lex::Loc& loc);
+            TypeExpr* tyExpr, VarDecl::Mutability mutability, Expr* init, const lex::Loc& loc);
 
         // ========= Declarations =========
         FunctionDecl* mk_fn_decl(lex::SymId name,
@@ -246,14 +247,6 @@ namespace ast
         RefExpr* mk_ref_expr(lex::SymId name, const lex::Loc& loc);
 
         CallExpr* mk_call_expr(ExprPtr callee, std::vector<ExprPtr>&& args, const lex::Loc& loc);
-
-        // statements
-
-        PathType* mk_type_path_single(lex::SymId segment, const lex::Loc& loc);
-
-        PathType* mk_type_path_append(PathType* base, lex::SymId segment, const lex::Loc& loc);
-
-        Type* mk_type_from_path(PathType* path, const lex::Loc& loc);
 
 
         // ======== Introspection (optional) ========

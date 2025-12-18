@@ -6,29 +6,45 @@
 #define IF_STATEMENT_HPP
 
 #include "statement.hpp"
-#include "../expr/expr.hpp"
+#include "visit/stmt_visitor.hpp"
 
-#include "../visit/stmt_visitor.hpp"
+#include "else_if_statement.hpp"
+#include "else_statement.hpp"
 
-namespace ast {
-    struct IfStatement final : Statement {
+namespace ast
+{
+    struct IfStatement final : Statement
+    {
         ExprPtr condition_;
-        StatementPtr thenBody_;
+        BlockStatement* thenBody_;
+        std::vector<ElseIfStatement*> elseIfs_;
+        ElseStatement* else_;
 
-        IfStatement(ExprPtr condition, StatementPtr thenBody, const lex::Loc &loc)
+        IfStatement(ExprPtr condition, BlockStatement* thenBody,
+                    std::vector<ElseIfStatement*>&& elseIfs,
+                    ElseStatement* else__,
+                    const lex::Loc& loc)
             : Statement(NodeKind::Stmt_If, loc),
-              condition_(condition), thenBody_(thenBody) {
+              condition_(condition), thenBody_(thenBody),
+              elseIfs_(std::move(elseIfs)), else_(else__)
+        {
             condition_->parent = this;
             thenBody_->parent = this;
+            else_->parent = this;
+
+            std::ranges::for_each(elseIfs_, [this](auto& elseIf)
+            {
+                elseIf->parent = this;
+            });
         }
 
-        void accept(visitor::StmtVisitor &) override;
+        void accept(visitor::StmtVisitor&) override;
     };
 
-    inline void IfStatement::accept(visitor::StmtVisitor & v) {
+    inline void IfStatement::accept(visitor::StmtVisitor& v)
+    {
         v.visit(*this);
     }
-
 }
 
 #endif //IF_STATEMENT_HPP
