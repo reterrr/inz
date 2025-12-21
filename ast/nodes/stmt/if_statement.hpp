@@ -29,12 +29,12 @@ namespace ast
               elseIfs_(std::move(elseIfs)), else_(else__)
         {
             condition_->parent = this;
-            thenBody_->parent = this;
-            else_->parent = this;
+            if (thenBody_) thenBody_->parent = this;
+            if (else_) else_->parent = this;
 
             std::ranges::for_each(elseIfs_, [this](auto& elseIf)
             {
-                elseIf->parent = this;
+                if (elseIf) elseIf->parent = this;
             });
         }
 

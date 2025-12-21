@@ -7,8 +7,8 @@
 
 #include <token.hpp>
 #include "expr.hpp"
-#include "../visit/expr_visitor.hpp"
-#include "../decl/decl.hpp"
+#include "visit/expr_visitor.hpp"
+#include "decl/decl.hpp"
 
 namespace ast {
     struct RefExpr final : Expr {

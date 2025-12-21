@@ -8,24 +8,28 @@
 #include "literal_expr.hpp"
 #include "types.hpp"
 #include "expr/path_type_expr.hpp"
+#include "type/type_arged_expr.hpp"
 
 namespace ast
 {
-    // when we write e.g. Obj eg = Obj{ a, b, 1 };
-    struct StructLiteralExpr final : LiteralExpr
+    struct StructLiteralExpr final : LiteralExpr, TypeArgedExpr
     {
-        PathTypeExpr* type_;
+        Expr* expr_; // will be filtered during sema
         std::vector<FieldInitExpr*> elements_;
 
-        StructLiteralExpr(PathTypeExpr* type, std::vector<FieldInitExpr*>&& elements, const lex::Loc& loc)
+        StructLiteralExpr(Expr* type,
+                          std::vector<TypeExpr*>&& typeArgs,
+                          std::vector<FieldInitExpr*>&& elements,
+                          const lex::Loc& loc)
             : LiteralExpr(kl::rt::LiteralExprKind::Struct, loc),
-              type_(type), elements_(std::move(elements))
+              TypeArgedExpr(TypeArgedKind::PathType, std::move(typeArgs), this),
+              expr_(type), elements_(std::move(elements))
         {
             std::ranges::for_each(elements_, [this](FieldInitExpr*& e)
             {
                 e->parent = this;
             });
-            type_->parent = this;
+            expr_->parent = this;
         }
 
         void accept(visitor::ExprVisitor&) override;

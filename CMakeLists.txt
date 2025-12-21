@@ -111,7 +111,6 @@ add_executable(inz main.cpp
         ast/nodes/stmt/else_statement.hpp
         ast/interner.hpp
         ast/nodes/type/type_parametrized_decl.hpp
-        ast/generic_controller.hpp
         ast/nodes/type/type_arged_expr.hpp
 )
 
