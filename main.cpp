@@ -1,5 +1,4 @@
 #include <fstream>
-#include <stack>
 
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
@@ -18,7 +17,7 @@ int main()
     Scanner scanner{stringInterner, identInterner, numericInterner, &in};
     // uses stdin by default; set a stream in your .l if needed
     ast::AST ast;
-    ast::visitor::DumpVisitor visitor(std::cout);
+    ast::visitor::DumpVisitor visitor(std::cout, stringInterner, identInterner, numericInterner);
     sema::Sema sema(ast);
 
     yy::parser p(scanner, ast);
