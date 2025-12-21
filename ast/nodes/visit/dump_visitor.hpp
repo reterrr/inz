@@ -78,13 +78,11 @@ namespace ast::visitor
           ModuleVisitor
     {
         explicit DumpVisitor(std::ostream& os,
-                             const ast::Interner<>& stringInterner,
-                             const ast::Interner<>& identInterner,
-                             const ast::Interner<>& numericInterner)
+                             CompilerContext& context)
             : os(os),
-              stringInterner_(stringInterner),
-              identInterner_(identInterner),
-              numericInterner_(numericInterner)
+              stringInterner_(context.stringInterner),
+              identInterner_(context.identInterner),
+              numericInterner_(context.numericInterner)
         {
         }
 
@@ -205,13 +203,13 @@ namespace ast::visitor
         {
             switch (op)
             {
-                case ast::UnaryOp::negation:      return "negation";
-                case ast::UnaryOp::logical_not:   return "logical_not";
-                case ast::UnaryOp::preincrement:  return "preincrement";
-                case ast::UnaryOp::predecrement:  return "predecrement";
-                case ast::UnaryOp::postincrement: return "postincrement";
-                case ast::UnaryOp::postdecrement: return "postdecrement";
-                default:                          return "unknown_unary_op";
+            case ast::UnaryOp::negation: return "negation";
+            case ast::UnaryOp::logical_not: return "logical_not";
+            case ast::UnaryOp::preincrement: return "preincrement";
+            case ast::UnaryOp::predecrement: return "predecrement";
+            case ast::UnaryOp::postincrement: return "postincrement";
+            case ast::UnaryOp::postdecrement: return "postdecrement";
+            default: return "unknown_unary_op";
             }
         }
 
@@ -219,20 +217,20 @@ namespace ast::visitor
         {
             switch (op)
             {
-                case ast::BinaryOp::add:            return "add";
-                case ast::BinaryOp::subtract:       return "subtract";
-                case ast::BinaryOp::multiply:       return "multiply";
-                case ast::BinaryOp::divide:         return "divide";
-                case ast::BinaryOp::modulo:         return "modulo";
-                case ast::BinaryOp::less:           return "less";
-                case ast::BinaryOp::less_equal:     return "less_equal";
-                case ast::BinaryOp::greater:        return "greater";
-                case ast::BinaryOp::greater_equal:  return "greater_equal";
-                case ast::BinaryOp::equal:          return "equal";
-                case ast::BinaryOp::not_equal:      return "not_equal";
-                case ast::BinaryOp::logical_and:    return "logical_and";
-                case ast::BinaryOp::logical_or:     return "logical_or";
-                default:                            return "unknown_binary_op";
+            case ast::BinaryOp::add: return "add";
+            case ast::BinaryOp::subtract: return "subtract";
+            case ast::BinaryOp::multiply: return "multiply";
+            case ast::BinaryOp::divide: return "divide";
+            case ast::BinaryOp::modulo: return "modulo";
+            case ast::BinaryOp::less: return "less";
+            case ast::BinaryOp::less_equal: return "less_equal";
+            case ast::BinaryOp::greater: return "greater";
+            case ast::BinaryOp::greater_equal: return "greater_equal";
+            case ast::BinaryOp::equal: return "equal";
+            case ast::BinaryOp::not_equal: return "not_equal";
+            case ast::BinaryOp::logical_and: return "logical_and";
+            case ast::BinaryOp::logical_or: return "logical_or";
+            default: return "unknown_binary_op";
             }
         }
 
@@ -240,12 +238,12 @@ namespace ast::visitor
         {
             switch (op)
             {
-                case AssignOp::Assign:   return "assign";
-                case AssignOp::Add:      return "add_assign";
-                case AssignOp::Subtract: return "sub_assign";
-                case AssignOp::Multiply: return "mul_assign";
-                case AssignOp::Divide:   return "div_assign";
-                default:                      return "unknown_assign_op";
+            case AssignOp::Assign: return "assign";
+            case AssignOp::Add: return "add_assign";
+            case AssignOp::Subtract: return "sub_assign";
+            case AssignOp::Multiply: return "mul_assign";
+            case AssignOp::Divide: return "div_assign";
+            default: return "unknown_assign_op";
             }
         }
 
@@ -319,8 +317,8 @@ namespace ast::visitor
         {
             pad();
             os << "CharLiteral U+"
-               << std::hex << static_cast<std::uint32_t>(n.v_) << std::dec
-               << "\n";
+                << std::hex << static_cast<std::uint32_t>(n.v_) << std::dec
+                << "\n";
         }
 
         void visit(ast::StringLiteralExpr& n) override
@@ -948,7 +946,7 @@ namespace ast::visitor
             os << "VarDecl name=";
             print_ident_sym(n.name_);
             os << " (sym#" << n.name_ << ")"
-               << " mut=" << static_cast<int>(n.mut_) << "\n";
+                << " mut=" << static_cast<int>(n.mut_) << "\n";
 
             IndentGuard ig(*this);
 
@@ -1077,6 +1075,10 @@ namespace ast::visitor
                 IndentGuard ig2(*this);
                 if (module) module->accept(*this);
             }
+        }
+
+        void visit(FunctionBlockStatement&) override
+        {
         }
     };
 }

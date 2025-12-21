@@ -11,7 +11,7 @@
 #include "visit/decl_visitor.hpp"
 #include "expr/type_expr.hpp"
 #include "decl/param_decl.hpp"
-#include "stmt/block_statement.hpp"
+#include "stmt/function_block_statement.hpp"
 #include "type/type_parametrized_decl.hpp"
 
 namespace ast
@@ -24,13 +24,13 @@ namespace ast
         lex::SymId name_;
         std::vector<ParamDecl*> params_;
         TypeExpr* ret_;
-        BlockStatement* body_;
+        FunctionBlockStatement* body_;
 
         FunctionDecl(const lex::SymId name,
                      std::vector<TypeParamDecl*>&& typeParamDecls,
                      std::vector<ParamDecl*>&& params,
                      TypeExpr* ret,
-                     BlockStatement* body,
+                     FunctionBlockStatement* body,
                      const lex::Loc& loc)
             : Decl(NodeKind::Decl_Fn, loc),
               TypeParametrizedDecl(TypeParametrizedKind::Function,

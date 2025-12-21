@@ -5,8 +5,8 @@
 #ifndef EXPR_HPP
 #define EXPR_HPP
 
-#include "../../node.hpp"
-#include "../visit/visitable.hpp"
+#include "node.hpp"
+#include "visit/visitable.hpp"
 
 
 namespace ast
@@ -23,7 +23,7 @@ namespace ast
         virtual ~Expr() = default;
     };
 
-    typedef Expr* ExprPtr;
+    using ExprPtr = Expr*;
 }
 
 

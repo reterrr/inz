@@ -70,6 +70,7 @@ fn main() -> i32 {
   imm t0: i32 = some::hello::id::<S,>{};
   imm t1: i32 = id(y);
   imm t2: i32 = id::<i32,>(y,);
+  static imm t9: i32;
 
   // post/pre inc/dec
   y++;

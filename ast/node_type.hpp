@@ -72,6 +72,8 @@ enum class NodeKind : uint16_t
     Expr_Cast,
     Stmt_ElseIf,
     Stmt_Else,
+    Stmt_FnBlock,
+    Stmt_StructBlock,
 };
 
 #endif //NODE_TYPE_HPP

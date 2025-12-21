@@ -23,6 +23,8 @@ namespace ast
               condition_(condition),
               then_(then)
         {
+            condition_->parent = this;
+            then_->parent = this;
         }
 
         void accept(visitor::StmtVisitor&) override;

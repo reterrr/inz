@@ -45,6 +45,7 @@
 
 
 #include "nodes/stmt/block_statement.hpp"
+#include "nodes/stmt/function_block_statement.hpp"
 #include "nodes/stmt/return_statement.hpp"
 #include "nodes/stmt/if_statement.hpp"
 #include "nodes/stmt/expr_statement.hpp"
@@ -91,7 +92,7 @@ namespace ast
 
     // ====================================================
 
-    class AST final
+    class Ast final
     {
         llvm::BumpPtrAllocator alloc_{};
         std::vector<Dtor> dtors_{};
@@ -101,8 +102,8 @@ namespace ast
         std::size_t expr_count_ = 0;
         std::size_t stmt_count_ = 0;
         std::size_t decl_count_ = 0;
-        std::size_t module_count_ = 0;
 
+        std::size_t module_count_ = 0;
 
         template <typename T, typename... Args>
         T* make(Args&&... args)
@@ -118,7 +119,7 @@ namespace ast
 
             if constexpr (!std::is_trivially_destructible_v<T>)
             {
-                dtors_.push_back({
+                dtors_.emplace_back({
                     +[](void* o) { static_cast<T*>(o)->~T(); },
                     obj
                 });
@@ -138,12 +139,14 @@ namespace ast
         }
 
     public:
-        AST()
-            : project(mk_project(std::vector<ModulePtr>{}, lex::Loc{}))
+        explicit Ast(Project* project)
+            : project(project)
         {
         }
 
-        ~AST()
+        Ast() = default;
+
+        ~Ast()
         {
             destroy_all();
         }
@@ -196,6 +199,7 @@ namespace ast
 
         // ========= Statements =========
         BlockStatement* mk_block_stmt(std::vector<StatementPtr>&& stmts, const lex::Loc& loc);
+        FunctionBlockStatement* mk_fn_block_statement(BlockStatement* block, const lex::Loc& loc);
 
         ReturnStatement* mk_return_stmt(ExprPtr expr, const lex::Loc& loc);
 
@@ -221,7 +225,8 @@ namespace ast
 
         VarDecl* mk_var_decl(
             lex::SymId name,
-            TypeExpr* tyExpr, VarDecl::Mutability mutability, Expr* init, const lex::Loc& loc);
+            TypeExpr* tyExpr, VarDecl::Mutability mutability, VarDecl::Storage storage, Expr* init,
+            const lex::Loc& loc);
 
         // ========= Declarations =========
         FunctionDecl* mk_fn_decl(lex::SymId name,

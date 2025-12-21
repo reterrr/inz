@@ -200,6 +200,14 @@ namespace ast::visitor
         if (e.then_) e.then_->accept(*this);
     }
 
+    void OverallVisitor::visit(TypeParamDecl&)
+    {
+    }
+
+    void OverallVisitor::visit(FunctionBlockStatement&)
+    {
+    }
+
     void OverallVisitor::visit(BlockStatement& b)
     {
         for (auto* s : b.statements_)
