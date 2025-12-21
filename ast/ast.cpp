@@ -55,16 +55,17 @@ PathExpr* AST::mk_path_expr(std::vector<lex::SymId>&& path, const lex::Loc& loc)
     return make<PathExpr>(std::move(path), loc);
 }
 
-StructLiteralExpr* AST::mk_obj_literal_expr(PathTypeExpr* pathTypeExpr,
-                                            std::vector<FieldInitExpr*>&& elems,
-                                            const lex::Loc& loc)
+StructLiteralExpr* AST::mk_struct_literal_expr(Expr* pathTypeExpr,
+                                               std::vector<TypeExpr*>&& typeArgs,
+                                               std::vector<FieldInitExpr*>&& elems,
+                                               const lex::Loc& loc)
 {
-    return make<StructLiteralExpr>(pathTypeExpr, std::move(elems), loc);
+    return make<StructLiteralExpr>(pathTypeExpr, std::move(typeArgs), std::move(elems), loc);
 }
 
-PathTypeExpr* AST::mk_path_type_expr(PathExpr* pathExpr, const lex::Loc& loc)
+PathTypeExpr* AST::mk_path_type_expr(PathExpr* pathExpr, std::vector<TypeExpr*>&& typeArgs, const lex::Loc& loc)
 {
-    return make<PathTypeExpr>(pathExpr, loc);
+    return make<PathTypeExpr>(pathExpr, std::move(typeArgs), loc);
 }
 
 ArrayTypeExpr* AST::mk_array_type_expr(TypeExpr* typeExpr, ExprPtr sizeExpr, const lex::Loc& loc)
@@ -152,12 +153,12 @@ ElseStatement* AST::mk_else_stmt(BlockStatement* elseBlk, const lex::Loc& loc)
 // ========= Declarations =========
 
 FunctionDecl* AST::mk_fn_decl(lex::SymId name,
+                              std::vector<TypeParamDecl*>&& typeParamDecls,
                               std::vector<ParamDecl*>&& params,
-                              TypeExpr* ret,
-                              BlockStatement* body,
+                              TypeExpr* ret, BlockStatement* body,
                               const lex::Loc& loc)
 {
-    return make<FunctionDecl>(name, std::move(params), ret, body, loc);
+    return make<FunctionDecl>(name, std::move(typeParamDecls), std::move(params), ret, body, loc);
 }
 
 FieldDecl* AST::mk_field_decl(lex::SymId name, TypeExpr* type, FieldDecl::Visibility visibility, const lex::Loc& loc)
@@ -165,9 +166,15 @@ FieldDecl* AST::mk_field_decl(lex::SymId name, TypeExpr* type, FieldDecl::Visibi
     return make<FieldDecl>(name, type, visibility, loc);
 }
 
-StructDecl* AST::mk_struct_decl(lex::SymId name, std::vector<FieldDecl*>&& fields, const lex::Loc& loc)
+TypeParamDecl* AST::mk_type_param_decl(lex::SymId name, const lex::Loc& loc)
 {
-    return make<StructDecl>(name, std::move(fields), loc);
+    return make<TypeParamDecl>(name, loc);
+}
+
+StructDecl* AST::mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecls,
+                                std::vector<FieldDecl*>&& fields, const lex::Loc& loc)
+{
+    return make<StructDecl>(name, std::move(typeParamDecls), std::move(fields), loc);
 }
 
 Module* AST::mk_module(std::vector<lex::SymId>&& package_path, std::vector<ImportDecl*>&& imports,
@@ -217,7 +224,10 @@ VarDeclStatement* AST::mk_var_decl_stmt(VarDecl* decl, const lex::Loc& loc)
     return make<VarDeclStatement>(decl, loc);
 }
 
-CallExpr* AST::mk_call_expr(ExprPtr callee, std::vector<ExprPtr>&& args, const lex::Loc& loc)
+CallExpr* AST::mk_call_expr(ExprPtr callee,
+                            std::vector<TypeExpr*>&& typeArgs,
+                            std::vector<ExprPtr>&& args,
+                            const lex::Loc& loc)
 {
-    return make<CallExpr>(callee, std::move(args), loc);
+    return make<CallExpr>(callee, std::move(typeArgs), std::move(args), loc);
 }

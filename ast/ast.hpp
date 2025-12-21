@@ -70,7 +70,7 @@
 
 #include "nodes/stmt/var_decl_statement.hpp"
 #include "sema/type_interner.hpp"
-#include "nodes/expr/array_type_expression.hpp"
+#include "nodes/expr/array_type_expr.hpp"
 #include "nodes/expr/path_type_expr.hpp"
 
 
@@ -165,17 +165,19 @@ namespace ast
 
         StringLiteralExpr* mk_str_literal_expr(lex::SymId sym, const lex::Loc& loc);
 
-        FloatLiteralExpr* mk_float_literal_expr(lex::SymId v, std::optional<kl::rt::FloatKind> kind, const lex::Loc& loc);
+        FloatLiteralExpr* mk_float_literal_expr(lex::SymId v, std::optional<kl::rt::FloatKind> kind,
+                                                const lex::Loc& loc);
 
         // Field init for struct literals (return concrete pointer)
         FieldInitExpr* mk_field_init_expr(lex::SymId name, ExprPtr value, const lex::Loc& loc);
         PathExpr* mk_path_expr(std::vector<lex::SymId>&& path, const lex::Loc& loc);
 
         // Object/struct literal
-        StructLiteralExpr* mk_obj_literal_expr(PathTypeExpr* pathTypeExpr,
-                                               std::vector<FieldInitExpr*>&& elems, const lex::Loc& loc);
+        StructLiteralExpr* mk_struct_literal_expr(Expr* pathTypeExpr,
+                                                  std::vector<TypeExpr*>&& typeArgs,
+                                                  std::vector<FieldInitExpr*>&& elems, const lex::Loc& loc);
 
-        PathTypeExpr* mk_path_type_expr(PathExpr* pathExpr, const lex::Loc& loc);
+        PathTypeExpr* mk_path_type_expr(PathExpr* pathExpr, std::vector<TypeExpr*>&& typeArgs, const lex::Loc& loc);
         ArrayTypeExpr* mk_array_type_expr(TypeExpr* typeExpr, ExprPtr sizeExpr, const lex::Loc& loc);
         RefTypeExpr* mk_ref_type_expr(TypeExpr* typeExpr, RefTypeExpr::Mutability mutability, const lex::Loc& loc);
         BuiltinTypeExpr* mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind kind, const lex::Loc& loc);
@@ -223,6 +225,7 @@ namespace ast
 
         // ========= Declarations =========
         FunctionDecl* mk_fn_decl(lex::SymId name,
+                                 std::vector<TypeParamDecl*>&& typeParamDecls,
                                  std::vector<ParamDecl*>&& params,
                                  TypeExpr* ret,
                                  BlockStatement* body,
@@ -231,8 +234,10 @@ namespace ast
 
         FieldDecl* mk_field_decl(lex::SymId name, TypeExpr* type, FieldDecl::Visibility visibility,
                                  const lex::Loc& loc);
+        TypeParamDecl* mk_type_param_decl(lex::SymId name, const lex::Loc& loc);
 
-        StructDecl* mk_struct_decl(lex::SymId name, std::vector<FieldDecl*>&& fields, const lex::Loc& loc);
+        StructDecl* mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecl,
+                                   std::vector<FieldDecl*>&& fields, const lex::Loc& loc);
 
         Module* mk_module(std::vector<lex::SymId>&& package_path,
                           std::vector<ImportDecl*>&& imports,
@@ -246,7 +251,8 @@ namespace ast
 
         RefExpr* mk_ref_expr(lex::SymId name, const lex::Loc& loc);
 
-        CallExpr* mk_call_expr(ExprPtr callee, std::vector<ExprPtr>&& args, const lex::Loc& loc);
+        CallExpr* mk_call_expr(ExprPtr callee, std::vector<TypeExpr*>&& typeArgs, std::vector<ExprPtr>&& args,
+                               const lex::Loc& loc);
 
 
         // ======== Introspection (optional) ========

@@ -7,16 +7,6 @@
 
 #include <cstdint>
 
-enum class RefType
-{
-    Mut, NotMut
-};
-
-enum class PostOp
-{
-    Increment, Decrement
-};
-
 enum class AssignOp
 {
     Assign, Add, Subtract, Multiply, Divide, Modulo
@@ -74,6 +64,7 @@ enum class NodeKind : uint16_t
     Decl_Var,
     Decl_Vars_Sugar,
     Decl_Field,
+    Decl_TypeParam,
 
     // ---- Sentinels
     Expr_Type,

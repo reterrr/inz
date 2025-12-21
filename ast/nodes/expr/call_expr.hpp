@@ -6,27 +6,34 @@
 #define CALL_EXPR_HPP
 
 #include "expr.hpp"
-#include "../visit/expr_visitor.hpp"
+#include "type/type_arged_expr.hpp"
+#include "visit/expr_visitor.hpp"
 
-namespace ast {
-    struct CallExpr final : Expr {
+namespace ast
+{
+    struct CallExpr final : Expr, TypeArgedExpr
+    {
         ExprPtr callee_; // foo(...) or obj.method(...): callee is an Expr
-        std::vector<ExprPtr> args_; // positional arguments, in order
+        std::vector<Expr*> args_; // positional arguments, in order
 
         CallExpr(ExprPtr callee,
-                 std::vector<ExprPtr> &&args,
-                 const lex::Loc &loc)
+                 std::vector<TypeExpr*>&& typeArgs,
+                 std::vector<ExprPtr>&& args,
+                 const lex::Loc& loc)
             : Expr(NodeKind::Expr_Call, loc),
+              TypeArgedExpr(TypeArgedKind::Call, std::move(typeArgs), this),
               callee_(callee),
-              args_(std::move(args)) {
+              args_(std::move(args))
+        {
             callee_->parent = this;
-            std::ranges::for_each(args_, [this](ExprPtr &e) { e->parent = this; });
+            std::ranges::for_each(args_, [this](ExprPtr& e) { e->parent = this; });
         }
 
-        void accept(visitor::ExprVisitor &v) override;
+        void accept(visitor::ExprVisitor& v) override;
     };
 
-    inline void CallExpr::accept(visitor::ExprVisitor &v) {
+    inline void CallExpr::accept(visitor::ExprVisitor& v)
+    {
         v.visit(*this);
     }
 }

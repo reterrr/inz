@@ -11,28 +11,37 @@
 
 #include "decl.hpp"
 #include "field_decl.hpp"
-#include "../visit/decl_visitor.hpp"
+#include "type_param_decl.hpp"
+#include "visit/decl_visitor.hpp"
+#include "type/type_parametrized_decl.hpp"
 
 
-namespace ast {
-    struct StructDecl final : Decl {
-        lex::SymId name;
-        std::vector<FieldDecl *> fields_;
+namespace ast
+{
+    struct StructDecl final : Decl, TypeParametrizedDecl
+    {
+        lex::SymId name_;
+        std::vector<FieldDecl*> fields_;
 
         StructDecl(const lex::SymId name,
-                   std::vector<FieldDecl *> &&fields,
-                   const lex::Loc &loc)
+                   std::vector<TypeParamDecl*>&& typeParamsDecls,
+                   std::vector<FieldDecl*>&& fields,
+                   const lex::Loc& loc)
             : Decl(NodeKind::Decl_Struct, loc),
-              name(name), fields_(std::move(fields)) {
-            std::ranges::for_each(fields_, [this](FieldDecl *field) {
+              TypeParametrizedDecl(TypeParametrizedKind::Struct, std::move(typeParamsDecls), this),
+              name_(name), fields_(std::move(fields))
+        {
+            std::ranges::for_each(fields_, [this](FieldDecl* field)
+            {
                 field->parent = this;
             });
         }
 
-        void accept(visitor::DeclVisitor &) override;
+        void accept(visitor::DeclVisitor&) override;
     };
 
-    inline void StructDecl::accept(visitor::DeclVisitor &v) {
+    inline void StructDecl::accept(visitor::DeclVisitor& v)
+    {
         v.visit(*this);
     }
 }
