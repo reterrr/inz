@@ -55,7 +55,7 @@ namespace sema::pass
     {
         ScopeGuard guard{controller_};
         struct_decl.id =
-            controller_.enterScope(struct_decl.name, scope::ScopeKind::Struct);
+            controller_.enterScope(struct_decl.name_, scope::ScopeKind::Struct);
 
 
         AstIteratorVisitor::visit(struct_decl);
@@ -147,6 +147,10 @@ namespace sema::pass
     }
 
     void ScopeAstVisitor::visit(ast::BuiltinTypeExpr&)
+    {
+    }
+
+    void ScopeAstVisitor::visit(ast::TypeParamDecl&)
     {
     }
 

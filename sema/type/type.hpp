@@ -2,7 +2,7 @@
 #define AST_TYPE_HPP
 
 #include <cstdint>
-#include <memory>
+#include <utility>
 #include <vector>
 
 #include <token.hpp>
@@ -10,9 +10,12 @@
 
 namespace ast
 {
+    using BinderId = uint32_t;
+    static constexpr BinderId InvalidBinderId = 0;
+
     enum class BuiltinTy : uint8_t { Void, Int, BigInt, MagicInt, Double, Bool, String, Char };
 
-    enum class TyKind : uint8_t { Builtin, Path, FixedArray, Slice, Ref, Callable, MagicInt, Struct };
+    enum class TyKind : uint8_t { Builtin, Path, FixedArray, Slice, Ref, Callable, MagicInt, Struct, Param };
 
     enum class TypeRegion : uint8_t { Auto, Static };
 
@@ -70,10 +73,13 @@ namespace ast
 
     struct PathType final : Type
     {
-        std::vector<lex::SymId> segments;
+        std::vector<lex::SymId> segments_;
+        std::vector<Type*> typeArgs_;
 
-        explicit PathType(std::vector<lex::SymId> segs, const lex::Loc& L)
-            : Type(TyKind::Path, L), segments(std::move(segs))
+        explicit PathType(std::vector<lex::SymId> segments, std::vector<Type*> typeArgs, const lex::Loc& L)
+            : Type(TyKind::Path, L),
+              segments_(std::move(segments)),
+              typeArgs_(std::move(typeArgs))
         {
         }
 
@@ -81,13 +87,13 @@ namespace ast
         {
             if (other.kind != TyKind::Path) return false;
             auto& o = static_cast<const PathType&>(other);
-            return segments == o.segments;
+            return segments_ == o.segments_;
         }
 
         std::size_t hash() const override
         {
             std::size_t h = Type::hash();
-            boost::hash_range(h, segments.begin(), segments.end());
+            boost::hash_range(h, segments_.begin(), segments_.end());
             return h;
         }
     };
