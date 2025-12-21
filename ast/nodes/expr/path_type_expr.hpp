@@ -7,16 +7,20 @@
 
 #include "path_expr.hpp"
 #include "type_expr.hpp"
+#include "type/type_arged_expr.hpp"
 #include "visit/expr_visitor.hpp"
 
 namespace ast
 {
-    struct PathTypeExpr final : TypeExpr
+    struct PathTypeExpr final : TypeExpr, TypeArgedExpr
     {
         PathExpr* pathExpr_;
 
-        PathTypeExpr(PathExpr* pathExpr, const lex::Loc& loc)
+        PathTypeExpr(PathExpr* pathExpr,
+                     std::vector<TypeExpr*>&& typeArgs,
+                     const lex::Loc& loc)
             : TypeExpr(Kind::Path, loc),
+              TypeArgedExpr(TypeArgedKind::PathType, std::move(typeArgs), this),
               pathExpr_(pathExpr)
         {
             pathExpr_->parent = this;

@@ -59,7 +59,7 @@ add_executable(inz main.cpp
         ast/nodes/visit/visitor.hpp
         ast/nodes/expr/bool_literal_expr.hpp
         ast/nodes/expr/string_expr.hpp
-        ast/nodes/expr/struct_literal_expr.hpp
+        ast/nodes/expr/obj_expr.hpp
         ast/nodes/expr/field_init_expr.hpp
         ast/nodes/module/module.hpp
         ast/nodes/visit/module_visitor.hpp
@@ -96,7 +96,7 @@ add_executable(inz main.cpp
         sema/sema.hpp
         ast/nodes/visit/project_visitor.hpp
         ast/nodes/expr/type_expr.hpp
-        ast/nodes/expr/array_type_expression.hpp
+        ast/nodes/expr/array_type_expr.hpp
         ast/nodes/expr/path_type_expr.hpp
         ast/nodes/expr/ref_type_expr.hpp
         ast/nodes/expr/builtin_type_expr.hpp
@@ -110,6 +110,8 @@ add_executable(inz main.cpp
         ast/nodes/stmt/else_if_statement.hpp
         ast/nodes/stmt/else_statement.hpp
         ast/interner.hpp
+        ast/nodes/type/type_parametrized_decl.hpp
+        ast/nodes/type/type_arged_expr.hpp
 )
 
 target_include_directories(inz PRIVATE

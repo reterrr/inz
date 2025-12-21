@@ -91,6 +91,8 @@ namespace ast::visitor
         void visit(ArrayLiteralExpr&) override;
         void visit(ElseIfStatement&) override;
         void visit(ElseStatement&) override;
+        void visit(TypeParamDecl&) override;
+        void visit(FunctionBlockStatement&) override;
     };
 }
 

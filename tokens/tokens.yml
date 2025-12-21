@@ -68,6 +68,8 @@ tokens:
       COMMA: ","
       SMCLN: ";"
       COLON: ":"
+      COLONCOLON: "::"
+      TURBOFISH_S: "::<"
     misc:
       DOT: "."
       QUESTION: "?"

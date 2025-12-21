@@ -8,24 +8,15 @@
 #include <vector>
 
 #include "statement.hpp"
-#include "../visit/stmt_visitor.hpp"
+#include "visit/stmt_visitor.hpp"
 
 namespace ast
 {
     struct BlockStatement final : Statement
     {
-        std::vector<StatementPtr> statements_;
+        std::vector<Statement*> statements_;
 
-        // lex::Loc lbrace;
-        // lex::Loc rbrace;
-
-        // BlockStatement(std::vector<StatementPtr> &&statements, const lex::Loc &loc,
-        //                const lex::Loc &lbrace, const lex::Loc &rbrace)
-        //     : Statement(NodeKind::Stmt_Block, loc), statements(std::move(statements)),
-        //       lbrace(lbrace), rbrace(rbrace) {
-        // }
-
-        BlockStatement(std::vector<StatementPtr>&& statements, const lex::Loc& loc)
+        BlockStatement(std::vector<Statement*>&& statements, const lex::Loc& loc)
             : Statement(NodeKind::Stmt_Block, loc),
               statements_(std::move(statements))
         {

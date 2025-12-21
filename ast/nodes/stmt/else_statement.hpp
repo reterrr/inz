@@ -20,6 +20,7 @@ namespace ast
             : Statement(NodeKind::Stmt_Else, loc),
               then_(then)
         {
+            then_->parent = this;
         }
 
         void accept(visitor::StmtVisitor&) override;

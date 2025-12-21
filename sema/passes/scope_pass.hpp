@@ -54,6 +54,7 @@ namespace sema::pass
         void visit(ast::PathTypeExpr&) override;
         void visit(ast::RefTypeExpr&) override;
         void visit(ast::BuiltinTypeExpr&) override;
+        void visit(ast::TypeParamDecl&) override;
     };
 
     class ScopePass final : public Pass<ScopeAstVisitor>

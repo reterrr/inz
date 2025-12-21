@@ -48,7 +48,7 @@ namespace lex {
         {% set nc.val = nc.val + 1 %}
         {% endfor %}
 
-        TOK_UNKNOWN = {{ nc.val }}
+        TOK_UNDEF = {{ nc.val }}
     };
 
     struct Pos final {

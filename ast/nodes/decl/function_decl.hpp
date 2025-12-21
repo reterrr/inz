@@ -8,41 +8,44 @@
 
 #include "decl.hpp"
 
-#include "../visit/decl_visitor.hpp"
+#include "visit/decl_visitor.hpp"
 #include "expr/type_expr.hpp"
 #include "decl/param_decl.hpp"
-#include "stmt/block_statement.hpp"
-
+#include "stmt/function_block_statement.hpp"
+#include "type/type_parametrized_decl.hpp"
 
 namespace ast
 {
     struct ParamDecl;
     struct BlockStatement;
 
-    struct FunctionDecl final : Decl
+    struct FunctionDecl final : Decl, TypeParametrizedDecl
     {
         lex::SymId name_;
         std::vector<ParamDecl*> params_;
         TypeExpr* ret_;
-        BlockStatement* body_;
+        FunctionBlockStatement* body_;
 
         FunctionDecl(const lex::SymId name,
+                     std::vector<TypeParamDecl*>&& typeParamDecls,
                      std::vector<ParamDecl*>&& params,
                      TypeExpr* ret,
-                     BlockStatement* body,
+                     FunctionBlockStatement* body,
                      const lex::Loc& loc)
             : Decl(NodeKind::Decl_Fn, loc),
+              TypeParametrizedDecl(TypeParametrizedKind::Function,
+                                   std::move(typeParamDecls), this),
               name_(name),
               params_(std::move(params)),
               ret_(ret),
               body_(body)
         {
-            body_->parent = this;
             std::ranges::for_each(params_, [this](ParamDecl*& p)
             {
                 p->parent = this;
             });
             ret_->parent = this;
+            if (body_) body_->parent = this;
         }
 
         void accept(visitor::DeclVisitor&) override;

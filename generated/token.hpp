@@ -80,19 +80,21 @@ namespace lex {
         TOK_COMMA = 63, // ,
         TOK_SMCLN = 64, // ;
         TOK_COLON = 65, // :
-        TOK_DOT = 66, // .
-        TOK_QUESTION = 67, // ?
-        TOK_ARROW = 68, // ->
+        TOK_COLONCOLON = 66, // ::
+        TOK_TURBOFISH_S = 67, // ::<
+        TOK_DOT = 68, // .
+        TOK_QUESTION = 69, // ?
+        TOK_ARROW = 70, // ->
 
-        TOK_IDENTIFIER = 69,
+        TOK_IDENTIFIER = 71,
 
-        TOK_INT_LITERAL = 70,
-        TOK_FLOAT_LITERAL = 71,
-        TOK_STRING_LITERAL = 72,
-        TOK_BOOL_LITERAL = 73,
-        TOK_CHAR_LITERAL = 74,
+        TOK_INT_LITERAL = 72,
+        TOK_FLOAT_LITERAL = 73,
+        TOK_STRING_LITERAL = 74,
+        TOK_BOOL_LITERAL = 75,
+        TOK_CHAR_LITERAL = 76,
 
-        TOK_UNKNOWN = 75
+        TOK_UNDEF = 77
     };
 
     struct Pos final {

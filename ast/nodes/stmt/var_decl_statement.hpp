@@ -9,7 +9,7 @@
 
 #include "statement.hpp"
 
-#include "../visit/stmt_visitor.hpp"
+#include "visit/stmt_visitor.hpp"
 
 namespace ast
 {

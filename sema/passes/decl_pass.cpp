@@ -99,7 +99,7 @@ namespace sema::pass
     void DeclPassAstIteratorVisitor::visit(ast::StructDecl& s)
     {
         Symbol sym;
-        sym.id = s.name;
+        sym.id = s.name_;
         sym.kind = SymbolKind::Struct;
         sym.loc = s.location_;
 

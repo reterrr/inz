@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <vector>
 
-#include "../node.hpp"
+#include "node.hpp"
 
 #include "visit/project_visitor.hpp"
 #include "ast/nodes/module/module.hpp"
