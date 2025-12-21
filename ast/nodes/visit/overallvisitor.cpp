@@ -4,25 +4,33 @@
 
 #include "overallvisitor.hpp"
 
-#include <algorithm>
-
 #include "project.hpp"
-#include "stmt/block_statement.hpp"
-#include "decl/param_decl.hpp"
-#include "expr/field_init_expr.hpp"
+
+// decls
 #include "decl/function_decl.hpp"
+#include "decl/param_decl.hpp"
 #include "decl/struct_decl.hpp"
 #include "decl/var_decl.hpp"
+
+// exprs
 #include "expr/assign_expr.hpp"
 #include "expr/binary_op_expr.hpp"
 #include "expr/call_expr.hpp"
 #include "expr/field_expr.hpp"
-
+#include "expr/field_init_expr.hpp"
 #include "expr/struct_literal_expr.hpp"
-#include "expr/ref_expr.hpp"
 #include "expr/unary_op_expr.hpp"
+#include "expr/index_expr.hpp"
+
+// module
 #include "module/module.hpp"
 
+// stmts
+#include "expr/array_type_expr.hpp"
+#include "expr/cast_expr.hpp"
+#include "expr/ref_type_expr.hpp"
+#include "stmt/block_statement.hpp"
+#include "stmt/break_statement.hpp"
 #include "stmt/do_while_statement.hpp"
 #include "stmt/expr_statement.hpp"
 #include "stmt/if_statement.hpp"
@@ -30,205 +38,271 @@
 #include "stmt/var_decl_statement.hpp"
 #include "stmt/while_statement.hpp"
 
-void ast::visitor::OverallVisitor::visit(ParamDecl& p)
+namespace ast::visitor
 {
-    (void)p;
-}
+    void OverallVisitor::visit(ParamDecl& p)
+    {
+        if (p.type_) p.type_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(FunctionDecl& f)
-{
-    if (f.body_) f.body_->accept(*this);
-    std::ranges::for_each(f.params_, [this](auto& p) { p->accept(*this); });
-}
+    void OverallVisitor::visit(FunctionDecl& f)
+    {
+        // Convention: signature first, then body
+        if (f.ret_) f.ret_->accept(*this);
 
-void ast::visitor::OverallVisitor::visit(TypeAliasDecl& t)
-{
-    (void)t;
-}
+        for (auto* p : f.params_)
+        {
+            if (p) p->accept(*this);
+        }
 
-void ast::visitor::OverallVisitor::visit(ImportDecl& i)
-{
-    (void)i;
-}
+        if (f.body_) f.body_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(VarDecl&)
-{
-}
+    void OverallVisitor::visit(TypeAliasDecl& t)
+    {
+        // If you store aliased type expr, traverse it here.
+        // if (t.type_alias) t.type_alias->accept(*this);
+        (void)t;
+    }
 
-void ast::visitor::OverallVisitor::visit(StructDecl& s)
-{
-    std::ranges::for_each(s.fields_, [this](auto& f) { f->accept(*this); });
-}
+    void OverallVisitor::visit(ImportDecl& i)
+    {
+        (void)i;
+    }
 
-void ast::visitor::OverallVisitor::visit(FieldDecl& f)
-{
-    (void)f;
-}
+    void OverallVisitor::visit(VarDecl& v)
+    {
+        // Traverse syntactic children only (type + init).
+        if (v.type_) v.type_->accept(*this);
+        if (v.init_) v.init_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(IntLiteralExpr& i)
-{
-    (void)i;
-}
+    void OverallVisitor::visit(StructDecl& s)
+    {
+        for (auto* f : s.fields_)
+        {
+            if (f) f->accept(*this);
+        }
+    }
 
-void ast::visitor::OverallVisitor::visit(FloatLiteralExpr& f)
-{
-    (void)f;
-}
+    void OverallVisitor::visit(FieldDecl& f)
+    {
+        if (f.type_) f.type_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(UnaryExpr& u)
-{
-    if (u.expr_) u.expr_->accept(*this);
-}
+    void OverallVisitor::visit(IntLiteralExpr& i)
+    {
+        (void)i;
+    }
 
-void ast::visitor::OverallVisitor::visit(BinaryExpr& b)
-{
-    if (b.lhs_) b.lhs_->accept(*this);
-    if (b.rhs_) b.rhs_->accept(*this);
-}
+    void OverallVisitor::visit(FloatLiteralExpr& f)
+    {
+        (void)f;
+    }
 
-void ast::visitor::OverallVisitor::visit(StringLiteralExpr& s)
-{
-    (void)s;
-}
+    void OverallVisitor::visit(UnaryExpr& u)
+    {
+        if (u.expr_) u.expr_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(StructLiteralExpr& o)
-{
-    std::ranges::for_each(o.elements_, [this](auto& f) { f->accept(*this); });
-}
+    void OverallVisitor::visit(BinaryExpr& b)
+    {
+        if (b.lhs_) b.lhs_->accept(*this);
+        if (b.rhs_) b.rhs_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(AssignExpr& a)
-{
-    if (a.lhs_) a.lhs_->accept(*this);
-    if (a.rhs_) a.rhs_->accept(*this);
-}
+    void OverallVisitor::visit(StringLiteralExpr& s)
+    {
+        (void)s;
+    }
 
-void ast::visitor::OverallVisitor::visit(FieldExpr& f)
-{
-    if (f.base_) f.base_->accept(*this);
-}
+    void OverallVisitor::visit(StructLiteralExpr& o)
+    {
+        if (o.expr_) o.expr_->accept(*this);
 
-void ast::visitor::OverallVisitor::visit(CallExpr& e)
-{
-    if (e.callee_) e.callee_->accept(*this);
-    std::ranges::for_each(e.args_, [this](auto& a) { a->accept(*this); });
-}
+        for (auto* e : o.elements_)
+        {
+            if (e) e->accept(*this);
+        }
+    }
 
-void ast::visitor::OverallVisitor::visit(RefExpr& r)
-{
-    if (r.binding_) r.binding_->accept(*this);
-}
+    void OverallVisitor::visit(AssignExpr& a)
+    {
+        if (a.lhs_) a.lhs_->accept(*this);
+        if (a.rhs_) a.rhs_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(IndexExpr& i)
-{
-    //TODO: add index expr
-    (void)i;
-}
+    void OverallVisitor::visit(FieldExpr& f)
+    {
+        if (f.base_) f.base_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(BoolLiteralExpr& b)
-{
-    (void)b;
-}
+    void OverallVisitor::visit(CallExpr& e)
+    {
+        if (e.callee_) e.callee_->accept(*this);
 
-void ast::visitor::OverallVisitor::visit(FieldInitExpr& f)
-{
-    (void)f;
-}
+        for (auto* a : e.args_)
+        {
+            if (a) a->accept(*this);
+        }
+    }
 
-void ast::visitor::OverallVisitor::visit(IfStatement& i)
-{
-    if (i.condition_) i.condition_->accept(*this);
-    if (i.thenBody_) i.thenBody_->accept(*this);
-}
+    void OverallVisitor::visit(RefExpr& r)
+    {
+        // Important: do NOT follow semantic binding edges by default,
+        // otherwise this visitor can walk a graph (and can create cycles),
+        // not the syntax tree.
+        (void)r;
+    }
 
-void ast::visitor::OverallVisitor::visit(BlockStatement& b)
-{
-    std::ranges::for_each(b.statements_, [this](auto& s) { s->accept(*this); });
-}
+    void OverallVisitor::visit(IndexExpr& i)
+    {
+        if (i.base_) i.base_->accept(*this);
+        if (i.index_) i.index_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(WhileStatement& w)
-{
-    if (w.condition_) w.condition_->accept(*this);
-    if (w.body_) w.body_->accept(*this);
-}
+    void OverallVisitor::visit(BoolLiteralExpr& b)
+    {
+        (void)b;
+    }
 
-void ast::visitor::OverallVisitor::visit(ReturnStatement& r)
-{
-    if (r.expr_) r.expr_->accept(*this);
-}
+    void OverallVisitor::visit(CharLiteralExpr& c)
+    {
+        (void)c;
+    }
 
-void ast::visitor::OverallVisitor::visit(ExprStatement& e)
-{
-    if (e.expr_) e.expr_->accept(*this);
-}
+    void OverallVisitor::visit(FieldInitExpr& f)
+    {
+        if (f.value_) f.value_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(ContinueStatement& c)
-{
-    (void)c;
-}
+    void OverallVisitor::visit(IfStatement& i)
+    {
+        if (i.condition_) i.condition_->accept(*this);
+        if (i.thenBody_) i.thenBody_->accept(*this);
 
-void ast::visitor::OverallVisitor::visit(BreakStatement& b)
-{
-    (void)b;
-}
+        for (auto* eif : i.elseIfs_)
+        {
+            if (eif) eif->accept(*this);
+        }
 
-void ast::visitor::OverallVisitor::visit(DoWhileStatement& d)
-{
-    if (d.condition_) d.condition_->accept(*this);
-    if (d.body_) d.body_->accept(*this);
-}
+        if (i.else_) i.else_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(VarDeclStatement& v)
-{
-    if (v.decl_) v.decl_->accept(*this);
-}
+    void OverallVisitor::visit(ElseIfStatement& e)
+    {
+        if (e.condition_) e.condition_->accept(*this);
+        if (e.then_) e.then_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(Module& m)
-{
-    std::ranges::for_each(m.decls, [this](auto& d) { d->accept(*this); });
-    std::ranges::for_each(m.imports, [this](auto& i) { i->accept(*this); });
-}
+    void OverallVisitor::visit(ElseStatement& e)
+    {
+        if (e.then_) e.then_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(Project& p)
-{
-    std::ranges::for_each(p.modules, [this](auto& m) { m->accept(*this); });
-}
+    void OverallVisitor::visit(BlockStatement& b)
+    {
+        for (auto* s : b.statements_)
+        {
+            if (s) s->accept(*this);
+        }
+    }
 
-void ast::visitor::OverallVisitor::visit(CastExpr&)
-{
-}
+    void OverallVisitor::visit(WhileStatement& w)
+    {
+        if (w.condition_) w.condition_->accept(*this);
+        if (w.body_) w.body_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(ArrayTypeExpr&)
-{
-}
+    void OverallVisitor::visit(ReturnStatement& r)
+    {
+        if (r.expr_) r.expr_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(PathTypeExpr&)
-{
-}
+    void OverallVisitor::visit(ExprStatement& e)
+    {
+        if (e.expr_) e.expr_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(RefTypeExpr&)
-{
-}
+    void OverallVisitor::visit(ContinueStatement& c)
+    {
+        (void)c;
+    }
 
-void ast::visitor::OverallVisitor::visit(PathExpr&)
-{
-}
+    void OverallVisitor::visit(BreakStatement& b)
+    {
+        (void)b;
+    }
 
-void ast::visitor::OverallVisitor::visit(BuiltinTypeExpr&)
-{
-}
+    void OverallVisitor::visit(DoWhileStatement& d)
+    {
+        if (d.body_) d.body_->accept(*this);
+        if (d.condition_) d.condition_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(CharLiteralExpr&)
-{
-}
+    void OverallVisitor::visit(VarDeclStatement& v)
+    {
+        if (v.decl_) v.decl_->accept(*this);
+    }
 
-void ast::visitor::OverallVisitor::visit(ArrayLiteralExpr&)
-{
-}
+    void OverallVisitor::visit(Module& m)
+    {
+        // Convention: imports first, then decls
+        for (auto* i : m.imports)
+        {
+            if (i) i->accept(*this);
+        }
 
-void ast::visitor::OverallVisitor::visit(ElseIfStatement&)
-{
-}
+        for (auto* d : m.decls)
+        {
+            if (d) d->accept(*this);
+        }
+    }
 
-void ast::visitor::OverallVisitor::visit(ElseStatement&)
-{
-}
+    void OverallVisitor::visit(Project& p)
+    {
+        for (auto* m : p.modules)
+        {
+            if (m) m->accept(*this);
+        }
+    }
+
+    // ---- Types / misc nodes: keep as leaves unless you want deeper traversal ----
+
+    void OverallVisitor::visit(CastExpr& c)
+    {
+        c.source_->accept(*this);
+        c.targetSyntax_->accept(*this);
+    }
+
+    void OverallVisitor::visit(ArrayTypeExpr& t)
+    {
+        t.type_->accept(*this);
+        t.sizeExpr_->accept(*this);
+    }
+
+    void OverallVisitor::visit(PathTypeExpr& t)
+    {
+        t.pathExpr_->accept(*this);
+    }
+
+    void OverallVisitor::visit(RefTypeExpr& t)
+    {
+        t.pointee_->accept(*this);
+    }
+
+    void OverallVisitor::visit(PathExpr& p)
+    {
+        (void)p;
+    }
+
+    void OverallVisitor::visit(BuiltinTypeExpr& t)
+    {
+        (void)t;
+    }
+
+    void OverallVisitor::visit(ArrayLiteralExpr& a)
+    {
+        (void)a;
+    }
+} // namespace ast::visitor
