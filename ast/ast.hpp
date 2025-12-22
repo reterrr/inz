@@ -99,11 +99,14 @@ namespace ast
 
         Project* project = nullptr;
 
+        std::size_t node_count_ = 0;
         std::size_t expr_count_ = 0;
         std::size_t stmt_count_ = 0;
         std::size_t decl_count_ = 0;
-
+        std::size_t type_count_ = 0; // add if you have TypeExpr base
         std::size_t module_count_ = 0;
+
+        std::array<std::size_t, static_cast<std::size_t>(NodeKind::Count)> kinds_count_{};
 
         template <typename T, typename... Args>
         T* make(Args&&... args)
@@ -112,14 +115,20 @@ namespace ast
 
             T* obj = ::new(mem) T(std::forward<Args>(args)...);
 
+            ++node_count_;
+
+            const auto idx = static_cast<std::size_t>(obj->nodeType_);
+            ++kinds_count_[idx];
+
             if constexpr (std::is_base_of_v<Expr, T>) ++expr_count_;
             if constexpr (std::is_base_of_v<Statement, T>) ++stmt_count_;
             if constexpr (std::is_base_of_v<Decl, T>) ++decl_count_;
+            if constexpr (std::is_base_of_v<TypeExpr, T>) ++type_count_; // if you have TypeExpr
             if constexpr (std::is_base_of_v<Module, T>) ++module_count_;
 
             if constexpr (!std::is_trivially_destructible_v<T>)
             {
-                dtors_.emplace_back({
+                dtors_.push_back({
                     +[](void* o) { static_cast<T*>(o)->~T(); },
                     obj
                 });
@@ -265,6 +274,12 @@ namespace ast
         [[nodiscard]] std::size_t stmt_count() const noexcept { return stmt_count_; }
         [[nodiscard]] std::size_t decl_count() const noexcept { return decl_count_; }
         [[nodiscard]] std::size_t module_count() const noexcept { return module_count_; }
+        [[nodiscard]] std::size_t type_count() const noexcept { return type_count_; }
+
+        [[nodiscard]] std::size_t count(NodeKind kind) const noexcept
+        {
+            return kinds_count_[static_cast<std::size_t>(kind)];
+        }
     };
 } // namespace ast
 

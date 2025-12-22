@@ -22,14 +22,16 @@ namespace ast
     {
         lex::SymId name_;
         std::vector<FieldDecl*> fields_;
+        bool isExported_;
 
         StructDecl(const lex::SymId name,
                    std::vector<TypeParamDecl*>&& typeParamsDecls,
                    std::vector<FieldDecl*>&& fields,
+                   const bool isExported,
                    const lex::Loc& loc)
             : Decl(NodeKind::Decl_Struct, loc),
               TypeParametrizedDecl(TypeParametrizedKind::Struct, std::move(typeParamsDecls), this),
-              name_(name), fields_(std::move(fields))
+              name_(name), fields_(std::move(fields)), isExported_(isExported)
         {
             std::ranges::for_each(fields_, [this](FieldDecl* field)
             {

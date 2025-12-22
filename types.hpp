@@ -87,7 +87,7 @@ namespace kl::rt
         // other primitives
         Bool,
         Char,
-        String,
+        Void,
     };
 
     // Keep your old name if parser/AST already uses it:

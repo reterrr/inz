@@ -12,7 +12,7 @@ enum class AssignOp
     Assign, Add, Subtract, Multiply, Divide, Modulo
 };
 
-enum class NodeKind : uint16_t
+enum class NodeKind : uint32_t
 {
     Project,
     // ---- Expressions: literals
@@ -74,6 +74,8 @@ enum class NodeKind : uint16_t
     Stmt_Else,
     Stmt_FnBlock,
     Stmt_StructBlock,
+
+    Count
 };
 
 #endif //NODE_TYPE_HPP
