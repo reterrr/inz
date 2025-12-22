@@ -4,8 +4,8 @@
 
 #ifndef DECL_HPP
 #define DECL_HPP
-#include "../../node.hpp"
-#include "../visit/visitable.hpp"
+#include "node.hpp"
+#include "visit/visitable.hpp"
 
 namespace ast {
     namespace visitor {
