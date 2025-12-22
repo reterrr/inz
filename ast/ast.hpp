@@ -253,14 +253,14 @@ namespace ast
         StructDecl* mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecl,
                                    std::vector<FieldDecl*>&& fields, const lex::Loc& loc);
 
-        Module* mk_module(std::vector<lex::SymId>&& package_path,
-                          std::vector<ImportDecl*>&& imports,
-                          std::vector<Decl*>&& decls,
-                          const lex::Loc& loc);
+        Module* mk_module(
+            PathExpr* pathExpr,
+            std::vector<ImportDecl*>&& imports,
+            std::vector<Decl*>&& decls, const lex::Loc& loc);
 
 
-        ImportDecl* mk_import_decl(std::vector<lex::SymId>&& path, std::optional<lex::SymId> alias, bool is_public,
-                                   const lex::Loc& loc);
+        ImportDecl* mk_import_decl(PathExpr* pathExpr, std::optional<lex::SymId> alias,
+                                   bool is_public, const lex::Loc& loc);
 
 
         RefExpr* mk_ref_expr(lex::SymId name, const lex::Loc& loc);

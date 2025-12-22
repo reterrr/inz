@@ -17,16 +17,16 @@ namespace ast
     {
         using Node::Node, Visitable::accept;
 
-        std::vector<lex::SymId> package_path; // may be empty
+        PathExpr* pathExpr_; // may be empty
         std::vector<ImportDecl*> imports;
         std::vector<Decl*> decls; // functions, types, globals, ...
 
-        Module(std::vector<lex::SymId> pkg,
+        Module(PathExpr* pathExpr,
                std::vector<ImportDecl*> imps,
                std::vector<Decl*> ds,
                const lex::Loc& L)
             : Node(NodeKind::Decl_Module, L),
-              package_path(std::move(pkg)),
+              pathExpr_(pathExpr),
               imports(std::move(imps)),
               decls(std::move(ds))
         {

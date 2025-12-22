@@ -4,19 +4,15 @@
 
 #ifndef INZ_LOWERER_HPP
 #define INZ_LOWERER_HPP
-#include <stack>
 
 #include "arena.hpp"
 #include "translation.hpp"
+#include <llvm/ADT/DenseMap.h>
 
 namespace hir
 {
     class Lowerer final
     {
-        Arena arena_;
-        Translation& translation_;
-        ast::Ast& ast_;
-
         Lowerer(ast::Ast& ast)
         {
             arena_.modules.reserve(ast.module_count());
@@ -35,15 +31,78 @@ namespace hir
             arena_.paths.reserve(ast.count(NodeKind::Expr_Path));
         }
 
+        Arena arena_;
+        Translation& translation_;
+        ast::Ast& ast_;
 
-        void lower()
+        std::vector<ast::Node*> stack;
+
+        llvm::DenseMap<ast::Module*, ModuleId> modules;
+        llvm::DenseMap<ast::Decl*, DeclId> decls;
+        llvm::DenseMap<ast::Expr*, ExprId> exprs;
+        llvm::DenseMap<ast::Statement*, StmtId> stmts;
+        llvm::DenseMap<ast::ImportDecl*, ImportId> imports;
+        llvm::DenseMap<ast::TypeExpr*, TypeId> types;
+        llvm::DenseMap<ast::TypeParamDecl*, TypeParamId> typeParams;
+        llvm::DenseMap<ast::BlockStatement*, BlockId> blocks;
+        llvm::DenseMap<ast::FieldInitExpr*, FieldInitId> fieldInits;
+        llvm::DenseMap<ast::FieldDecl*, FieldDeclId> fieldDecls;
+
+        template <typename T>
+        void defer_alloc(T* t)
         {
-            std::stack<ast::Node*> stack;
+            stack.push_back(t);
+        }
 
-            for (auto module : translation_.units)
-            {
-                stack.push(module.module);
-            }
+        template <typename T>
+        void defer_alloc(const std::vector<T*>& ts)
+        {
+            stack.reserve(ts.rbegin() - ts.rend());
+            stack.insert(stack.end(), ts.rbegin(), ts.rend());
+        }
+
+        void alloc_module(ast::Module* module)
+        {
+            auto moduleId = arena_.modules.size();
+            modules.emplace_or_assign(module, moduleId);
+            arena_.modules.push_back(Module{
+                .loc = module->location_,
+                .package_path = {},
+                .imports = {},
+                .decls = {}
+            });
+
+            defer_alloc(module->pathExpr_);
+            defer_alloc(module->imports);
+            defer_alloc(module->decls);
+        }
+
+        void alloc_import(ast::ImportDecl* imp)
+        {
+            auto importId = arena_.imports.size();
+            imports.emplace_or_assign(imp, importId);
+            arena_.imports.push_back(Import{
+                .loc = imp->location_,
+                .path = {},
+                .alias = imp->alias
+            });
+
+            defer_alloc(imp->pathExpr_);
+        }
+
+        void alloc_struct(ast::StructDecl* decl)
+        {
+            auto structId = arena_.decls.size();
+            decls.emplace_or_assign(decl, structId);
+            arena_.decls.push_back(Decl{
+                .loc = decl->location_,
+                .name = decl->name_,
+                .tparams = {},
+                .exported = decl->isExported_,
+                .kind = StructDecl{
+                    .fields = {}
+                }
+            });
         }
     };
 }
