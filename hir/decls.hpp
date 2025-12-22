@@ -6,7 +6,7 @@
 #include <vector>
 
 #include "ids.hpp"
-#include "inz_module.hpp"
+#include "modules.hpp"
 #include "token.hpp"
 
 namespace hir
@@ -20,7 +20,7 @@ namespace hir
 
     struct StructDecl
     {
-        std::optional<std::vector<FieldDeclId>> fields;
+        std::vector<FieldDeclId> fields;
     };
 
     struct TypeAliasDecl
@@ -33,11 +33,9 @@ namespace hir
     struct Decl
     {
         lex::Loc loc;
-        ModuleId mod;
         lex::SymId name;
-        PathId full_path;
         std::vector<TypeParamId> tparams;
-        Visibility vis;
+        bool exported;
         DeclKind kind;
     };
 }

@@ -183,16 +183,16 @@ StructDecl* Ast::mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& t
     return make<StructDecl>(name, std::move(typeParamDecls), std::move(fields), loc);
 }
 
-Module* Ast::mk_module(std::vector<lex::SymId>&& package_path, std::vector<ImportDecl*>&& imports,
+Module* Ast::mk_module(PathExpr* pathExpr, std::vector<ImportDecl*>&& imports,
                        std::vector<Decl*>&& decls, const lex::Loc& loc)
 {
-    return make<Module>(std::move(package_path), std::move(imports), std::move(decls), loc);
+    return make<Module>(pathExpr, std::move(imports), std::move(decls), loc);
 }
 
-ImportDecl* Ast::mk_import_decl(std::vector<lex::SymId>&& path, std::optional<lex::SymId> alias, bool is_public,
+ImportDecl* Ast::mk_import_decl(PathExpr* pathExpr, std::optional<lex::SymId> alias, bool is_public,
                                 const lex::Loc& loc)
 {
-    return make<ImportDecl>(std::move(path), alias, is_public, loc);
+    return make<ImportDecl>(pathExpr, alias, is_public, loc);
 }
 
 RefExpr* Ast::mk_ref_expr(lex::SymId name, const lex::Loc& loc)

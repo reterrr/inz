@@ -15,15 +15,15 @@ namespace ast
 {
     struct ImportDecl final : Decl
     {
-        std::vector<lex::SymId> path;
+        PathExpr* pathExpr_;
         std::optional<lex::SymId> alias;
 
         bool is_public = false;
 
-        ImportDecl(std::vector<lex::SymId>&& path, const std::optional<lex::SymId> alias, bool is_public,
+        ImportDecl(PathExpr* pathExpr, const std::optional<lex::SymId> alias, bool is_public,
                    const lex::Loc& loc)
             : Decl(NodeKind::Decl_Import, loc),
-              path(std::move(path)),
+              pathExpr_(pathExpr),
               alias(alias),
               is_public(is_public)
         {
