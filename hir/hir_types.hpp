@@ -7,6 +7,7 @@
 #include "ids.hpp"
 #include "token.hpp"
 #include "types.hpp"
+#include "stmt/var_mutablity_storage.hpp"
 
 namespace hir
 {
@@ -17,13 +18,13 @@ namespace hir
 
     struct TypePath
     {
-        PathId path;
+        ExprId path;
         std::vector<TypeId> targs;
     };
 
     struct TypeRef
     {
-        bool is_mut;
+        ast::Mutability mut;
         TypeId inner;
     };
 

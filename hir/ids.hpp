@@ -29,7 +29,7 @@ namespace hir
 
     struct PathEntry
     {
-        std::vector<lex::SymId> segments;
+        std::vector<lex::SymId> path;
     };
 }
 #endif //INZ_IDS_HPP

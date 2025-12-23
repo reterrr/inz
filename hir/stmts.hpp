@@ -7,16 +7,14 @@
 
 #include "ids.hpp"
 #include "token.hpp"
-#include "modules.hpp"
+#include "stmt/block_stmt_kind.hpp"
 
 namespace hir
 {
-    enum class BlockKind { Anon, Fn, If, ElseIf, Else, While, DoWhile };
-
     struct StmtBlock
     {
         BlockId block;
-        BlockKind kind;
+        ast::BlockKind kind;
     };
 
     struct StmtIf
@@ -24,12 +22,17 @@ namespace hir
         ExprId cond;
         BlockId then_blk;
         std::vector<StmtId> elseifs;
-        std::optional<BlockId> else_blk;
+        std::optional<StmtId> else_;
     };
 
     struct StmtElseIf
     {
         ExprId cond;
+        BlockId blk;
+    };
+
+    struct StmtElse
+    {
         BlockId blk;
     };
 
@@ -62,8 +65,8 @@ namespace hir
     {
         lex::Loc loc;
         lex::SymId name;
-        Mutability mut;
-        StorageClass storage;
+        ast::Mutability mut;
+        ast::Storage storage;
         TypeId type;
         std::optional<ExprId> init;
     };
@@ -77,6 +80,7 @@ namespace hir
         StmtBlock,
         StmtIf,
         StmtElseIf,
+        StmtElse,
         StmtWhile,
         StmtDoWhile,
         StmtBreak,

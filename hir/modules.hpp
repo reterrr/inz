@@ -4,33 +4,16 @@
 #include <optional>
 #include <vector>
 
+#include "field_visibility.hpp"
 #include "ids.hpp"
 #include "token.hpp"
 
 namespace hir
 {
-    enum class StorageClass : uint8_t
-    {
-        Auto,
-        Static
-    };
-
-    enum class Mutability : uint8_t
-    {
-        Imm,
-        Mut
-    };
-
-    enum class Visibility : uint8_t
-    {
-        Private,
-        Public
-    };
-
     struct Module
     {
         lex::Loc loc;
-        PathId package_path;
+        ExprId package_path;
         std::vector<ImportId> imports;
         std::vector<DeclId> decls;
     };
@@ -38,7 +21,7 @@ namespace hir
     struct Import
     {
         lex::Loc loc;
-        PathId path;
+        ExprId path;
         std::optional<lex::SymId> alias;
     };
 
@@ -53,7 +36,6 @@ namespace hir
         lex::Loc loc;
         lex::SymId name;
         TypeId type;
-        Mutability mut;
     };
 
     struct StructFieldDecl
@@ -61,7 +43,7 @@ namespace hir
         lex::Loc loc;
         lex::SymId name;
         TypeId type;
-        Visibility vis;
+        ast::Visibility vis;
     };
 
     struct StructFieldInit
