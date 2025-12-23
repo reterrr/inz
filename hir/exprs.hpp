@@ -6,22 +6,28 @@
 #include <vector>
 
 #include "ids.hpp"
-#include "ops.hpp"
 #include "token.hpp"
 #include "types.hpp"
+#include "expr/assign_op.hpp"
+#include "expr/binary_op_exression_kind.hpp"
+#include "expr/unary_op_expression_kind.hpp"
 
 namespace hir
 {
     struct ExprPath
     {
         PathId path;
-        std::vector<TypeParamId> targs;
     };
 
     struct ExprLitInt
     {
         lex::SymId sym;
         std::optional<kl::rt::IntKind> kind;
+    };
+
+    struct ExprLitArray
+    {
+        std::vector<ExprId> elements;
     };
 
     struct ExprLitFloat
@@ -47,20 +53,20 @@ namespace hir
 
     struct ExprUnary
     {
-        UnaryOp op;
+        ast::UnaryOp op;
         ExprId rhs;
     };
 
     struct ExprBinary
     {
-        BinaryOp op;
+        ast::BinaryOp op;
         ExprId lhs;
         ExprId rhs;
     };
 
     struct ExprAssign
     {
-        AssignOp op;
+        ast::AssignOp op;
         ExprId lhs;
         ExprId rhs;
     };
@@ -86,7 +92,7 @@ namespace hir
 
     struct ExprLitStruct
     {
-        TypeId type;
+        ExprId type;
         std::vector<FieldInitId> fields;
     };
 
@@ -99,6 +105,7 @@ namespace hir
     using ExprKind = std::variant<
         ExprPath,
         ExprLitInt,
+        ExprLitArray,
         ExprLitFloat,
         ExprLitBool,
         ExprLitChar,

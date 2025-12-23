@@ -6,7 +6,6 @@
 #include <vector>
 
 #include "ids.hpp"
-#include "modules.hpp"
 #include "token.hpp"
 
 namespace hir
