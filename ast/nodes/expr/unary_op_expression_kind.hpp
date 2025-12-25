@@ -13,6 +13,7 @@ namespace ast {
         postdecrement,
         negation,
         logical_not,
+        deref
     };
 }
 

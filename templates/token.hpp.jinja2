@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <ostream>
 
+#include "types.hpp"
+
 namespace lex {
 
     using SymId = std::uint32_t;
@@ -79,8 +81,8 @@ namespace lex {
 
         union {
             SymId    sym;      // IDENTIFIER, INT_LITERAL, FLOAT_LITERAL, STRING_LITERAL
-            bool     boolean;  // BOOL_LITERAL
-            char32_t ch;       // CHAR_LITERAL
+            kl::rt::boolean     boolean;  // BOOL_LITERAL
+            kl::rt::character ch;       // CHAR_LITERAL
         } u_{};
     };
 

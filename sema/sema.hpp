@@ -13,7 +13,7 @@ namespace sema
 {
     class Sema final
     {
-        ast::AST& ast_;
+        ast::Ast& ast_;
         ScopeController controller_;
 
         /// passes
@@ -22,7 +22,7 @@ namespace sema
         scope::Scope2SymbolMap map_;
 
     public:
-        explicit Sema(ast::AST& ast)
+        explicit Sema(ast::Ast& ast)
             : ast_(ast),
               controller_(map_, scopeTable_),
               scopePass_(ast_.get_project(), controller_)

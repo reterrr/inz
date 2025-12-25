@@ -6,8 +6,8 @@
 #define INZ_IDS_HPP
 #include <cstdint>
 #include <vector>
-
 #include "token.hpp"
+
 
 namespace hir
 {

@@ -4,6 +4,7 @@
 
 #include "lexer.hpp"
 
+#include <map>
 
 
 lex::SymId Scanner::internCommon(const char *s, std::size_t n,

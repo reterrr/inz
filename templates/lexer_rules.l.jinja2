@@ -167,7 +167,7 @@ static inline char32_t decode_char_literal(const char* text, size_t n) {
 "//"[^\r\n]*                         { advance(cur, yytext, (size_t)yyleng); }
 "/*"([^*]|\*+[^*/])*"*/"             { advance(cur, yytext, (size_t)yyleng); }
 
-.                                    { EMIT_KIND(Type::TOK_UNKNOWN); }
+.                                    { EMIT_KIND(Type::TOK_UNDEF); }
 
 <<EOF>> {
   Loc loc{}; loc.begin = cur; loc.end = cur;

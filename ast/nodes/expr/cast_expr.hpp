@@ -11,8 +11,6 @@
 
 namespace ast
 {
-    struct TypeExpr;
-
     struct CastExpr final : Expr
     {
         Expr* source_;

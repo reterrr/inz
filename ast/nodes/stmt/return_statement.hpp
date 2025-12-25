@@ -5,9 +5,9 @@
 #ifndef RETURN_STATEMENT_HPP
 #define RETURN_STATEMENT_HPP
 #include "statement.hpp"
-#include "../expr/expr.hpp"
+#include "expr/expr.hpp"
 
-#include "../visit/stmt_visitor.hpp"
+#include "visit/stmt_visitor.hpp"
 
 namespace ast {
     struct ReturnStatement final : Statement {
@@ -16,7 +16,7 @@ namespace ast {
         ReturnStatement(ExprPtr expr, const lex::Loc &loc)
             : Statement(NodeKind::Stmt_Return, loc),
               expr_(expr) {
-            expr_->parent = this;
+            if (expr_) expr_->parent = this;
         }
 
         void accept(visitor::StmtVisitor &) override;

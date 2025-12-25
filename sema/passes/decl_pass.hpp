@@ -43,7 +43,7 @@ namespace sema
 
             void visit(ast::ImportDecl& i) override;
 
-            void visit(ast::VarDecl& v) override;
+            void visit(ast::VarStmt& v) override;
 
             void visit(ast::StructDecl& s) override;
 

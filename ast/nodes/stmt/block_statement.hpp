@@ -7,6 +7,7 @@
 #include <token.hpp>
 #include <vector>
 
+#include "block_stmt_kind.hpp"
 #include "statement.hpp"
 #include "visit/stmt_visitor.hpp"
 
@@ -15,10 +16,13 @@ namespace ast
     struct BlockStatement final : Statement
     {
         std::vector<Statement*> statements_;
+        BlockKind kind_;
 
-        BlockStatement(std::vector<Statement*>&& statements, const lex::Loc& loc)
+        BlockStatement(std::vector<Statement*>&& statements,
+                       BlockKind kind,
+                       const lex::Loc& loc)
             : Statement(NodeKind::Stmt_Block, loc),
-              statements_(std::move(statements))
+              statements_(std::move(statements)), kind_(kind)
         {
             std::ranges::for_each(statements, [this](auto& stmt)
             {

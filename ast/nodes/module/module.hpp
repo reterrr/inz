@@ -6,10 +6,10 @@
 #define MODULE_HPP
 
 #include "import_decl.hpp"
-#include "../../node.hpp"
-#include "../visit/visitable.hpp"
+#include "node.hpp"
+#include "visit/visitable.hpp"
 
-#include "../visit/module_visitor.hpp"
+#include "visit/module_visitor.hpp"
 
 namespace ast
 {

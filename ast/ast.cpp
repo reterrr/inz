@@ -1,5 +1,7 @@
 #include "ast.hpp"
 
+#include "stmt/block_stmt_kind.hpp"
+
 
 using namespace ast;
 
@@ -73,7 +75,7 @@ ArrayTypeExpr* Ast::mk_array_type_expr(TypeExpr* typeExpr, ExprPtr sizeExpr, con
     return make<ArrayTypeExpr>(typeExpr, sizeExpr, loc);
 }
 
-RefTypeExpr* Ast::mk_ref_type_expr(TypeExpr* typeExpr, RefTypeExpr::Mutability mutability, const lex::Loc& loc)
+RefTypeExpr* Ast::mk_ref_type_expr(TypeExpr* typeExpr, Mutability mutability, const lex::Loc& loc)
 {
     return make<RefTypeExpr>(typeExpr, mutability, loc);
 }
@@ -110,14 +112,9 @@ IndexExpr* Ast::mk_index(ExprPtr base, ExprPtr idx, const lex::Loc& loc)
 
 // ========= Statements =========
 
-BlockStatement* Ast::mk_block_stmt(std::vector<StatementPtr>&& stmts, const lex::Loc& loc)
+BlockStatement* Ast::mk_block_stmt(std::vector<StatementPtr>&& stmts, BlockKind kind, const lex::Loc& loc)
 {
-    return make<BlockStatement>(std::move(stmts), loc);
-}
-
-FunctionBlockStatement* Ast::mk_fn_block_statement(BlockStatement* block, const lex::Loc& loc)
-{
-    return make<FunctionBlockStatement>(block, loc);
+    return make<BlockStatement>(std::move(stmts), kind, loc);
 }
 
 ReturnStatement* Ast::mk_return_stmt(ExprPtr expr, const lex::Loc& loc)
@@ -130,11 +127,11 @@ ParamDecl* Ast::mk_param_decl(lex::SymId name, TypeExpr* typeExpr, const lex::Lo
     return make<ParamDecl>(name, typeExpr, loc);
 }
 
-VarDecl* Ast::mk_var_decl(lex::SymId name, TypeExpr* tyExpr,
-                          VarDecl::Mutability mutability, VarDecl::Storage storage,
+VarStmt* Ast::mk_var_stmt(lex::SymId name, TypeExpr* tyExpr,
+                          Mutability mutability, Storage storage,
                           Expr* init, const lex::Loc& loc)
 {
-    return make<VarDecl>(name, tyExpr, mutability, storage, init, loc);
+    return make<VarStmt>(name, tyExpr, mutability, storage, init, loc);
 }
 
 IfStatement* Ast::mk_if_stmt(ExprPtr cond,
@@ -161,13 +158,14 @@ ElseStatement* Ast::mk_else_stmt(BlockStatement* elseBlk, const lex::Loc& loc)
 FunctionDecl* Ast::mk_fn_decl(lex::SymId name,
                               std::vector<TypeParamDecl*>&& typeParamDecls,
                               std::vector<ParamDecl*>&& params,
-                              TypeExpr* ret, FunctionBlockStatement* body,
+                              TypeExpr* ret, BlockStatement* body,
+                              bool isExported,
                               const lex::Loc& loc)
 {
-    return make<FunctionDecl>(name, std::move(typeParamDecls), std::move(params), ret, body, loc);
+    return make<FunctionDecl>(name, std::move(typeParamDecls), std::move(params), ret, body, isExported, loc);
 }
 
-FieldDecl* Ast::mk_field_decl(lex::SymId name, TypeExpr* type, FieldDecl::Visibility visibility, const lex::Loc& loc)
+FieldDecl* Ast::mk_field_decl(lex::SymId name, TypeExpr* type, Visibility visibility, const lex::Loc& loc)
 {
     return make<FieldDecl>(name, type, visibility, loc);
 }
@@ -178,9 +176,9 @@ TypeParamDecl* Ast::mk_type_param_decl(lex::SymId name, const lex::Loc& loc)
 }
 
 StructDecl* Ast::mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecls,
-                                std::vector<FieldDecl*>&& fields, const lex::Loc& loc)
+                                std::vector<FieldDecl*>&& fields, bool isExported, const lex::Loc& loc)
 {
-    return make<StructDecl>(name, std::move(typeParamDecls), std::move(fields), loc);
+    return make<StructDecl>(name, std::move(typeParamDecls), std::move(fields), isExported, loc);
 }
 
 Module* Ast::mk_module(PathExpr* pathExpr, std::vector<ImportDecl*>&& imports,
@@ -223,11 +221,6 @@ BreakStatement* Ast::mk_break_stmt(const lex::Loc& loc)
 ExprStatement* Ast::mk_expr_stmt(ExprPtr expr, const lex::Loc& loc)
 {
     return make<ExprStatement>(expr, loc);
-}
-
-VarDeclStatement* Ast::mk_var_decl_stmt(VarDecl* decl, const lex::Loc& loc)
-{
-    return make<VarDeclStatement>(decl, loc);
 }
 
 CallExpr* Ast::mk_call_expr(ExprPtr callee,

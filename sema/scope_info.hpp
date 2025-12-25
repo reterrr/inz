@@ -11,7 +11,7 @@ namespace sema::scope
 {
     using ScopeId = uint32_t;
 
-    enum class ScopeKind { Project, Module, Function, Anon, Struct };
+    enum class ScopeKind { Project, Module, Function, Anon, Struct, If, ElseIf, Else, While, DoWhile };
 
     struct Scope
     {

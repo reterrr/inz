@@ -11,26 +11,26 @@
 #include "visit/decl_visitor.hpp"
 #include "expr/type_expr.hpp"
 #include "decl/param_decl.hpp"
-#include "stmt/function_block_statement.hpp"
 #include "type/type_parametrized_decl.hpp"
+#include "stmt/block_statement.hpp"
 
 namespace ast
 {
-    struct ParamDecl;
-    struct BlockStatement;
-
     struct FunctionDecl final : Decl, TypeParametrizedDecl
     {
         lex::SymId name_;
         std::vector<ParamDecl*> params_;
         TypeExpr* ret_;
-        FunctionBlockStatement* body_;
+        BlockStatement* body_;
+
+        bool isExported_;
 
         FunctionDecl(const lex::SymId name,
                      std::vector<TypeParamDecl*>&& typeParamDecls,
                      std::vector<ParamDecl*>&& params,
                      TypeExpr* ret,
-                     FunctionBlockStatement* body,
+                     BlockStatement* body,
+                     bool isExported,
                      const lex::Loc& loc)
             : Decl(NodeKind::Decl_Fn, loc),
               TypeParametrizedDecl(TypeParametrizedKind::Function,
@@ -38,7 +38,8 @@ namespace ast
               name_(name),
               params_(std::move(params)),
               ret_(ret),
-              body_(body)
+              body_(body),
+              isExported_(isExported)
         {
             std::ranges::for_each(params_, [this](ParamDecl*& p)
             {

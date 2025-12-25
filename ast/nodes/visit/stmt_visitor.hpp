@@ -15,20 +15,19 @@ namespace ast
     struct WhileStatement;
     struct DoWhileStatement;
     struct BlockStatement;
-    struct FunctionBlockStatement;
     struct ReturnStatement;
     struct ExprStatement;
     struct ContinueStatement;
     struct BreakStatement;
-    struct VarDeclStatement;
+    struct VarStmt;
 }
 
 namespace ast::visitor
 {
     struct StmtVisitor
         : Visitor<IfStatement, ElseIfStatement, ElseStatement,
-                  BlockStatement, WhileStatement, FunctionBlockStatement,
-                  ReturnStatement, ExprStatement, VarDeclStatement,
+                  BlockStatement, WhileStatement,
+                  ReturnStatement, ExprStatement, VarStmt,
                   ContinueStatement, BreakStatement, DoWhileStatement>
     {
     };

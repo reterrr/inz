@@ -222,7 +222,7 @@ namespace kl::rt
         case K::F64: return "f64";
         case K::Bool: return "bool";
         case K::Char: return "char";
-        case K::String: return "string";
+        case K::Void: return "void";
         }
         return "<?>";
     }

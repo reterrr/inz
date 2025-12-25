@@ -8,7 +8,7 @@
 
 #include "expr.hpp"
 
-#include "../visit/expr_visitor.hpp"
+#include "visit/expr_visitor.hpp"
 
 
 namespace ast {

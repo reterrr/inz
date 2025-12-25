@@ -28,7 +28,7 @@ namespace ast::visitor
 
         void visit(ImportDecl&) override;
 
-        void visit(VarDecl&) override;
+        void visit(VarStmt&) override;
 
         void visit(StructDecl&) override;
 
@@ -76,8 +76,6 @@ namespace ast::visitor
 
         void visit(DoWhileStatement&) override;
 
-        void visit(VarDeclStatement&) override;
-
         void visit(Module&) override;
 
         void visit(Project&) override;
@@ -92,7 +90,6 @@ namespace ast::visitor
         void visit(ElseIfStatement&) override;
         void visit(ElseStatement&) override;
         void visit(TypeParamDecl&) override;
-        void visit(FunctionBlockStatement&) override;
     };
 }
 

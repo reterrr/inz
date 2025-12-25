@@ -22,7 +22,7 @@
 #include "nodes/project.hpp"
 #include "nodes/expr/int_literal_expr.hpp"
 #include "nodes/expr/bool_literal_expr.hpp"
-#include "nodes/expr/string_expr.hpp"
+#include "nodes/expr/string_literal_expr.hpp"
 #include "nodes/expr/float_literal_expr.hpp"
 #include "nodes/expr/char_literal_expr.hpp"
 #include "nodes/expr/array_literal_expr.hpp"
@@ -45,7 +45,6 @@
 
 
 #include "nodes/stmt/block_statement.hpp"
-#include "nodes/stmt/function_block_statement.hpp"
 #include "nodes/stmt/return_statement.hpp"
 #include "nodes/stmt/if_statement.hpp"
 #include "nodes/stmt/expr_statement.hpp"
@@ -57,7 +56,6 @@
 
 #include "nodes/decl/param_decl.hpp"
 #include "nodes/decl/function_decl.hpp"
-#include "nodes/decl/var_decl.hpp"
 #include "nodes/decl/type_alias_decl.hpp"
 #include "nodes/decl/struct_decl.hpp"
 #include "nodes/decl/field_decl.hpp"
@@ -69,10 +67,11 @@
 
 #include "nodes/module/module.hpp"
 
-#include "nodes/stmt/var_decl_statement.hpp"
+#include "nodes/stmt/var_statement.hpp"
 #include "sema/type_interner.hpp"
 #include "nodes/expr/array_type_expr.hpp"
 #include "nodes/expr/path_type_expr.hpp"
+#include "nodes/expr/cast_expr.hpp"
 
 
 namespace ast
@@ -191,7 +190,7 @@ namespace ast
 
         PathTypeExpr* mk_path_type_expr(PathExpr* pathExpr, std::vector<TypeExpr*>&& typeArgs, const lex::Loc& loc);
         ArrayTypeExpr* mk_array_type_expr(TypeExpr* typeExpr, ExprPtr sizeExpr, const lex::Loc& loc);
-        RefTypeExpr* mk_ref_type_expr(TypeExpr* typeExpr, RefTypeExpr::Mutability mutability, const lex::Loc& loc);
+        RefTypeExpr* mk_ref_type_expr(TypeExpr* typeExpr, Mutability mutability, const lex::Loc& loc);
         BuiltinTypeExpr* mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind kind, const lex::Loc& loc);
 
         // Unary / Binary ops
@@ -207,8 +206,7 @@ namespace ast
         IndexExpr* mk_index(ExprPtr base, ExprPtr idx, const lex::Loc& loc);
 
         // ========= Statements =========
-        BlockStatement* mk_block_stmt(std::vector<StatementPtr>&& stmts, const lex::Loc& loc);
-        FunctionBlockStatement* mk_fn_block_statement(BlockStatement* block, const lex::Loc& loc);
+        BlockStatement* mk_block_stmt(std::vector<StatementPtr>&& stmts, BlockKind kind, const lex::Loc& loc);
 
         ReturnStatement* mk_return_stmt(ExprPtr expr, const lex::Loc& loc);
 
@@ -220,7 +218,9 @@ namespace ast
 
         ExprStatement* mk_expr_stmt(ExprPtr expr, const lex::Loc& loc);
 
-        VarDeclStatement* mk_var_decl_stmt(VarDecl* decl, const lex::Loc& loc);
+        VarStmt* mk_var_stmt(lex::SymId name, TypeExpr* tyExpr,
+                             Mutability mutability, Storage storage,
+                             Expr* init, const lex::Loc& loc);
 
         ContinueStatement* mk_continue_stmt(const lex::Loc& loc);
 
@@ -232,26 +232,21 @@ namespace ast
 
         ParamDecl* mk_param_decl(lex::SymId name, TypeExpr* typeExpr, const lex::Loc& loc);
 
-        VarDecl* mk_var_decl(
-            lex::SymId name,
-            TypeExpr* tyExpr, VarDecl::Mutability mutability, VarDecl::Storage storage, Expr* init,
-            const lex::Loc& loc);
-
         // ========= Declarations =========
         FunctionDecl* mk_fn_decl(lex::SymId name,
                                  std::vector<TypeParamDecl*>&& typeParamDecls,
                                  std::vector<ParamDecl*>&& params,
                                  TypeExpr* ret,
                                  BlockStatement* body,
-                                 // nullptr => prototype
+                                 bool isExported,
                                  const lex::Loc& loc);
 
-        FieldDecl* mk_field_decl(lex::SymId name, TypeExpr* type, FieldDecl::Visibility visibility,
+        FieldDecl* mk_field_decl(lex::SymId name, TypeExpr* type, Visibility visibility,
                                  const lex::Loc& loc);
         TypeParamDecl* mk_type_param_decl(lex::SymId name, const lex::Loc& loc);
 
-        StructDecl* mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecl,
-                                   std::vector<FieldDecl*>&& fields, const lex::Loc& loc);
+        StructDecl* mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecls,
+                                   std::vector<FieldDecl*>&& fields, bool isExported, const lex::Loc& loc);
 
         Module* mk_module(
             PathExpr* pathExpr,
@@ -275,6 +270,7 @@ namespace ast
         [[nodiscard]] std::size_t decl_count() const noexcept { return decl_count_; }
         [[nodiscard]] std::size_t module_count() const noexcept { return module_count_; }
         [[nodiscard]] std::size_t type_count() const noexcept { return type_count_; }
+        [[nodiscard]] std::size_t node_count() const noexcept { return node_count_; }
 
         [[nodiscard]] std::size_t count(NodeKind kind) const noexcept
         {

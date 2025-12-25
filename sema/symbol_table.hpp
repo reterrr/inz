@@ -15,11 +15,10 @@
 namespace sema
 {
     using ScopeId = uint32_t;
-    using SymbolBucket = std::vector<Symbol>;
 
     class SymbolTable final
     {
-        std::unordered_map<lex::SymId, SymbolBucket> table_;
+        std::unordered_map<lex::SymId, Symbol> table_;
 
     public:
         explicit SymbolTable()
@@ -29,21 +28,14 @@ namespace sema
 
         bool declare(Symbol& sym)
         {
-            auto& bucket = table_[sym.id];
+            auto& s = table_[sym.id];
 
-            if (sym.kind != SymbolKind::Func)
+            if (s.id == sym.id)
             {
-                for (const auto& s : bucket)
-                {
-                    if (s.id == sym.id)
-                    {
-                        return false;
-                    }
-                }
+                return false;
             }
 
-            sym.overload_index = static_cast<uint32_t>(bucket.size());
-            bucket.push_back(std::move(sym));
+            table_.emplace(sym.id, sym);
 
             return true;
         }

@@ -10,9 +10,6 @@
 
 namespace ast
 {
-    struct BlockStatement;
-    struct Expr;
-
     struct ElseIfStatement final : Statement
     {
         Expr* condition_;

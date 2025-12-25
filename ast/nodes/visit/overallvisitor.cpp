@@ -10,7 +10,6 @@
 #include "decl/function_decl.hpp"
 #include "decl/param_decl.hpp"
 #include "decl/struct_decl.hpp"
-#include "decl/var_decl.hpp"
 
 // exprs
 #include "expr/assign_expr.hpp"
@@ -35,7 +34,7 @@
 #include "stmt/expr_statement.hpp"
 #include "stmt/if_statement.hpp"
 #include "stmt/return_statement.hpp"
-#include "stmt/var_decl_statement.hpp"
+#include "stmt/var_statement.hpp"
 #include "stmt/while_statement.hpp"
 
 namespace ast::visitor
@@ -70,7 +69,7 @@ namespace ast::visitor
         (void)i;
     }
 
-    void OverallVisitor::visit(VarDecl& v)
+    void OverallVisitor::visit(VarStmt& v)
     {
         // Traverse syntactic children only (type + init).
         if (v.type_) v.type_->accept(*this);
@@ -204,10 +203,6 @@ namespace ast::visitor
     {
     }
 
-    void OverallVisitor::visit(FunctionBlockStatement&)
-    {
-    }
-
     void OverallVisitor::visit(BlockStatement& b)
     {
         for (auto* s : b.statements_)
@@ -248,10 +243,6 @@ namespace ast::visitor
         if (d.condition_) d.condition_->accept(*this);
     }
 
-    void OverallVisitor::visit(VarDeclStatement& v)
-    {
-        if (v.decl_) v.decl_->accept(*this);
-    }
 
     void OverallVisitor::visit(Module& m)
     {

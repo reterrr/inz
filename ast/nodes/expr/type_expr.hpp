@@ -6,19 +6,15 @@
 #define INZ_TYPE_EXPR_HPP
 
 #include "expr.hpp"
+#include "type_expr_kind.hpp"
 
 namespace ast
 {
     struct TypeExpr : Expr
     {
-        enum class Kind
-        {
-            Builtin, Array, Path, Ref, Callable
-        };
+        TypeExprKind kind_;
 
-        Kind kind_;
-
-        TypeExpr(Kind kind, const lex::Loc& loc)
+        TypeExpr(TypeExprKind kind, const lex::Loc& loc)
             : Expr(NodeKind::Expr_Type, loc), kind_(kind)
         {
         }

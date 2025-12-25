@@ -6,7 +6,7 @@
 #define PARAM_DECL_HPP
 
 #include "decl.hpp"
-#include "../visit/decl_visitor.hpp"
+#include "visit/decl_visitor.hpp"
 
 namespace ast
 {

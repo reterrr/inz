@@ -56,13 +56,14 @@ namespace hir
         template <typename T>
         void defer_alloc(T* t)
         {
+            if (!t) return;
             stack.push_back(t);
         }
 
         template <typename T>
         void defer_alloc(const std::vector<T*>& ts)
         {
-            for (auto it = ts.rbegin(); it != ts.rend(); ++it)
+            for (auto it = ts.begin(); it != ts.end(); ++it)
                 if (*it) stack.push_back(static_cast<ast::Node*>(*it));
         }
 
@@ -152,6 +153,7 @@ namespace hir
                 .decls = {}
             });
 
+
             defer_alloc(module->pathExpr_);
             defer_alloc(module->imports);
             defer_alloc(module->decls);
@@ -176,11 +178,11 @@ namespace hir
             decls.emplace_or_assign(decl, structId);
             arena_.decls.push_back(Decl{
                 .loc = decl->location_,
-                .name = decl->name_,
-                .tparams = {},
-                .exported = decl->isExported_,
                 .kind = StructDecl{
-                    .fields = {}
+                    .name = decl->name_,
+                    .tparams = {},
+                    .fields = {},
+                    .exported = decl->isExported_,
                 }
             });
 
@@ -195,20 +197,20 @@ namespace hir
             decls.emplace_or_assign(fn, declId);
             arena_.decls.push_back(Decl{
                 .loc = fn->location_,
-                .name = fn->name_,
-                .tparams = {},
-                .exported = fn->isExported_,
                 .kind = FnDecl{
+                    .name = fn->name_,
+                    .tparams = {},
                     .params = {},
                     .return_type = {},
-                    .body = std::nullopt
+                    .body = std::nullopt,
+                    .exported = fn->isExported_
                 }
             });
 
             defer_alloc(fn->typeParamsDecls_);
             defer_alloc(fn->params_);
             defer_alloc(fn->ret_);
-            if (fn->body_) defer_alloc(fn->body_);
+            defer_alloc(fn->body_);
         }
 
         // void alloc_typealias(ast::TypeAliasDecl* decl)
@@ -303,6 +305,8 @@ namespace hir
 
         void alloc_stmt_block(ast::BlockStatement* s)
         {
+            if (stmts.find(s) != stmts.end()) return;
+
             const auto sid = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, sid);
 
@@ -342,7 +346,7 @@ namespace hir
             defer_alloc(s->condition_);
             defer_alloc(s->thenBody_);
             defer_alloc(s->elseIfs_);
-            if (s->else_) defer_alloc(s->else_);
+            defer_alloc(s->else_);
         }
 
         void alloc_stmt_elseif(ast::ElseIfStatement* s)
@@ -387,8 +391,8 @@ namespace hir
                 }
             });
 
-            defer_alloc(s->condition_);
             defer_alloc(s->body_);
+            defer_alloc(s->condition_);
         }
 
         void alloc_stmt_dowhile(ast::DoWhileStatement* s)
@@ -458,7 +462,7 @@ namespace hir
             });
 
             defer_alloc(s->type_);
-            if (s->init_) defer_alloc(s->init_);
+            defer_alloc(s->init_);
         }
 
         void alloc_stmt_expr(ast::ExprStatement* s)
@@ -596,8 +600,8 @@ namespace hir
                 }
             });
 
-            defer_alloc(e->lhs_);
             defer_alloc(e->rhs_);
+            defer_alloc(e->lhs_);
         }
 
         void alloc_expr_call(ast::CallExpr* e)
@@ -688,7 +692,9 @@ namespace hir
             types.emplace_or_assign(t, id);
             arena_.types.push_back(Type{
                 .loc = t->location_,
-                .kind = TypeBuiltin{.kind = t->kind_}
+                .kind = TypeBuiltin{
+                    .kind = t->kind_
+                }
             });
         }
 
@@ -823,7 +829,7 @@ namespace hir
             auto& d = arena_.decls[id];
             auto& f = std::get<FnDecl>(d.kind);
 
-            fill_id_vec(d.tparams, fn->typeParamsDecls_, typeParams);
+            fill_id_vec(f.tparams, fn->typeParamsDecls_, typeParams);
             fill_id_vec(f.params, fn->params_, params);
 
             if (fn->ret_) f.return_type = get_id(types, fn->ret_);
@@ -836,7 +842,7 @@ namespace hir
             auto& d = arena_.decls[id];
             auto& s = std::get<StructDecl>(d.kind);
 
-            fill_id_vec(d.tparams, decl->typeParamsDecls_, typeParams);
+            fill_id_vec(s.tparams, decl->typeParamsDecls_, typeParams);
             fill_id_vec(s.fields, decl->fields_, fieldDecls);
         }
 
@@ -1150,8 +1156,9 @@ case NodeKindCase: AllocFuncName(static_cast<AstPtrType>(node)); break;
                 }
 
                 // -------- fill phase --------
-                for (ast::Node* node : stack)
+                for (auto it = stack.begin(); it != stack.end(); ++it)
                 {
+                    ast::Node* node = *it;
                     switch (node->nodeType_)
                     {
 #define X(Tag, NodeKindCase, AstPtrType, AllocFuncName, FillFuncName) \
