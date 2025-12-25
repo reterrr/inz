@@ -6,14 +6,12 @@
 #define SYMBOL_HPP
 
 #include <token.hpp>
-#include "type/type.hpp"
 
-#include "decl.hpp"
-
-namespace sema {
-    enum class SymbolKind : uint8_t {
-        Var, Param, Field, Func, TypeAlias, Struct, Enum, Trait,
-        Module, Namespace, ImportAlias, Const
+namespace sema
+{
+    enum class SymbolKind : uint8_t
+    {
+        Var, Param, Field, Func, TypeAlias, Struct, Enum, Trait
     };
 
     enum class Visibility : uint8_t { Private, Public };
@@ -22,25 +20,26 @@ namespace sema {
 
     enum class Storage : uint8_t { Auto, Static };
 
-    struct Symbol {
+    struct VarInfo final
+    {
+        ast::VarStmt* decl_ = nullptr;
+
+    };
+
+    struct Symbol
+    {
         lex::SymId id;
         SymbolKind kind;
         lex::Loc loc;
         uint32_t scope_depth = 0;
-        ast::Type *type = nullptr;
 
-        const ast::Decl *decl = nullptr;
         Visibility vis = Visibility::Private;
         Mutability mutability = Mutability::Imm;
-        Storage storage = Storage::Auto;
-
-        uint32_t overload_index = 0;
 
         uint64_t uid = 0;
 
-        ~Symbol() {
-            delete type;
-        }
+        ~Symbol()
+        = default;
     };
 }
 

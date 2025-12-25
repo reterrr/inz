@@ -17,6 +17,7 @@ namespace sema::pass
         ScopeController& controller_;
 
         explicit ScopeAstVisitor(ScopeController& controller);
+        void visit_block_as_kind(ast::BlockStatement* block, scope::ScopeKind kind);
 
         void visit(ast::Module&) override;
         void visit(ast::FunctionDecl&) override;
@@ -24,7 +25,7 @@ namespace sema::pass
         void visit(ast::ParamDecl&) override;
         void visit(ast::TypeAliasDecl&) override;
         void visit(ast::ImportDecl&) override;
-        void visit(ast::VarDecl&) override;
+        void visit(ast::VarStmt&) override;
         void visit(ast::StructDecl&) override;
         void visit(ast::FieldDecl&) override;
         void visit(ast::IntLiteralExpr&) override;
@@ -39,15 +40,18 @@ namespace sema::pass
         void visit(ast::RefExpr&) override;
         void visit(ast::IndexExpr&) override;
         void visit(ast::BoolLiteralExpr&) override;
+        void visit(ast::CharLiteralExpr& e) override;
         void visit(ast::FieldInitExpr&) override;
         void visit(ast::IfStatement&) override;
+        void visit(ast::ElseIfStatement& s) override;
+        void visit(ast::ElseStatement& s) override;
         void visit(ast::WhileStatement&) override;
         void visit(ast::ReturnStatement&) override;
         void visit(ast::ExprStatement&) override;
         void visit(ast::ContinueStatement&) override;
         void visit(ast::BreakStatement&) override;
         void visit(ast::DoWhileStatement&) override;
-        void visit(ast::VarDeclStatement&) override;
+        void visit_block_as_anon(ast::BlockStatement& block);
         void visit(ast::Project&) override;
         ~ScopeAstVisitor() override;
         void visit(ast::ArrayTypeExpr&) override;
