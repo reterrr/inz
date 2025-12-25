@@ -7,14 +7,14 @@ import foo::bar as baz;
 
 struct Empty;
 
-struct Point<T,> {
+pub struct Point<T,> {
   x: i32;
   pub y: i32;
 }
 
 fn add(a: i32, b: i32,) -> i32;
 
-fn id<T,>(t: T,) -> T {
+pub fn id<T,>(t: T,) -> T {
   return t;
 }
 
@@ -43,6 +43,7 @@ fn main() -> i32 {
   // -------------------------
   imm arr: i32[10];
   imm r: &mut i32;
+  imm s: s[10];
 
   // -------------------------
   // Struct literal (+ trailing comma)
