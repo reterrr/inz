@@ -14,24 +14,48 @@ namespace hir
     struct TypeBuiltin
     {
         kl::rt::BuiltinTypeExprKind kind;
+
+        template <typename V>
+        void accept(V& v)
+        {
+            v.visit(*this);
+        }
     };
 
     struct TypePath
     {
         ExprId path;
         std::vector<TypeId> targs;
+
+        template <typename V>
+        void accept(V& v)
+        {
+            v.visit(*this);
+        }
     };
 
     struct TypeRef
     {
         ast::Mutability mut;
         TypeId inner;
+
+        template <typename V>
+        void accept(V& v)
+        {
+            v.visit(*this);
+        }
     };
 
     struct TypeArray
     {
         TypeId elem;
         ExprId size;
+
+        template <typename V>
+        void accept(V& v)
+        {
+            v.visit(*this);
+        }
     };
 
     using TypeKind = std::variant<TypeBuiltin, TypePath, TypeRef, TypeArray>;
@@ -40,6 +64,12 @@ namespace hir
     {
         lex::Loc loc;
         TypeKind kind;
+
+        template <typename V>
+        void accept(V& v)
+        {
+            v.visit(*this);
+        }
     };
 }
 
