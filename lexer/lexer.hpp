@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <string_view>
 
+#include "compiler_context.hpp"
 #include "interner.hpp"
 #include "generated/token.hpp"
 
@@ -21,15 +22,13 @@ class Scanner final : public yyFlexLexer
 
 public:
     explicit Scanner(
-        ast::Interner<>& stringInterner,
-        ast::Interner<>& identInterner,
-        ast::Interner<>& numericInterner,
+        CompilerContext& compilerContext,
         std::istream* in = &std::cin,
         std::ostream* out = &std::cout)
         : yyFlexLexer(in, out),
-          stringInterner_(stringInterner),
-          identInterner_(identInterner),
-          numericInterner_(numericInterner)
+          stringInterner_(compilerContext.stringInterner),
+          identInterner_(compilerContext.identInterner),
+          numericInterner_(compilerContext.numericInterner)
     {
     }
 

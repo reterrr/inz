@@ -18,6 +18,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 set(CMAKE_BUILD_TYPE DEBUG)
 
 include_directories(
+        ./
         generated
         ast
         ast/nodes
@@ -27,12 +28,12 @@ include_directories(
 )
 
 add_executable(inz main.cpp
-        lexer/lexer.cpp
+#        lexer/lexer.cpp
         generated/lexer/lexer.yy.cpp
         parser/parser.cpp
         ast/node_type.hpp
         ast/node.hpp
-        sema/type/type.hpp
+#        sema/type/type.hpp
         ast/nodes/expr/expr.hpp
         ast/nodes/visit/visitable.hpp
         ast/nodes/visit/expr_visitor.hpp
@@ -43,7 +44,6 @@ add_executable(inz main.cpp
         ast/nodes/expr/unary_op_expr.hpp
         ast/nodes/expr/binary_op_expr.hpp
         ast/ast.hpp
-        ast/allocator.hpp
         ast/nodes/expr/ref_expr.hpp
         ast/nodes/decl/function_decl.hpp
         ast/nodes/decl/decl.hpp
@@ -53,13 +53,11 @@ add_executable(inz main.cpp
         ast/nodes/stmt/return_statement.hpp
         ast/nodes/stmt/if_statement.hpp
         ast/nodes/stmt/while_statement.hpp
-        ast/nodes/stmt/var_decl_statement.hpp
+        ast/nodes/stmt/var_statement.hpp
         ast/nodes/visit/decl_visitor.hpp
         ast/nodes/visit/stmt_visitor.hpp
         ast/nodes/visit/visitor.hpp
         ast/nodes/expr/bool_literal_expr.hpp
-        ast/nodes/expr/string_expr.hpp
-        ast/nodes/expr/obj_expr.hpp
         ast/nodes/expr/field_init_expr.hpp
         ast/nodes/module/module.hpp
         ast/nodes/visit/module_visitor.hpp
@@ -71,7 +69,6 @@ add_executable(inz main.cpp
         ast/nodes/stmt/do_while_statement.hpp
         ast/nodes/decl/type_alias_decl.hpp
         ast/nodes/module/import_decl.hpp
-        ast/nodes/decl/var_decl.hpp
         ast/nodes/expr/field_expr.hpp
         ast/nodes/expr/call_expr.hpp
         ast/nodes/expr/index_expr.hpp
@@ -80,20 +77,17 @@ add_executable(inz main.cpp
         ast/nodes/visit/dump_visitor.hpp
         ast/nodes/decl/struct_decl.hpp
         ast/nodes/decl/field_decl.hpp
-        hir/hir.hpp
-        sema/passes/scope_pass.cpp
-        sema/symbol_table.hpp
-        hir/de_sugar.hpp
-        sema/passes/pass.hpp
-        sema/passes/decl_pass.hpp
-        sema/passes/decl_pass.cpp
-        ast/nodes/visit/overallvisitor.cpp
-        ast/nodes/visit/overallvisitor.hpp
-        sema/scope_stack.hpp
-        sema/symbol.hpp
-        sema/type_interner.hpp
-        sema/sema.cpp
-        sema/sema.hpp
+#        sema/passes/scope_pass.cpp
+#        sema/symbol_table.hpp
+#        sema/passes/pass.hpp
+#        sema/passes/decl_pass.hpp
+#        sema/passes/decl_pass.cpp
+#        ast/nodes/visit/overallvisitor.cpp
+#        ast/nodes/visit/overallvisitor.hpp
+#        sema/scope_stack.hpp
+#        sema/symbol.hpp
+#        sema/type_interner.hpp
+#        sema/sema.hpp
         ast/nodes/visit/project_visitor.hpp
         ast/nodes/expr/type_expr.hpp
         ast/nodes/expr/array_type_expr.hpp
@@ -104,7 +98,7 @@ add_executable(inz main.cpp
         ast/nodes/expr/literal_expr.hpp
         ast/nodes/expr/string_literal_expr.hpp
         ast/nodes/expr/array_literal_expr.hpp
-        test/test.cpp
+        #test/test.cpp
         ast/nodes/expr/path_expr.hpp
         ast/nodes/expr/cast_expr.hpp
         ast/nodes/stmt/else_if_statement.hpp
@@ -112,6 +106,29 @@ add_executable(inz main.cpp
         ast/interner.hpp
         ast/nodes/type/type_parametrized_decl.hpp
         ast/nodes/type/type_arged_expr.hpp
+#        sema/passes/module_pass.cpp
+#        sema/passes/module_pass.hpp
+        compiler_context.hpp
+        project_loader.hpp
+        translation.hpp
+        hir/arena.hpp
+        hir/ids.hpp
+        hir/decls.hpp
+        hir/exprs.hpp
+        hir/stmts.hpp
+        hir/hir_types.hpp
+        hir/modules.hpp
+        hir/lowerer.hpp
+        ast/nodes/stmt/block_stmt_kind.hpp
+        ast/nodes/decl/field_visibility.hpp
+        ast/nodes/stmt/var_mutablity_storage.hpp
+        ast/nodes/expr/assign_op.hpp
+        ast/nodes/expr/type_expr_kind.hpp
+        hir/iterator.hpp
+        hir/visitor.hpp
+        hir/defer_visit.hpp
+        hir/dump_visitor.hpp
+        hir/dfs_deferring_visit.hpp
 )
 
 target_include_directories(inz PRIVATE
