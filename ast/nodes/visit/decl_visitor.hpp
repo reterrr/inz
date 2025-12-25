@@ -8,27 +8,28 @@
 
 #include "visitor.hpp"
 
-namespace ast {
+namespace ast
+{
     struct ParamDecl;
     struct FunctionDecl;
     struct TypeAliasDecl;
     struct ImportDecl;
-    struct VarDecl;
     struct StructDecl;
     struct FieldDecl;
     struct TypeParamDecl;
 }
 
-namespace ast::visitor {
+namespace ast::visitor
+{
     struct DeclVisitor
-            : Visitor<ParamDecl,
-                FunctionDecl,
-                TypeAliasDecl,
-                ImportDecl,
-                VarDecl,
-                StructDecl,
-                FieldDecl,
-                TypeParamDecl> {
+        : Visitor<ParamDecl,
+                  FunctionDecl,
+                  TypeAliasDecl,
+                  ImportDecl,
+                  StructDecl,
+                  FieldDecl,
+                  TypeParamDecl>
+    {
     };
 }
 

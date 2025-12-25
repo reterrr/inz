@@ -19,7 +19,7 @@ namespace ast
         PathTypeExpr(PathExpr* pathExpr,
                      std::vector<TypeExpr*>&& typeArgs,
                      const lex::Loc& loc)
-            : TypeExpr(Kind::Path, loc),
+            : TypeExpr(TypeExprKind::Path, loc),
               TypeArgedExpr(TypeArgedKind::PathType, std::move(typeArgs), this),
               pathExpr_(pathExpr)
         {

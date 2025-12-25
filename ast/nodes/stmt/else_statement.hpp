@@ -10,8 +10,6 @@
 
 namespace ast
 {
-    struct BlockStatement;
-
     struct ElseStatement final : Statement
     {
         BlockStatement* then_;

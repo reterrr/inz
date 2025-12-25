@@ -7,13 +7,12 @@
 
 #include "decl.hpp"
 #include "visit/decl_visitor.hpp"
+#include "field_visibility.hpp"
 
 namespace ast
 {
     struct FieldDecl final : Decl
     {
-        enum class Visibility { Priv, Publ };
-
         lex::SymId name_;
         TypeExpr* type_;
         Visibility visibility_;

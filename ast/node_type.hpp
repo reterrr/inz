@@ -7,11 +7,6 @@
 
 #include <cstdint>
 
-enum class AssignOp
-{
-    Assign, Add, Subtract, Multiply, Divide, Modulo
-};
-
 enum class NodeKind : uint32_t
 {
     Project,
@@ -19,7 +14,6 @@ enum class NodeKind : uint32_t
     // ---- Expressions: variables & references
     Expr_Var, // identifier use
     Expr_Ref, // &x / &mut x
-    Expr_Deref, // *p
 
     // ---- Expressions: operators
     Expr_Unary, // -x, !x, ++x, --x (prefix)
@@ -38,10 +32,12 @@ enum class NodeKind : uint32_t
     Expr_Cond, // a ? b : c
     Expr_StructInit, // Type { field: expr, ... }
     Expr_DeclInit,
+    Expr_Type,
+    Expr_Path,
+    Expr_Cast,
 
     // ---- Statements
-    Stmt_VarDecl,
-    Stmt_VarsDecl_Sugar, // (qualifiers + type) name [= init], ...
+    Stmt_Var, // (qualifiers + type) name [= init], ...
     Stmt_Return,
     Stmt_If,
     Stmt_While,
@@ -49,33 +45,22 @@ enum class NodeKind : uint32_t
     Stmt_Break,
     Stmt_Continue,
     Stmt_Block,
+    Stmt_ElseIf,
+    Stmt_Else,
     Stmt_Expr, // expression statement
 
     // ---- Declarations
     Decl_Struct,
-    Decl_Enum,
     Decl_Fn,
     Decl_TypeAlias,
     Decl_Import,
-    Decl_Export,
     Decl_Module,
-    Decl_Package,
     Decl_Param,
-    Decl_Var,
-    Decl_Vars_Sugar,
     Decl_Field,
     Decl_TypeParam,
 
     // ---- Sentinels
-    Expr_Type,
-    Expr_Path,
-    Expr_Cast,
-    Stmt_ElseIf,
-    Stmt_Else,
-    Stmt_FnBlock,
-    Stmt_StructBlock,
-
-    Count
+    Count, //FATAL: must be last!!!!! do not move and do nor insert after
 };
 
 #endif //NODE_TYPE_HPP

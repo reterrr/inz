@@ -7,7 +7,7 @@
 
 #include "statement.hpp"
 #include "var_mutablity_storage.hpp"
-#include "visit/decl_visitor.hpp"
+#include "visit/stmt_visitor.hpp"
 
 namespace ast
 {
@@ -26,7 +26,7 @@ namespace ast
             Storage storage,
             Expr* init,
             const lex::Loc& loc)
-            : Statement(NodeKind::Decl_Var, loc),
+            : Statement(NodeKind::Stmt_Var, loc),
               name_(name),
               type_(type),
               mut_(mut),
@@ -46,4 +46,4 @@ namespace ast
     }
 }
 
-#endif //VAR_DECL_HPP
+#endif //VAR_STATEMENT_HPP

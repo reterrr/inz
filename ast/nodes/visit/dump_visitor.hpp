@@ -9,7 +9,6 @@
 #include <ostream>
 #include <string_view>
 #include <type_traits>
-#include <utility>
 #include <vector>
 
 /* visitors */
@@ -24,7 +23,6 @@
 #include "decl/param_decl.hpp"
 #include "decl/struct_decl.hpp"
 #include "decl/type_param_decl.hpp"
-#include "decl/var_decl.hpp"
 
 /* expr */
 #include "expr/assign_expr.hpp"
@@ -40,7 +38,7 @@
 #include "expr/int_literal_expr.hpp"
 #include "expr/path_expr.hpp"
 #include "expr/ref_expr.hpp"
-#include "expr/string_expr.hpp"
+#include "expr/string_literal_expr.hpp"
 #include "expr/struct_literal_expr.hpp"
 #include "expr/unary_op_expr.hpp"
 
@@ -63,7 +61,7 @@
 #include "stmt/expr_statement.hpp"
 #include "stmt/if_statement.hpp"
 #include "stmt/return_statement.hpp"
-#include "stmt/var_decl_statement.hpp"
+#include "stmt/var_statement.hpp"
 #include "stmt/while_statement.hpp"
 
 #include "node_type.hpp"
@@ -157,7 +155,7 @@ namespace ast::visitor
                 }
             }
             // fallback
-            os << "#" << id;
+            os << '#' << id;
         }
 
         void print_string_sym(lex::SymId id) const
@@ -171,7 +169,7 @@ namespace ast::visitor
                     return;
                 }
             }
-            os << "#" << id;
+            os << '#' << id;
         }
 
         void print_numeric_sym(lex::SymId id) const
@@ -185,7 +183,7 @@ namespace ast::visitor
                     return;
                 }
             }
-            os << "#" << id;
+            os << '#' << id;
         }
 
         void print_path(const std::vector<lex::SymId>& p) const
@@ -263,7 +261,7 @@ namespace ast::visitor
                     if (!t) continue;
                     pad();
                     t->accept(*this);
-                    os << "\n";
+                    os << '\n';
                 }
             };
 
@@ -310,7 +308,7 @@ namespace ast::visitor
         void visit(ast::BoolLiteralExpr& n) override
         {
             pad();
-            os << "BoolLiteral " << (n.v_ ? "true" : "false") << "\n";
+            os << "BoolLiteral " << (n.v_ ? "true" : "false") << '\n';
         }
 
         void visit(ast::CharLiteralExpr& n) override
@@ -318,15 +316,15 @@ namespace ast::visitor
             pad();
             os << "CharLiteral U+"
                 << std::hex << static_cast<std::uint32_t>(n.v_) << std::dec
-                << "\n";
+                << '\n';
         }
 
         void visit(ast::StringLiteralExpr& n) override
         {
             pad();
             os << "StringLiteral value=\"";
-            print_string_sym(n.value_);
-            os << "\" (sym#" << n.value_ << ")\n";
+            print_string_sym(n.v_);
+            os << "\" (sym#" << n.v_ << ")\n";
         }
 
         void visit(ast::RefExpr& n) override
@@ -342,7 +340,7 @@ namespace ast::visitor
             pad();
             os << "Path ";
             print_path(n.path_);
-            os << "\n";
+            os << '\n';
         }
 
         void visit(ast::UnaryExpr& n) override
@@ -626,7 +624,7 @@ namespace ast::visitor
         void visit(ast::RefTypeExpr& n) override
         {
             pad();
-            os << "RefType mut=" << static_cast<int>(n.mut_) << "\n";
+            os << "RefType mut=" << static_cast<int>(n.mut_) << '\n';
             IndentGuard ig(*this);
             if (n.pointee_)
                 n.pointee_->accept(*this);
@@ -816,17 +814,6 @@ namespace ast::visitor
             os << "Break\n";
         }
 
-        void visit(ast::VarDeclStatement& v) override
-        {
-            pad();
-            os << "VarDeclStmt\n";
-            if (v.decl_)
-            {
-                IndentGuard ig(*this);
-                v.decl_->accept(*this);
-            }
-        }
-
         // -------------------- Decls --------------------
 
         void visit(ast::TypeParamDecl& n) override
@@ -864,17 +851,6 @@ namespace ast::visitor
 
             // Type parameters (if present; API unknown, use detection)
             if constexpr (requires { n.typeParamsDecls_; })
-            {
-                if (!n.typeParamsDecls_.empty())
-                {
-                    pad();
-                    os << "type_params:\n";
-                    IndentGuard ig2(*this);
-                    for (auto* tp : n.typeParamsDecls_)
-                        if (tp) tp->accept(*this);
-                }
-            }
-            else if constexpr (requires { n.typeParamsDecls_; })
             {
                 if (!n.typeParamsDecls_.empty())
                 {
@@ -928,7 +904,7 @@ namespace ast::visitor
             os << "ImportDecl ";
             if (n.is_public) os << "pub ";
 
-            print_path(n.path);
+            n.pathExpr_->accept(*this);
 
             if (n.alias.has_value())
             {
@@ -937,16 +913,16 @@ namespace ast::visitor
                 os << " (sym#" << *n.alias << ")";
             }
 
-            os << "\n";
+            os << '\n';
         }
 
-        void visit(ast::VarDecl& n) override
+        void visit(ast::VarStmt& n) override
         {
             pad();
-            os << "VarDecl name=";
+            os << "VarStmt name=";
             print_ident_sym(n.name_);
             os << " (sym#" << n.name_ << ")"
-                << " mut=" << static_cast<int>(n.mut_) << "\n";
+                << " mut=" << static_cast<int>(n.mut_) << '\n';
 
             IndentGuard ig(*this);
 
@@ -992,17 +968,6 @@ namespace ast::visitor
                         if (tp) tp->accept(*this);
                 }
             }
-            else if constexpr (requires { n.typeParamsDecls_; })
-            {
-                if (!n.typeParamsDecls_.empty())
-                {
-                    pad();
-                    os << "type_params:\n";
-                    IndentGuard ig2(*this);
-                    for (auto* tp : n.typeParamsDecls_)
-                        if (tp) tp->accept(*this);
-                }
-            }
 
             pad();
             os << "fields:\n";
@@ -1017,7 +982,7 @@ namespace ast::visitor
         {
             pad();
             os << "FieldDecl ";
-            if (n.visibility_ == ast::FieldDecl::Visibility::Publ) os << "pub ";
+            if (n.visibility_ == ast::Visibility::Publ) os << "pub ";
 
             os << "name=";
             print_ident_sym(n.name_);
@@ -1042,8 +1007,8 @@ namespace ast::visitor
 
             pad();
             os << "package: ";
-            print_path(m.package_path);
-            os << "\n";
+            m.pathExpr_->accept(*this);
+            os << '\n';
 
             pad();
             os << "imports:\n";
@@ -1075,10 +1040,6 @@ namespace ast::visitor
                 IndentGuard ig2(*this);
                 if (module) module->accept(*this);
             }
-        }
-
-        void visit(FunctionBlockStatement&) override
-        {
         }
     };
 }

@@ -10,7 +10,7 @@
 
 namespace ast {
     struct TypeAliasDecl final : Decl {
-        lex::SymId type_name;
+        lex::SymId type_name; // correct
         lex::SymId type_alias;
 
         TypeAliasDecl(const lex::SymId type_name,

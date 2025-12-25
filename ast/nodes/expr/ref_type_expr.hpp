@@ -7,18 +7,17 @@
 
 #include "type_expr.hpp"
 #include "visit/expr_visitor.hpp"
+#include "stmt/var_mutablity_storage.hpp"
 
 namespace ast
 {
     struct RefTypeExpr final : TypeExpr
     {
-        enum class Mutability { Imm, Mut };
-
         Mutability mut_;
         TypeExpr* pointee_;
 
         RefTypeExpr(TypeExpr* pointee, Mutability mut, const lex::Loc& loc)
-            : TypeExpr(Kind::Ref, loc),
+            : TypeExpr(TypeExprKind::Ref, loc),
               mut_(mut),
               pointee_(pointee)
         {

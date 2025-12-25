@@ -6,10 +6,8 @@
 #define IMPORT_DECL_HPP
 
 #include <optional>
-#include <vector>
-
-#include "../decl/decl.hpp"
-#include "../visit/decl_visitor.hpp"
+#include "decl/decl.hpp"
+#include "visit/decl_visitor.hpp"
 
 namespace ast
 {

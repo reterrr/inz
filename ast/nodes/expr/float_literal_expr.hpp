@@ -8,6 +8,7 @@
 #include "literal_expr.hpp"
 #include "types.hpp"
 #include "visit/expr_visitor.hpp"
+#include <optional>
 
 namespace ast
 {

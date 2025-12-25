@@ -16,7 +16,7 @@ namespace ast
         ExprPtr sizeExpr_;
 
         ArrayTypeExpr(TypeExpr* type, ExprPtr sizeExpr, const lex::Loc& loc)
-            : TypeExpr(Kind::Array, loc), type_(type), sizeExpr_(sizeExpr)
+            : TypeExpr(TypeExprKind::Array, loc), type_(type), sizeExpr_(sizeExpr)
         {
         }
 

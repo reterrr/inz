@@ -18,7 +18,7 @@ namespace ast
         kl::rt::BuiltinTypeExprKind kind_;
 
         BuiltinTypeExpr(kl::rt::BuiltinTypeExprKind kind, const lex::Loc& loc)
-            : TypeExpr(Kind::Builtin, loc),
+            : TypeExpr(TypeExprKind::Builtin, loc),
               kind_(kind)
         {
         }

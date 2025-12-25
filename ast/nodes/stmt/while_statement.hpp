@@ -6,8 +6,8 @@
 #define WHILE_STATEMENT_HPP
 
 #include "statement.hpp"
-#include "../expr/expr.hpp"
-#include "../visit/stmt_visitor.hpp"
+#include "expr/expr.hpp"
+#include "visit/stmt_visitor.hpp"
 #include "block_statement.hpp"
 
 namespace ast
