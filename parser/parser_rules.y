@@ -15,13 +15,15 @@
 
 %lex-param   { Scanner& scanner }
 %parse-param { Scanner& scanner }
-%parse-param { ast::AST& ast }
+%parse-param { ast::Ast& ast }
+%parse-param { Translation& unit }
 
 /* ============================== HEADER PROLOGUE ============================== */
 %code requires {
   #include "generated/token.hpp"
   #include "types.hpp"
   #include "ast/ast.hpp"
+  #include "translation.hpp"
 
   #include <string>
   #include <vector>
@@ -41,6 +43,7 @@
 %code {
   #include "lexer/lexer.hpp"
   #include "ast/ast.hpp"
+  #include "translation.hpp"
   #include <iostream>
 
   void yy::parser::error(const location_type& loc, const std::string& msg) {
@@ -200,10 +203,11 @@
 
 /* ============================== NONTERMINAL TYPES =========================== */
 /* module / top level */
+
+%type <kl::rt::boolean>                                 pub_opt
 %type <ast::Module*>                         translation_unit
 %type <ast::Module*>                         module
 
-%type <std::vector<Str>>                     package_opt
 %type <std::vector<ast::ImportDecl*>>        import_list_opt
 %type <std::vector<ast::ImportDecl*>>        import_list
 %type <ast::ImportDecl*>                     import_decl
@@ -233,12 +237,12 @@
 %type <ast::BuiltinTypeExpr*>                builtin_type_expr
 %type <ast::PathTypeExpr*>                   path_type_expr
 %type <ast::RefTypeExpr*>                    ref_type_expr
-%type <ast::RefTypeExpr::Mutability>         ref_mutability
+%type <ast::Mutability>         ref_mutability
 
 /* decls */
 %type <ast::FunctionDecl*>                   fn_decl
 %type <ast::FunctionDecl*>                   fn_decl_def
-%type <ast::FunctionDecl*>                   fn_decl_proto
+%type <ast::FunctionDecl*>                   fn_decl_fwd
 
 %type <ast::StructDecl*>                     struct_decl
 %type <ast::StructDecl*>                     struct_decl_def
@@ -258,11 +262,16 @@
 %type <ast::Statement*>                      simple_stmt
 %type <ast::Statement*>                      compound_stmt
 
-%type <ast::BlockStatement*>                 block
+%type <ast::BlockStatement*>                 anon_block
+%type <ast::BlockStatement*>                 fn_block
+%type <ast::BlockStatement*>                 if_block
+%type <ast::BlockStatement*>                 else_if_block
+%type <ast::BlockStatement*>                 else_block
+%type <ast::BlockStatement*>                 while_block
+%type <ast::BlockStatement*>                 do_while_block
 %type <std::vector<ast::Statement*>>         stmt_list_opt
 %type <std::vector<ast::Statement*>>         stmt_list
 
-%type <ast::VarDeclStatement*>               var_decl_stmt
 %type <ast::ReturnStatement*>                return_stmt
 %type <ast::IfStatement*>                    if_stmt
 %type <std::vector<ast::ElseIfStatement*>>   elseif_list
@@ -275,10 +284,13 @@
 %type <ast::ExprStatement*>                  expr_stmt
 
 /* var decls (no epsilon prefix -> avoids stmt conflicts) */
-%type <ast::VarDecl*>                        var_decl
-%type <ast::VarDecl*>                        var_decl_default
-%type <ast::VarDecl*>                        var_decl_imm
-%type <ast::VarDecl*>                        var_decl_mut
+%type <ast::VarStmt*>                       var_stmt
+%type <ast::VarStmt*>                       var_stmt_default
+%type <ast::VarStmt*>                       var_stmt_imm
+%type <ast::VarStmt*>                       var_stmt_mut
+%type <ast::VarStmt*>                       var_stmt_static_default
+%type <ast::VarStmt*>                       var_stmt_static_imm
+%type <ast::VarStmt*>                       var_stmt_static_mut
 
 /* expressions */
 %type <ast::Expr*>                           expr expr_opt
@@ -300,6 +312,8 @@
 %type <std::optional<kl::rt::IntKind>>       int_literal_type_opt
 %type <std::optional<kl::rt::FloatKind>>     float_literal_type_opt
 
+
+
 %%
 
 /* =============================================================================
@@ -312,19 +326,12 @@ translation_unit
   ;
 
 module
-  : package_opt import_list_opt decl_list_opt
+  : TOK_PACKAGE path_expr TOK_SMCLN import_list_opt decl_list_opt
     {
-      auto* m = ast.mk_module(std::move($1), std::move($2), std::move($3), combine(@1, @3));
-      ast.project_add_module(m);
+      auto* m = ast.mk_module($2, std::move($4), std::move($5), combine(@1, @5));
+      unit.addModule(m);
       $$ = m;
     }
-  ;
-
-package_opt
-  : /* empty */
-    { $$ = std::vector<Str>{}; }
-  | TOK_PACKAGE path TOK_SMCLN
-    { $$ = std::move($2); }
   ;
 
 import_list_opt
@@ -342,9 +349,9 @@ import_list
   ;
 
 import_decl
-  : TOK_IMPORT path TOK_SMCLN
+  : TOK_IMPORT path_expr TOK_SMCLN
     { $$ = ast.mk_import_decl(std::move($2), std::nullopt, /*is_public*/false, combine(@1, @3)); }
-  | TOK_IMPORT path TOK_AS ident TOK_SMCLN
+  | TOK_IMPORT path_expr TOK_AS ident TOK_SMCLN
     { $$ = ast.mk_import_decl(std::move($2), std::optional<Str>{$4}, /*is_public*/false, combine(@1, @5)); }
   ;
 
@@ -416,6 +423,11 @@ type_arg_list
  * Declarations
  * ============================================================================= */
 
+pub_opt
+  : /* empty */ { $$ = false; }
+  | TOK_PUB     { $$ = true;  }
+  ;
+
 decl_list_opt
   : /* empty */
     { $$ = std::vector<ast::Decl*>{}; }
@@ -440,19 +452,42 @@ decl
 fn_decl
   : fn_decl_def
     { $$ = $1; }
-  | fn_decl_proto
+  | fn_decl_fwd
     { $$ = $1; }
   ;
 
 fn_decl_def
-  : TOK_FN ident type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr block
-    { $$ = ast.mk_fn_decl($2, std::move($3), std::move($5), $7, $8, combine(@1, @8)); }
+  : pub_opt TOK_FN ident type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr fn_block
+    {
+      auto start = $1 ? @1 : @2; /* if pub exists start at TOK_PUB, else TOK_FN */
+      $$ = ast.mk_fn_decl(
+            $3,
+            std::move($4),
+            std::move($6),
+            $8,
+            $9,
+            $1,                  /* <- second last arg: is_pub */
+            combine(start, @9)
+          );
+    }
   ;
 
-fn_decl_proto
-  : TOK_FN ident type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr TOK_SMCLN
-    { $$ = ast.mk_fn_decl($2, std::move($3), std::move($5), $7, nullptr, combine(@1, @7)); }
+fn_decl_fwd
+  : pub_opt TOK_FN ident type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr TOK_SMCLN
+    {
+      auto start = $1 ? @1 : @2; /* if pub exists start at TOK_PUB, else TOK_FN */
+      $$ = ast.mk_fn_decl(
+            $3,
+            std::move($4),
+            std::move($6),
+            $8,
+            nullptr,
+            $1,                  /* <- second last arg: is_pub */
+            combine(start, @8)    /* keep old behavior: span ends at ret_type_expr */
+          );
+    }
   ;
+
 
 struct_decl
   : struct_decl_def
@@ -462,14 +497,33 @@ struct_decl
   ;
 
 struct_decl_def
-  : TOK_STRUCT ident type_params_opt TOK_LCBRA field_decl_list_opt TOK_RCBRA
-    { $$ = ast.mk_struct_decl($2, std::move($3), std::move($5), combine(@1, @6)); }
+  : pub_opt TOK_STRUCT ident type_params_opt TOK_LCBRA field_decl_list_opt TOK_RCBRA
+    {
+      auto start = $1 ? @1 : @2; /* if pub exists start at TOK_PUB, else TOK_STRUCT */
+      $$ = ast.mk_struct_decl(
+            $3,
+            std::move($4),
+            std::move($6),
+            $1,                  /* <- second last arg: is_pub */
+            combine(start, @7)
+          );
+    }
   ;
 
 struct_decl_fwd
-  : TOK_STRUCT ident type_params_opt TOK_SMCLN
-    { $$ = ast.mk_struct_decl($2, std::move($3), std::vector<ast::FieldDecl*>{}, combine(@1, @4)); }
+  : pub_opt TOK_STRUCT ident type_params_opt TOK_SMCLN
+    {
+      auto start = $1 ? @1 : @2; /* if pub exists start at TOK_PUB, else TOK_STRUCT */
+      $$ = ast.mk_struct_decl(
+            $3,
+            std::move($4),
+            std::vector<ast::FieldDecl*>{},
+            $1,                  /* <- second last arg: is_pub */
+            combine(start, @5)    /* keep old behavior: include semicolon */
+          );
+    }
   ;
+
 
 field_decl_list_opt
   : /* empty */
@@ -487,9 +541,9 @@ field_decl_list
 
 field_decl
   : ident TOK_COLON type_expr TOK_SMCLN
-    { $$ = ast.mk_field_decl($1, $3, ast::FieldDecl::Visibility::Priv, combine(@1, @4)); }
+    { $$ = ast.mk_field_decl($1, $3, ast::Visibility::Priv, combine(@1, @4)); }
   | TOK_PUB ident TOK_COLON type_expr TOK_SMCLN
-    { $$ = ast.mk_field_decl($2, $4, ast::FieldDecl::Visibility::Publ, combine(@1, @5)); }
+    { $$ = ast.mk_field_decl($2, $4, ast::Visibility::Publ, combine(@1, @5)); }
   ;
 
 ret_type_expr
@@ -538,9 +592,9 @@ ref_type_expr
   ;
 
 ref_mutability
-  : /* empty */ { $$ = ast::RefTypeExpr::Mutability::Imm; }
-  | TOK_IMM     { $$ = ast::RefTypeExpr::Mutability::Imm; }
-  | TOK_MUT     { $$ = ast::RefTypeExpr::Mutability::Mut; }
+  : /* empty */ { $$ = ast::Mutability::Imm; }
+  | TOK_IMM     { $$ = ast::Mutability::Imm; }
+  | TOK_MUT     { $$ = ast::Mutability::Mut; }
   ;
 
 type_postfix
@@ -585,10 +639,40 @@ path_type_expr
  * Statements
  * ============================================================================= */
 
-block
-  : TOK_LCBRA stmt_list_opt TOK_RCBRA
-    { $$ = ast.mk_block_stmt(std::move($2), combine(@1, @3)); }
-  ;
+anon_block
+    : TOK_LCBRA stmt_list_opt TOK_RCBRA
+      { $$ = ast.mk_block_stmt(std::move($2), ast::BlockKind::Anon, combine(@1, @3)); }
+    ;
+
+fn_block
+    : TOK_LCBRA stmt_list_opt TOK_RCBRA
+      { $$ = ast.mk_block_stmt(std::move($2), ast::BlockKind::Fn, combine(@1, @3)); }
+    ;
+
+if_block
+    : TOK_LCBRA stmt_list_opt TOK_RCBRA
+      { $$ = ast.mk_block_stmt(std::move($2), ast::BlockKind::If, combine(@1, @3)); }
+    ;
+
+else_if_block
+    : TOK_LCBRA stmt_list_opt TOK_RCBRA
+      { $$ = ast.mk_block_stmt(std::move($2), ast::BlockKind::ElseIf, combine(@1, @3)); }
+    ;
+
+else_block
+    : TOK_LCBRA stmt_list_opt TOK_RCBRA
+      { $$ = ast.mk_block_stmt(std::move($2), ast::BlockKind::Else, combine(@1, @3)); }
+    ;
+
+while_block
+    : TOK_LCBRA stmt_list_opt TOK_RCBRA
+      { $$ = ast.mk_block_stmt(std::move($2), ast::BlockKind::While, combine(@1, @3)); }
+    ;
+
+do_while_block
+    : TOK_LCBRA stmt_list_opt TOK_RCBRA
+      { $$ = ast.mk_block_stmt(std::move($2), ast::BlockKind::DoWhile, combine(@1, @3)); }
+    ;
 
 stmt_list_opt
   : /* empty */
@@ -612,7 +696,7 @@ stmt
   ;
 
 simple_stmt
-  : var_decl_stmt  { $$ = static_cast<ast::Statement*>($1); }
+  : var_stmt      { $$ = static_cast<ast::Statement*>($1); }
   | return_stmt    { $$ = static_cast<ast::Statement*>($1); }
   | break_stmt     { $$ = static_cast<ast::Statement*>($1); }
   | continue_stmt  { $$ = static_cast<ast::Statement*>($1); }
@@ -620,7 +704,7 @@ simple_stmt
   ;
 
 compound_stmt
-  : block          { $$ = static_cast<ast::Statement*>($1); }
+  : anon_block     { $$ = static_cast<ast::Statement*>($1); }
   | if_stmt        { $$ = static_cast<ast::Statement*>($1); }
   | while_stmt     { $$ = static_cast<ast::Statement*>($1); }
   | do_while_stmt  { $$ = static_cast<ast::Statement*>($1); }
@@ -632,7 +716,7 @@ return_stmt
   ;
 
 if_stmt
-  : TOK_IF TOK_LPAR expr TOK_RPAR block elseif_list else_part
+  : TOK_IF TOK_LPAR expr TOK_RPAR if_block elseif_list else_part
     { $$ = ast.mk_if_stmt($3, $5, std::move($6), $7, combine(@1, @7)); }
   ;
 
@@ -644,24 +728,24 @@ elseif_list
   ;
 
 elseif
-  : TOK_ELSE TOK_IF TOK_LPAR expr TOK_RPAR block
+  : TOK_ELSE TOK_IF TOK_LPAR expr TOK_RPAR else_if_block
     { $$ = ast.mk_else_if_stmt($4, $6, combine(@1, @6)); }
   ;
 
 else_part
   : /* empty */
     { $$ = nullptr; }
-  | TOK_ELSE block
+  | TOK_ELSE else_block
     { $$ = ast.mk_else_stmt($2, combine(@1, @2)); }
   ;
 
 while_stmt
-  : TOK_WHILE TOK_LPAR expr TOK_RPAR block
+  : TOK_WHILE TOK_LPAR expr TOK_RPAR while_block
     { $$ = ast.mk_while_stmt($3, $5, combine(@1, @5)); }
   ;
 
 do_while_stmt
-  : TOK_DO block TOK_WHILE TOK_LPAR expr TOK_RPAR TOK_SMCLN
+  : TOK_DO do_while_block TOK_WHILE TOK_LPAR expr TOK_RPAR TOK_SMCLN
     { $$ = ast.mk_do_while_stmt($5, $2, combine(@1, @7)); }
   ;
 
@@ -687,37 +771,183 @@ expr_stmt
  * This avoids shift/reduce conflicts vs expression statements.
  * ============================================================================= */
 
-var_decl_stmt
-  : var_decl
-    { $$ = ast.mk_var_decl_stmt($1, @1); }
+/* =============================================================================
+ * Var declarations (statement-level)
+ *
+ * IMPORTANT: no epsilon-prefix (no "optional mutability/storage" nonterminal).
+ * This avoids shift/reduce conflicts vs expression statements.
+ *
+ * Added: TOK_STATIC sets storage=Static, otherwise storage=Auto.
+ * ============================================================================= */
+
+var_stmt
+  : var_stmt_default        { $$ = $1; }
+  | var_stmt_imm            { $$ = $1; }
+  | var_stmt_mut            { $$ = $1; }
+  | var_stmt_static_default { $$ = $1; }
+  | var_stmt_static_imm     { $$ = $1; }
+  | var_stmt_static_mut     { $$ = $1; }
   ;
 
-var_decl
-  : var_decl_default { $$ = $1; }
-  | var_decl_imm     { $$ = $1; }
-  | var_decl_mut     { $$ = $1; }
-  ;
+/* -------------------------
+ * non-static forms (Auto)
+ * ------------------------- */
 
-var_decl_default
+var_stmt_default
   : ident TOK_COLON type_expr TOK_SMCLN
-    { $$ = ast.mk_var_decl($1, $3, ast::VarDecl::Mutability::Imm, /*init*/nullptr, combine(@1, @4)); }
+    {
+      $$ = ast.mk_var_stmt(
+             $1,                                /* name */
+             $3,                                /* type */
+             ast::Mutability::Imm,
+             ast::Storage::Auto,
+             /*init*/nullptr,
+             combine(@1, @4)
+           );
+    }
   | ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
-    { $$ = ast.mk_var_decl($1, $3, ast::VarDecl::Mutability::Imm, /*init*/$5, combine(@1, @6)); }
+    {
+      $$ = ast.mk_var_stmt(
+             $1,
+             $3,
+             ast::Mutability::Imm,
+             ast::Storage::Auto,
+             /*init*/$5,
+             combine(@1, @6)
+           );
+    }
   ;
 
-var_decl_imm
+var_stmt_imm
   : TOK_IMM ident TOK_COLON type_expr TOK_SMCLN
-    { $$ = ast.mk_var_decl($2, $4, ast::VarDecl::Mutability::Imm, /*init*/nullptr, combine(@1, @5)); }
+    {
+      $$ = ast.mk_var_stmt(
+             $2,
+             $4,
+             ast::Mutability::Imm,
+             ast::Storage::Auto,
+             /*init*/nullptr,
+             combine(@1, @5)
+           );
+    }
   | TOK_IMM ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
-    { $$ = ast.mk_var_decl($2, $4, ast::VarDecl::Mutability::Imm, /*init*/$6, combine(@1, @7)); }
+    {
+      $$ = ast.mk_var_stmt(
+             $2,
+             $4,
+             ast::Mutability::Imm,
+             ast::Storage::Auto,
+             /*init*/$6,
+             combine(@1, @7)
+           );
+    }
   ;
 
-var_decl_mut
+var_stmt_mut
   : TOK_MUT ident TOK_COLON type_expr TOK_SMCLN
-    { $$ = ast.mk_var_decl($2, $4, ast::VarDecl::Mutability::Mut, /*init*/nullptr, combine(@1, @5)); }
+    {
+      $$ = ast.mk_var_stmt(
+             $2,
+             $4,
+             ast::Mutability::Mut,
+             ast::Storage::Auto,
+             /*init*/nullptr,
+             combine(@1, @5)
+           );
+    }
   | TOK_MUT ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
-    { $$ = ast.mk_var_decl($2, $4, ast::VarDecl::Mutability::Mut, /*init*/$6, combine(@1, @7)); }
+    {
+      $$ = ast.mk_var_stmt(
+             $2,
+             $4,
+             ast::Mutability::Mut,
+             ast::Storage::Auto,
+             /*init*/$6,
+             combine(@1, @7)
+           );
+    }
   ;
+
+/* -------------------------
+ * static forms (Static)
+ * ------------------------- */
+
+var_stmt_static_default
+  : TOK_STATIC ident TOK_COLON type_expr TOK_SMCLN
+    {
+      $$ = ast.mk_var_stmt(
+             $2,
+             $4,
+             ast::Mutability::Imm,
+             ast::Storage::Static,
+             /*init*/nullptr,
+             combine(@1, @5)
+           );
+    }
+  | TOK_STATIC ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
+    {
+      $$ = ast.mk_var_stmt(
+             $2,
+             $4,
+             ast::Mutability::Imm,
+             ast::Storage::Static,
+             /*init*/$6,
+             combine(@1, @7)
+           );
+    }
+  ;
+
+var_stmt_static_imm
+  : TOK_STATIC TOK_IMM ident TOK_COLON type_expr TOK_SMCLN
+    {
+      $$ = ast.mk_var_stmt(
+             $3,
+             $5,
+             ast::Mutability::Imm,
+             ast::Storage::Static,
+             /*init*/nullptr,
+             combine(@1, @6)
+           );
+    }
+  | TOK_STATIC TOK_IMM ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
+    {
+      $$ = ast.mk_var_stmt(
+             $3,
+             $5,
+             ast::Mutability::Imm,
+             ast::Storage::Static,
+             /*init*/$7,
+             combine(@1, @8)
+           );
+    }
+  ;
+
+var_stmt_static_mut
+  : TOK_STATIC TOK_MUT ident TOK_COLON type_expr TOK_SMCLN
+    {
+      $$ = ast.mk_var_stmt(
+             $3,
+             $5,
+             ast::Mutability::Mut,
+             ast::Storage::Static,
+             /*init*/nullptr,
+             combine(@1, @6)
+           );
+    }
+  | TOK_STATIC TOK_MUT ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
+    {
+      $$ = ast.mk_var_stmt(
+             $3,
+             $5,
+             ast::Mutability::Mut,
+             ast::Storage::Static,
+             /*init*/$7,
+             combine(@1, @8)
+           );
+    }
+  ;
+
+
 
 /* =============================================================================
  * Expressions
@@ -736,11 +966,11 @@ expr_opt
 assign
   : cond
     { $$ = $1; }
-  | postfix TOK_ASSIGN      assign { $$ = ast.mk_assign_expr($1, $3, AssignOp::Assign,   combine(@1, @3)); }
-  | postfix TOK_PLUS_ASSIGN assign { $$ = ast.mk_assign_expr($1, $3, AssignOp::Add,      combine(@1, @3)); }
-  | postfix TOK_MIN_ASSIGN  assign { $$ = ast.mk_assign_expr($1, $3, AssignOp::Subtract, combine(@1, @3)); }
-  | postfix TOK_MUL_ASSIGN  assign { $$ = ast.mk_assign_expr($1, $3, AssignOp::Multiply, combine(@1, @3)); }
-  | postfix TOK_DIV_ASSIGN  assign { $$ = ast.mk_assign_expr($1, $3, AssignOp::Divide,   combine(@1, @3)); }
+  | postfix TOK_ASSIGN      assign { $$ = ast.mk_assign_expr($1, $3, ast::AssignOp::Assign,   combine(@1, @3)); }
+  | postfix TOK_PLUS_ASSIGN assign { $$ = ast.mk_assign_expr($1, $3, ast::AssignOp::Add,      combine(@1, @3)); }
+  | postfix TOK_MIN_ASSIGN  assign { $$ = ast.mk_assign_expr($1, $3, ast::AssignOp::Subtract, combine(@1, @3)); }
+  | postfix TOK_MUL_ASSIGN  assign { $$ = ast.mk_assign_expr($1, $3, ast::AssignOp::Multiply, combine(@1, @3)); }
+  | postfix TOK_DIV_ASSIGN  assign { $$ = ast.mk_assign_expr($1, $3, ast::AssignOp::Divide,   combine(@1, @3)); }
   ;
 
 cond
@@ -813,6 +1043,8 @@ unary
     { $$ = ast.mk_unary_op_expr(ast::UnaryOp::preincrement, $2, combine(@1, @2)); }
   | TOK_DEC unary %prec UPRE
     { $$ = ast.mk_unary_op_expr(ast::UnaryOp::predecrement, $2, combine(@1, @2)); }
+  | TOK_STAR unary %prec UPRE
+    { $$ = ast.mk_unary_op_expr(ast::UnaryOp::deref,        $2, combine(@1, @2)); }
   | postfix
     { $$ = $1; }
   ;
