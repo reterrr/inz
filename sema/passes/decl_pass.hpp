@@ -39,7 +39,7 @@ namespace sema
 
             void visit(ast::ParamDecl& p) override;
 
-            void visit(ast::FunctionDecl& f) override;
+            void visit(ast::FnDecl& f) override;
 
             void visit(ast::ImportDecl& i) override;
 

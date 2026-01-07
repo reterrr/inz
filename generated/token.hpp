@@ -21,82 +21,87 @@ namespace lex {
         TOK_ELSE = 4, // else
         TOK_STRUCT = 5, // struct
         TOK_TRAIT = 6, // trait
-        TOK_ENUM = 7, // enum
-        TOK_FN = 8, // fn
-        TOK_TYPE = 9, // type
-        TOK_RETURN = 10, // return
-        TOK_MUT = 11, // mut
-        TOK_IMM = 12, // imm
-        TOK_STATIC = 13, // static
-        TOK_PUB = 14, // pub
-        TOK_I8 = 15, // i8
-        TOK_U8 = 16, // u8
-        TOK_I16 = 17, // i16
-        TOK_U16 = 18, // u16
-        TOK_I32 = 19, // i32
-        TOK_U32 = 20, // u32
-        TOK_I64 = 21, // i64
-        TOK_U64 = 22, // u64
-        TOK_I128 = 23, // i128
-        TOK_U128 = 24, // u128
-        TOK_F32 = 25, // f32
-        TOK_F64 = 26, // f64
-        TOK_BOOL = 27, // bool
-        TOK_CHAR = 28, // char
-        TOK_BREAK = 29, // break
-        TOK_CONTINUE = 30, // continue
-        TOK_IMPORT = 31, // import
-        TOK_EXPORT = 32, // export
-        TOK_PACKAGE = 33, // package
-        TOK_AS = 34, // as
+        TOK_IMPL = 7, // impl
+        TOK_ENUM = 8, // enum
+        TOK_FN = 9, // fn
+        TOK_TYPE = 10, // type
+        TOK_RETURN = 11, // return
+        TOK_MUT = 12, // mut
+        TOK_IMM = 13, // imm
+        TOK_STATIC = 14, // static
+        TOK_PUB = 15, // pub
+        TOK_SELF = 16, // self
+        TOK_FOR = 17, // for
+        TOK_I8 = 18, // i8
+        TOK_U8 = 19, // u8
+        TOK_I16 = 20, // i16
+        TOK_U16 = 21, // u16
+        TOK_I32 = 22, // i32
+        TOK_U32 = 23, // u32
+        TOK_I64 = 24, // i64
+        TOK_U64 = 25, // u64
+        TOK_I128 = 26, // i128
+        TOK_U128 = 27, // u128
+        TOK_F32 = 28, // f32
+        TOK_F64 = 29, // f64
+        TOK_BOOL = 30, // bool
+        TOK_CHAR = 31, // char
+        TOK_VOID = 32, // void
+        TOK_BREAK = 33, // break
+        TOK_CONTINUE = 34, // continue
+        TOK_IMPORT = 35, // import
+        TOK_EXPORT = 36, // export
+        TOK_PACKAGE = 37, // package
+        TOK_AS = 38, // as
+        TOK_LOAD = 39, // load
 
-        TOK_AMP = 35, // &
-        TOK_INC = 36, // ++
-        TOK_DEC = 37, // --
-        TOK_NEGATION = 38, // !
-        TOK_STAR = 39, // *
-        TOK_SLASH = 40, // /
-        TOK_MODULO = 41, // %
-        TOK_PLUS = 42, // +
-        TOK_MINUS = 43, // -
-        TOK_LESS = 44, // <
-        TOK_LEQ = 45, // <=
-        TOK_GREATER = 46, // >
-        TOK_GEQ = 47, // >=
-        TOK_EQUAL = 48, // ==
-        TOK_NEQUAL = 49, // !=
-        TOK_BOOL_AND = 50, // &&
-        TOK_BOOL_OR = 51, // ||
-        TOK_ASSIGN = 52, // =
-        TOK_PLUS_ASSIGN = 53, // +=
-        TOK_MIN_ASSIGN = 54, // -=
-        TOK_MUL_ASSIGN = 55, // *=
-        TOK_DIV_ASSIGN = 56, // /=
+        TOK_AMP = 40, // &
+        TOK_INC = 41, // ++
+        TOK_DEC = 42, // --
+        TOK_NEGATION = 43, // !
+        TOK_STAR = 44, // *
+        TOK_SLASH = 45, // /
+        TOK_MODULO = 46, // %
+        TOK_PLUS = 47, // +
+        TOK_MINUS = 48, // -
+        TOK_LESS = 49, // <
+        TOK_LEQ = 50, // <=
+        TOK_GREATER = 51, // >
+        TOK_GEQ = 52, // >=
+        TOK_EQUAL = 53, // ==
+        TOK_NEQUAL = 54, // !=
+        TOK_BOOL_AND = 55, // &&
+        TOK_BOOL_OR = 56, // ||
+        TOK_ASSIGN = 57, // =
+        TOK_PLUS_ASSIGN = 58, // +=
+        TOK_MIN_ASSIGN = 59, // -=
+        TOK_MUL_ASSIGN = 60, // *=
+        TOK_DIV_ASSIGN = 61, // /=
 
-        TOK_LPAR = 57, // (
-        TOK_RPAR = 58, // )
-        TOK_LBRACK = 59, // [
-        TOK_RBRACK = 60, // ]
-        TOK_LCBRA = 61, // {
-        TOK_RCBRA = 62, // }
-        TOK_COMMA = 63, // ,
-        TOK_SMCLN = 64, // ;
-        TOK_COLON = 65, // :
-        TOK_COLONCOLON = 66, // ::
-        TOK_TURBOFISH_S = 67, // ::<
-        TOK_DOT = 68, // .
-        TOK_QUESTION = 69, // ?
-        TOK_ARROW = 70, // ->
+        TOK_LPAR = 62, // (
+        TOK_RPAR = 63, // )
+        TOK_LBRACK = 64, // [
+        TOK_RBRACK = 65, // ]
+        TOK_LCBRA = 66, // {
+        TOK_RCBRA = 67, // }
+        TOK_COMMA = 68, // ,
+        TOK_SMCLN = 69, // ;
+        TOK_COLON = 70, // :
+        TOK_COLONCOLON = 71, // ::
+        TOK_TURBOFISH_S = 72, // ::<
+        TOK_DOT = 73, // .
+        TOK_QUESTION = 74, // ?
+        TOK_ARROW = 75, // ->
 
-        TOK_IDENTIFIER = 71,
+        TOK_IDENTIFIER = 76,
 
-        TOK_INT_LITERAL = 72,
-        TOK_FLOAT_LITERAL = 73,
-        TOK_STRING_LITERAL = 74,
-        TOK_BOOL_LITERAL = 75,
-        TOK_CHAR_LITERAL = 76,
+        TOK_INT_LITERAL = 77,
+        TOK_FLOAT_LITERAL = 78,
+        TOK_STRING_LITERAL = 79,
+        TOK_BOOL_LITERAL = 80,
+        TOK_CHAR_LITERAL = 81,
 
-        TOK_UNDEF = 77
+        TOK_UNDEF = 82
     };
 
     struct Pos final {

@@ -6,7 +6,6 @@
 #define INZ_LOWERER_HPP
 
 #include "arena.hpp"
-#include "translation.hpp"
 #include "types.hpp"
 #include <llvm/ADT/DenseMap.h>
 
@@ -15,33 +14,30 @@ namespace hir
     class Lowerer final
     {
     public:
-        Lowerer(ast::Ast& ast, Translation& translation)
-            : translation_(translation), ast_(ast)
+        explicit Lowerer(ast::Ast& translation)
+            : translation_(translation)
         {
-            arena_.modules.reserve(ast.module_count());
-            arena_.decls.reserve(ast.decl_count());
-            arena_.stmts.reserve(ast.stmt_count());
-            arena_.exprs.reserve(ast.expr_count());
-            arena_.types.reserve(ast.type_count());
+            arena_.decls.reserve(translation_.decl_count());
+            arena_.stmts.reserve(translation_.stmt_count());
+            arena_.exprs.reserve(translation_.expr_count());
+            arena_.types.reserve(translation_.type_count());
 
-            arena_.tparams.reserve(ast.count(NodeKind::Decl_TypeParam));
-            arena_.field_inits.reserve(ast.count(NodeKind::Expr_FieldInit));
-            arena_.field_decls.reserve(ast.count(NodeKind::Decl_Field));
-            arena_.blocks.reserve(ast.count(NodeKind::Stmt_Block));
-            arena_.imports.reserve(ast.count(NodeKind::Decl_Import));
-            arena_.params.reserve(ast.count(NodeKind::Decl_Param));
-            arena_.paths.reserve(ast.count(NodeKind::Expr_Path));
+            arena_.tparams.reserve(translation_.count(NodeKind::Decl_TypeParam));
+            arena_.field_inits.reserve(translation_.count(NodeKind::Expr_FieldInit));
+            arena_.field_decls.reserve(translation_.count(NodeKind::Decl_Field));
+            arena_.blocks.reserve(translation_.count(NodeKind::Stmt_Block));
+            arena_.imports.reserve(translation_.count(NodeKind::Decl_Import));
+            arena_.params.reserve(translation_.count(NodeKind::Decl_Param));
+            arena_.paths.reserve(translation_.count(NodeKind::Expr_Path));
 
-            stack.reserve(ast_.node_count());
+            stack.reserve(translation_.node_count());
         }
 
         Arena arena_;
-        Translation& translation_;
-        ast::Ast& ast_;
+        ast::Ast& translation_;
 
         std::vector<ast::Node*> stack;
 
-        llvm::DenseMap<ast::Module*, ModuleId> modules;
         llvm::DenseMap<ast::Decl*, DeclId> decls;
         llvm::DenseMap<ast::Expr*, ExprId> exprs;
         llvm::DenseMap<ast::ParamDecl*, ParamId> params;
@@ -52,12 +48,108 @@ namespace hir
         llvm::DenseMap<ast::BlockStatement*, BlockId> blocks;
         llvm::DenseMap<ast::FieldInitExpr*, FieldInitId> fieldInits;
         llvm::DenseMap<ast::FieldDecl*, FieldDeclId> fieldDecls;
+        llvm::DenseMap<ast::MethodDecl*, FieldDeclId> methods;
+
+        void alloc_trait_decl(ast::TraitDecl* t)
+        {
+            const auto id = static_cast<DeclId>(arena_.decls.size());
+            decls.emplace_or_assign(t, id);
+
+            arena_.decls.push_back(Decl{
+                .kind = hir::TraitDecl{
+                    .name = t->name_,
+                    .methods = {},
+                    .tparams = {},
+                    .exported = t->isExported_,
+                    .loc = t->location_,
+                }
+            });
+
+            defer_alloc(t->typeParamsDecls_);
+            defer_alloc(t->methods_); // methods are FunctionDecl* (Decl nodes)
+        }
+
+        void fill_trait_decl(ast::TraitDecl* t)
+        {
+            const auto id = get_id(decls, static_cast<ast::Decl*>(t));
+            auto& d = arena_.decls[id];
+            auto& td = std::get<hir::TraitDecl>(d.kind);
+
+            fill_id_vec(td.tparams, t->typeParamsDecls_, typeParams);
+            // methods are decl ids (FunctionDecl lowered as Decl)
+            fill_id_vec(td.methods, t->methods_, methods);
+        }
+
+        void alloc_impl_decl(ast::ImplDecl* i)
+        {
+            const auto id = static_cast<DeclId>(arena_.decls.size());
+            decls.emplace_or_assign(static_cast<ast::Decl*>(i), id);
+
+            arena_.decls.push_back(Decl{
+                .kind = hir::ImplDecl{
+                    .trait_path = std::nullopt,
+                    .for_type = {}, // filled later, required
+                    .loc = i->location_,
+                    .methods = {},
+                    .tparams = {},
+                }
+            });
+
+            defer_alloc(i->typeParamsDecls_);
+            defer_alloc(i->traitPath_); // optional PathExpr*
+            defer_alloc(i->forType_); // required TypeExpr*
+            defer_alloc(i->methods_);
+        }
+
+        void fill_impl_decl(ast::ImplDecl* i)
+        {
+            const auto id = get_id(decls, static_cast<ast::Decl*>(i));
+            auto& d = arena_.decls[id];
+            auto& impl = std::get<hir::ImplDecl>(d.kind);
+
+            fill_id_vec(impl.tparams, i->typeParamsDecls_, typeParams);
+            fill_id_vec(impl.methods, i->methods_, methods);
+
+            // trait is optional
+            if (i->traitPath_) impl.trait_path = get_id(types, i->traitPath_);
+
+            // for_type is required
+            impl.for_type = get_id(types, i->forType_);
+        }
+
+        void alloc_self_param_decl(ast::SelfParamDecl* sp)
+        {
+            const auto id = static_cast<ParamId>(arena_.params.size());
+            params.emplace_or_assign(sp, id);
+
+            arena_.params.push_back(hir::Param{
+                .kind = hir::ParamSelf{
+                    .kind = sp->self_kind_,
+                    .name = sp->name_,
+                    .explicit_type = std::nullopt,
+                    .loc = sp->location_,
+                }
+            });
+
+            // If you allow `self: Type`, defer/fill it:
+            defer_alloc(sp->type_);
+        }
+
+        void fill_self_param_decl(ast::SelfParamDecl* sp)
+        {
+            const auto id = get_id(params, static_cast<ast::ParamDecl*>(sp));
+            auto& p = arena_.params[id];
+
+            auto& ps = std::get<hir::ParamSelf>(p.kind);
+
+            if (sp->type_) ps.explicit_type = get_id(types, sp->type_);
+        }
 
         template <typename T>
         void defer_alloc(T* t)
         {
             if (!t) return;
-            stack.push_back(t);
+            stack.push_back(static_cast<ast::Node*>(t));
         }
 
         template <typename T>
@@ -144,15 +236,12 @@ namespace hir
 
         void alloc_module(ast::Module* module)
         {
-            auto moduleId = arena_.modules.size();
-            modules.emplace_or_assign(module, moduleId);
-            arena_.modules.push_back(Module{
+            arena_.module = Module{
                 .loc = module->location_,
                 .package_path = {},
                 .imports = {},
                 .decls = {}
-            });
-
+            };
 
             defer_alloc(module->pathExpr_);
             defer_alloc(module->imports);
@@ -177,11 +266,11 @@ namespace hir
             auto structId = arena_.decls.size();
             decls.emplace_or_assign(decl, structId);
             arena_.decls.push_back(Decl{
-                .loc = decl->location_,
                 .kind = StructDecl{
                     .name = decl->name_,
                     .tparams = {},
                     .fields = {},
+                    .loc = decl->location_,
                     .exported = decl->isExported_,
                 }
             });
@@ -191,26 +280,150 @@ namespace hir
         }
 
         // ---- Decls -------------------------------------------------------------
-        void alloc_fndecl(ast::FunctionDecl* fn)
+        void alloc_fndecl(ast::FnDecl* fn)
         {
+            const bool isVoid = fn->ret_->kind_ == ast::TypeExprKind::Builtin &&
+                static_cast<ast::BuiltinTypeExpr*>(fn->ret_)->kind_ == kl::rt::BuiltinTypeKind::Void;
+
             const auto declId = static_cast<DeclId>(arena_.decls.size());
             decls.emplace_or_assign(fn, declId);
             arena_.decls.push_back(Decl{
-                .loc = fn->location_,
                 .kind = FnDecl{
-                    .name = fn->name_,
+                    .header = FnHeader{
+                        .name = fn->name_,
+                        .params = {},
+                        .return_type = {},
+                    },
                     .tparams = {},
-                    .params = {},
-                    .return_type = {},
-                    .body = std::nullopt,
+                    .body = {},
+                    .loc = fn->location_,
                     .exported = fn->isExported_
                 }
             });
 
             defer_alloc(fn->typeParamsDecls_);
             defer_alloc(fn->params_);
-            defer_alloc(fn->ret_);
+            if (!isVoid)
+                defer_alloc(fn->ret_);
             defer_alloc(fn->body_);
+        }
+
+
+        void alloc_loadfndecl(ast::LoadFnDecl* fn)
+        {
+            const bool isVoid = fn->ret_->kind_ == ast::TypeExprKind::Builtin &&
+                static_cast<ast::BuiltinTypeExpr*>(fn->ret_)->kind_ == kl::rt::BuiltinTypeKind::Void;
+
+
+            const auto declId = static_cast<DeclId>(arena_.decls.size());
+            decls.emplace_or_assign(fn, declId);
+
+            arena_.decls.push_back(Decl{
+                .kind = LoadFnDecl{
+                    .header = FnHeader{
+                        .name = fn->name_,
+                        .params = {},
+                        .return_type = {}, // filled if present
+                    },
+                    .loc = fn->location_, // or fn->loc_ / fn->location_ (use your actual field)
+                    .exported = fn->exported_,
+                }
+            });
+
+            // load fn has NO typeParamsDecls_ by design
+            defer_alloc(fn->params_);
+            if (!isVoid)
+                defer_alloc(fn->ret_);
+        }
+
+        void alloc_impl_fndecl(ast::ImplFnDecl* fn)
+        {
+            const bool isVoid = fn->ret_->kind_ == ast::TypeExprKind::Builtin &&
+                static_cast<ast::BuiltinTypeExpr*>(fn->ret_)->kind_ == kl::rt::BuiltinTypeKind::Void;
+
+            const auto declId = static_cast<DeclId>(arena_.methods.size());
+            methods.emplace_or_assign(fn, declId);
+
+            arena_.methods.push_back(Method{
+                .kind = ImplMethod{
+                    .header = FnHeader{
+                        .name = fn->name_,
+                        .params = {},
+                        .return_type = {},
+                    },
+                    .tparams = {},
+                    .body = {},
+                    .loc = fn->location_,
+                    .exported = fn->isExported_
+                }
+            });
+
+            defer_alloc(fn->typeParamsDecls_);
+            defer_alloc(fn->params_);
+            if (!isVoid)
+                defer_alloc(fn->ret_);
+            defer_alloc(fn->body_);
+        }
+
+        void fill_impl_fndecl(ast::ImplFnDecl* fn)
+        {
+            const bool isVoid = fn->ret_->kind_ == ast::TypeExprKind::Builtin &&
+                static_cast<ast::BuiltinTypeExpr*>(fn->ret_)->kind_ == kl::rt::BuiltinTypeKind::Void;
+
+            auto id = get_id(methods, fn);
+            auto& d = arena_.methods[id];
+            auto& f = std::get<ImplMethod>(d.kind);
+
+            fill_id_vec(f.tparams, fn->typeParamsDecls_, typeParams);
+            fill_id_vec(f.header.params, fn->params_, params);
+
+            if (fn->ret_ && !isVoid) f.header.return_type = get_id(types, fn->ret_);
+            if (fn->body_) f.body = get_id(blocks, fn->body_);
+        }
+
+        void alloc_trait_fndecl(ast::TraitFnDecl* fn)
+        {
+            const bool isVoid = fn->ret_->kind_ == ast::TypeExprKind::Builtin &&
+                static_cast<ast::BuiltinTypeExpr*>(fn->ret_)->kind_ == kl::rt::BuiltinTypeKind::Void;
+
+            const auto declId = static_cast<DeclId>(arena_.methods.size());
+            methods.emplace_or_assign(fn, declId);
+
+            arena_.methods.push_back(Method{
+                .kind = TraitMethod{
+                    .header = FnHeader{
+                        .name = fn->name_,
+                        .params = {},
+                        .return_type = {},
+                    },
+                    .tparams = {},
+                    .body = {}, // body optional; filled if present
+                    .loc = fn->location_,
+                }
+            });
+
+            defer_alloc(fn->typeParamsDecls_);
+            defer_alloc(fn->params_);
+            if (!isVoid)
+                defer_alloc(fn->ret_);
+            if (fn->body_) // trait body can be nullptr
+                defer_alloc(fn->body_);
+        }
+
+        void fill_trait_fndecl(ast::TraitFnDecl* fn)
+        {
+            const bool isVoid = fn->ret_->kind_ == ast::TypeExprKind::Builtin &&
+                static_cast<ast::BuiltinTypeExpr*>(fn->ret_)->kind_ == kl::rt::BuiltinTypeKind::Void;
+
+            auto id = get_id(methods, fn);
+            auto& d = arena_.methods[id];
+            auto& f = std::get<TraitMethod>(d.kind);
+
+            fill_id_vec(f.tparams, fn->typeParamsDecls_, typeParams);
+            fill_id_vec(f.header.params, fn->params_, params);
+
+            if (fn->ret_ && !isVoid) f.header.return_type = get_id(types, fn->ret_);
+            if (fn->body_) f.body = get_id(blocks, fn->body_); // only when default body exists
         }
 
         // void alloc_typealias(ast::TypeAliasDecl* decl)
@@ -247,9 +460,11 @@ namespace hir
             const auto id = static_cast<ParamId>(arena_.params.size());
             params.emplace_or_assign(param, id);
             arena_.params.push_back(Param{
-                .loc = param->location_,
-                .name = param->name_,
-                .type = {},
+                .kind = ParamNamed{
+                    .name = param->name_,
+                    .type = {},
+                    .loc = param->location_,
+                }
             });
 
             defer_alloc(param->type_);
@@ -294,9 +509,9 @@ namespace hir
             });
 
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
                 .kind = ExprPath{
                     .path = pathId,
+                    .loc = e->location_,
                 }
             });
         }
@@ -319,10 +534,10 @@ namespace hir
             });
 
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
                 .kind = StmtBlock{
                     .block = bid,
-                    .kind = s->kind_
+                    .kind = s->kind_,
+                    .loc = s->location_,
                 }
             });
 
@@ -334,12 +549,12 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
                 .kind = StmtIf{
                     .cond = {},
                     .then_blk = {},
                     .elseifs = {},
-                    .else_ = std::nullopt
+                    .else_ = std::nullopt,
+                    .loc = s->location_,
                 }
             });
 
@@ -354,10 +569,10 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
                 .kind = StmtElseIf{
                     .cond = {},
-                    .blk = {}
+                    .blk = {},
+                    .loc = s->location_,
                 }
             });
 
@@ -370,9 +585,9 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
                 .kind = StmtElse{
-                    .blk = {}
+                    .blk = {},
+                    .loc = s->location_,
                 }
             });
 
@@ -384,10 +599,10 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
                 .kind = StmtWhile{
                     .cond = {},
-                    .body = {}
+                    .body = {},
+                    .loc = s->location_,
                 }
             });
 
@@ -400,10 +615,11 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
+
                 .kind = StmtDoWhile{
                     .body = {},
-                    .cond = {}
+                    .cond = {},
+                    .loc = s->location_,
                 }
             });
 
@@ -416,8 +632,10 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
-                .kind = StmtBreak{}
+                .kind = StmtBreak{
+                    .loc = s->location_
+                },
+
             });
         }
 
@@ -426,8 +644,9 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
-                .kind = StmtContinue{}
+                .kind = StmtContinue{
+                    .loc = s->location_,
+                }
             });
         }
 
@@ -436,9 +655,9 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
                 .kind = StmtReturn{
-                    .value = s->expr_ ? std::optional<ExprId>{} : std::nullopt
+                    .value = s->expr_ ? std::optional<ExprId>{} : std::nullopt,
+                    .loc = s->location_,
                 }
             });
 
@@ -450,14 +669,18 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
                 .kind = StmtVar{
                     .loc = s->location_,
                     .name = s->name_,
+
                     .mut = s->mut_,
+
                     .storage = s->storage_,
+
                     .type = {},
-                    .init = s->init_ ? std::optional<ExprId>{} : std::nullopt
+
+                    .init = s->init_ ? std::optional<ExprId>{} : std::nullopt,
+
                 }
             });
 
@@ -470,9 +693,9 @@ namespace hir
             const auto id = static_cast<StmtId>(arena_.stmts.size());
             stmts.emplace_or_assign(s, id);
             arena_.stmts.push_back(Stmt{
-                .loc = s->location_,
                 .kind = StmtExpr{
-                    .expr = {}
+                    .expr = {},
+                    .loc = s->location_,
                 }
             });
 
@@ -484,10 +707,11 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprLitInt{
                     .sym = e->v_,
-                    .kind = e->suffix_
+                    .kind = e->suffix_,
+                    .loc = e->location_,
                 }
             });
         }
@@ -497,10 +721,11 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprLitFloat{
                     .sym = e->v_,
-                    .kind = e->suffix_
+                    .kind = e->suffix_,
+                    .loc = e->location_,
                 }
             });
         }
@@ -510,9 +735,10 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprLitBool{
-                    .value = e->v_
+                    .value = e->v_,
+                    .loc = e->location_,
                 }
             });
         }
@@ -522,9 +748,10 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprLitChar{
-                    .value = e->v_
+                    .value = e->v_,
+                    .loc = e->location_,
                 }
             });
         }
@@ -534,9 +761,10 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprLitArray{
-                    .elements = {}
+                    .elements = {},
+                    .loc = e->location_,
                 }
             });
 
@@ -548,9 +776,10 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprLitString{
-                    .sym = e->v_
+                    .sym = e->v_,
+                    .loc = e->location_,
                 }
             });
         }
@@ -560,10 +789,11 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprUnary{
                     .op = e->op, // op mimatch
-                    .rhs = {}
+                    .rhs = {},
+                    .loc = e->location_,
                 }
             });
 
@@ -575,11 +805,12 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprBinary{
                     .op = e->op,
                     .lhs = {},
-                    .rhs = {}
+                    .rhs = {},
+                    .loc = e->location_,
                 }
             });
 
@@ -592,11 +823,12 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprAssign{
                     .op = e->op,
                     .lhs = {},
-                    .rhs = {}
+                    .rhs = {},
+                    .loc = e->location_,
                 }
             });
 
@@ -609,11 +841,12 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprCall{
                     .callee = {},
                     .targs = {},
-                    .args = {}
+                    .args = {},
+                    .loc = e->location_,
                 }
             });
 
@@ -627,10 +860,11 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprIndex{
                     .base = {},
-                    .index = {}
+                    .index = {},
+                    .loc = e->location_,
                 }
             });
 
@@ -643,10 +877,11 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprField{
                     .base = {},
-                    .field = e->field
+                    .field = e->field,
+                    .loc = e->location_,
                 }
             });
 
@@ -658,10 +893,11 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprLitStruct{
                     .type = {},
-                    .fields = {}
+                    .fields = {},
+                    .loc = e->location_,
                 }
             });
 
@@ -674,10 +910,11 @@ namespace hir
             const auto id = static_cast<ExprId>(arena_.exprs.size());
             exprs.emplace_or_assign(e, id);
             arena_.exprs.push_back(Expr{
-                .loc = e->location_,
+
                 .kind = ExprCast{
                     .expr = {},
-                    .type = {}
+                    .type = {},
+                    .loc = e->location_,
                 }
             });
 
@@ -691,9 +928,10 @@ namespace hir
             const auto id = static_cast<TypeId>(arena_.types.size());
             types.emplace_or_assign(t, id);
             arena_.types.push_back(Type{
-                .loc = t->location_,
+
                 .kind = TypeBuiltin{
-                    .kind = t->kind_
+                    .kind = t->kind_,
+                    .loc = t->location_,
                 }
             });
         }
@@ -703,10 +941,11 @@ namespace hir
             const auto id = static_cast<TypeId>(arena_.types.size());
             types.emplace_or_assign(t, id);
             arena_.types.push_back(Type{
-                .loc = t->location_,
+
                 .kind = TypePath{
                     .path = {},
-                    .targs = {}
+                    .targs = {},
+                    .loc = t->location_,
                 }
             });
 
@@ -719,10 +958,11 @@ namespace hir
             const auto id = static_cast<TypeId>(arena_.types.size());
             types.emplace_or_assign(t, id);
             arena_.types.push_back(Type{
-                .loc = t->location_,
+
                 .kind = TypeRef{
                     .mut = t->mut_,
-                    .inner = {}
+                    .inner = {},
+                    .loc = t->location_,
                 }
             });
 
@@ -734,10 +974,10 @@ namespace hir
             const auto id = static_cast<TypeId>(arena_.types.size());
             types.emplace_or_assign(t, id);
             arena_.types.push_back(Type{
-                .loc = t->location_,
                 .kind = TypeArray{
                     .elem = {},
-                    .size = {}
+                    .size = {},
+                    .loc = t->location_,
                 }
             });
 
@@ -806,8 +1046,7 @@ namespace hir
 
         void fill_module(ast::Module* module)
         {
-            auto mid = get_id(modules, module);
-            auto& m = arena_.modules[mid];
+            auto& m = arena_.module;
 
             if (module->pathExpr_) m.package_path = get_id(exprs, module->pathExpr_);
 
@@ -823,18 +1062,36 @@ namespace hir
             if (imp->pathExpr_) h.path = get_id(exprs, imp->pathExpr_);
         }
 
-        void fill_fndecl(ast::FunctionDecl* fn)
+        void fill_fndecl(ast::FnDecl* fn)
         {
+            const bool isVoid = fn->ret_->kind_ == ast::TypeExprKind::Builtin &&
+                static_cast<ast::BuiltinTypeExpr*>(fn->ret_)->kind_ == kl::rt::BuiltinTypeKind::Void;
+
             auto id = get_id(decls, fn);
             auto& d = arena_.decls[id];
             auto& f = std::get<FnDecl>(d.kind);
 
             fill_id_vec(f.tparams, fn->typeParamsDecls_, typeParams);
-            fill_id_vec(f.params, fn->params_, params);
+            fill_id_vec(f.header.params, fn->params_, params);
 
-            if (fn->ret_) f.return_type = get_id(types, fn->ret_);
+            if (fn->ret_ && !isVoid) f.header.return_type = get_id(types, fn->ret_);
             if (fn->body_) f.body = get_id(blocks, fn->body_);
         }
+
+        void fill_loadfndecl(ast::LoadFnDecl* fn)
+        {
+            const bool isVoid = fn->ret_->kind_ == ast::TypeExprKind::Builtin &&
+                static_cast<ast::BuiltinTypeExpr*>(fn->ret_)->kind_ == kl::rt::BuiltinTypeKind::Void;
+
+            auto id = get_id(decls, fn);
+            auto& d = arena_.decls[id];
+            auto& f = std::get<LoadFnDecl>(d.kind);
+
+            fill_id_vec(f.header.params, fn->params_, params);
+
+            if (fn->ret_ && !isVoid) f.header.return_type = get_id(types, fn->ret_);
+        }
+
 
         void fill_structdecl(ast::StructDecl* decl)
         {
@@ -864,7 +1121,8 @@ namespace hir
         {
             auto id = get_id(params, param);
             auto& p = arena_.params[id];
-            if (param->type_) p.type = get_id(types, param->type_);
+            auto& pn = std::get<ParamNamed>(p.kind);
+            if (param->type_) pn.type = get_id(types, param->type_);
         }
 
         void fill_field_decl(ast::FieldDecl* field)
@@ -1135,38 +1393,36 @@ namespace hir
 
         void lower()
         {
-            for (auto& [module] : translation_.units)
+            auto module = translation_.module_;
+            stack.clear();
+
+            defer_alloc(module);
+
+            // -------- alloc phase --------
+            for (size_t i = 0; i < stack.size(); ++i)
             {
-                stack.clear();
-
-                defer_alloc(module);
-
-                // -------- alloc phase --------
-                for (size_t i = 0; i < stack.size(); ++i)
+                ast::Node* node = stack[i];
+                switch (node->nodeType_)
                 {
-                    ast::Node* node = stack[i];
-                    switch (node->nodeType_)
-                    {
 #define X(Tag, NodeKindCase, AstPtrType, AllocFuncName, FillFuncName) \
 case NodeKindCase: AllocFuncName(static_cast<AstPtrType>(node)); break;
 #include "lower_x.def"
 #undef X
-                    default: break;
-                    }
+                default: break;
                 }
+            }
 
-                // -------- fill phase --------
-                for (auto it = stack.begin(); it != stack.end(); ++it)
+            // -------- fill phase --------
+            for (auto it = stack.begin(); it != stack.end(); ++it)
+            {
+                ast::Node* node = *it;
+                switch (node->nodeType_)
                 {
-                    ast::Node* node = *it;
-                    switch (node->nodeType_)
-                    {
 #define X(Tag, NodeKindCase, AstPtrType, AllocFuncName, FillFuncName) \
 case NodeKindCase: FillFuncName(static_cast<AstPtrType>(node)); break;
 #include "lower_x.def"
 #undef X
-                    default: break;
-                    }
+                default: break;
                 }
             }
         }

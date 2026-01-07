@@ -5,102 +5,72 @@
 #include <variant>
 #include <vector>
 
+#include "hir_types.hpp"
 #include "ids.hpp"
+#include "value_res_kind.hpp"
 #include "expr/assign_op.hpp"
 #include "expr/binary_op_exression_kind.hpp"
 #include "expr/unary_op_expression_kind.hpp"
 
 namespace hir
 {
+    struct ValueRes
+    {
+        ValueResKind kind;
+        ValueResId id;
+        ModuleId module;
+    };
+
     struct ExprPath
     {
         PathId path;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
+        ValueRes res{};
     };
 
     struct ExprLitInt
     {
         lex::SymId sym;
         std::optional<kl::rt::IntKind> kind;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprLitArray
     {
         std::vector<ExprId> elements;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprLitFloat
     {
         lex::SymId sym;
         std::optional<kl::rt::FloatKind> kind;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprLitBool
     {
         kl::rt::boolean value;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprLitChar
     {
         kl::rt::character value;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprLitString
     {
         lex::SymId sym;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprUnary
     {
         ast::UnaryOp op;
         ExprId rhs;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprBinary
@@ -108,12 +78,7 @@ namespace hir
         ast::BinaryOp op;
         ExprId lhs;
         ExprId rhs;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprAssign
@@ -121,12 +86,7 @@ namespace hir
         ast::AssignOp op;
         ExprId lhs;
         ExprId rhs;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprCall
@@ -134,60 +94,37 @@ namespace hir
         ExprId callee;
         std::vector<TypeParamId> targs;
         std::vector<ExprId> args;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprIndex
     {
         ExprId base;
         ExprId index;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprField
     {
         ExprId base;
         lex::SymId field;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     struct ExprLitStruct
     {
         ExprId type;
         std::vector<FieldInitId> fields;
+        lex::Loc loc;
 
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        TypeRes type_res{};
     };
 
     struct ExprCast
     {
         ExprId expr;
         TypeId type;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
+        lex::Loc loc;
     };
 
     using ExprKind = std::variant<
@@ -210,14 +147,7 @@ namespace hir
 
     struct Expr
     {
-        lex::Loc loc;
         ExprKind kind;
-
-        template <typename V>
-        void accept(V& v)
-        {
-            v.visit(*this);
-        }
     };
 }
 

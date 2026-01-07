@@ -1,22 +1,21 @@
 //
-// Created by yhwach on 8/28/25.
+// Created by yhwach on 12/27/25.
 //
 
-#ifndef FUNCTION_DECL_HPP
-#define FUNCTION_DECL_HPP
+#ifndef INZ_IMPL_FN_DECL_HPP
+#define INZ_IMPL_FN_DECL_HPP
+#include <algorithm>
 
-
-#include "decl.hpp"
-
-#include "visit/decl_visitor.hpp"
+#include "method_decl.hpp"
 #include "expr/type_expr.hpp"
+#include "stmt/block_statement.hpp"
 #include "decl/param_decl.hpp"
 #include "type/type_parametrized_decl.hpp"
-#include "stmt/block_statement.hpp"
 
 namespace ast
 {
-    struct FunctionDecl final : Decl, TypeParametrizedDecl
+
+    struct ImplFnDecl final : MethodDecl, TypeParametrizedDecl
     {
         lex::SymId name_;
         std::vector<ParamDecl*> params_;
@@ -25,14 +24,14 @@ namespace ast
 
         bool isExported_;
 
-        FunctionDecl(const lex::SymId name,
-                     std::vector<TypeParamDecl*>&& typeParamDecls,
-                     std::vector<ParamDecl*>&& params,
-                     TypeExpr* ret,
-                     BlockStatement* body,
-                     bool isExported,
-                     const lex::Loc& loc)
-            : Decl(NodeKind::Decl_Fn, loc),
+        ImplFnDecl(const lex::SymId name,
+                   std::vector<TypeParamDecl*>&& typeParamDecls,
+                   std::vector<ParamDecl*>&& params,
+                   TypeExpr* ret,
+                   BlockStatement* body,
+                   bool isExported,
+                   const lex::Loc& loc)
+            : MethodDecl(NodeKind::Decl_ImplFn, loc),
               TypeParametrizedDecl(TypeParametrizedKind::Function,
                                    std::move(typeParamDecls), this),
               name_(name),
@@ -45,17 +44,19 @@ namespace ast
             {
                 p->parent = this;
             });
+
             ret_->parent = this;
-            if (body_) body_->parent = this;
+            body_->parent = this;
         }
 
         void accept(visitor::DeclVisitor&) override;
     };
 
-    inline void FunctionDecl::accept(visitor::DeclVisitor& v)
+    inline void ImplFnDecl::accept(visitor::DeclVisitor& v)
     {
         v.visit(*this);
     }
+
 }
 
-#endif //FUNCTION_DECL_HPP
+#endif //INZ_IMPL_FN_DECL_HPP

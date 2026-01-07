@@ -7,7 +7,7 @@
 
 #include <utility>
 #include <vector>
-#include <bits/ranges_algo.h>
+#include <algorithm>
 
 #include "decl.hpp"
 #include "field_decl.hpp"

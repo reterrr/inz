@@ -7,13 +7,22 @@
 #include "ids.hpp"
 #include "token.hpp"
 #include "types.hpp"
+#include "typ_res_kind.hpp"
 #include "stmt/var_mutablity_storage.hpp"
 
 namespace hir
 {
+    struct TypeRes
+    {
+        TypeResKind kind;
+        TypeResId id;
+        ModuleId module;
+    };
+
     struct TypeBuiltin
     {
         kl::rt::BuiltinTypeExprKind kind;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -22,10 +31,33 @@ namespace hir
         }
     };
 
+    struct TypeBox
+    {
+        TypeId inner;
+        //shouldnt we place holder object here
+        lex::Loc loc;
+    };
+
+    struct TypeStr
+    {
+        //shouldnt we place holder object here
+        lex::Loc loc;
+    };
+
+    struct TypeVec
+    {
+        TypeId inner;
+        //shouldnt we place holder object here
+        lex::Loc loc;
+    };
+
     struct TypePath
     {
         ExprId path;
         std::vector<TypeId> targs;
+        lex::Loc loc;
+
+        TypeRes res{};
 
         template <typename V>
         void accept(V& v)
@@ -38,6 +70,7 @@ namespace hir
     {
         ast::Mutability mut;
         TypeId inner;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -50,6 +83,7 @@ namespace hir
     {
         TypeId elem;
         ExprId size;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -62,7 +96,6 @@ namespace hir
 
     struct Type
     {
-        lex::Loc loc;
         TypeKind kind;
 
         template <typename V>

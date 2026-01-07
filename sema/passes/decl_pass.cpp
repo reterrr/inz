@@ -49,7 +49,7 @@ namespace sema::pass
         (void)symbol_table.declare(sym);
     }
 
-    void DeclPassAstIteratorVisitor::visit(ast::FunctionDecl& f)
+    void DeclPassAstIteratorVisitor::visit(ast::FnDecl& f)
     {
         Symbol sym;
         sym.id = f.name;

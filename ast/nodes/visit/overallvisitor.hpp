@@ -22,7 +22,7 @@ namespace ast::visitor
     {
         void visit(ParamDecl&) override;
 
-        void visit(FunctionDecl&) override;
+        void visit(FnDecl&) override;
 
         void visit(TypeAliasDecl&) override;
 
@@ -90,6 +90,13 @@ namespace ast::visitor
         void visit(ElseIfStatement&) override;
         void visit(ElseStatement&) override;
         void visit(TypeParamDecl&) override;
+        void visit(SelfParamDecl&) override;
+        void visit(LoadFnDecl&) override;
+        void visit(TraitFnDecl&) override;
+        void visit(ImplFnDecl&) override;
+        void visit(TraitDecl&) override;
+        void visit(ImplDecl&) override;
+        void visit(SelfExpr&) override;
     };
 }
 

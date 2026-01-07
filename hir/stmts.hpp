@@ -16,6 +16,7 @@ namespace hir
     {
         BlockId block;
         ast::BlockKind kind;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -30,6 +31,7 @@ namespace hir
         BlockId then_blk;
         std::vector<StmtId> elseifs;
         std::optional<StmtId> else_;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -42,6 +44,7 @@ namespace hir
     {
         ExprId cond;
         BlockId blk;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -53,6 +56,7 @@ namespace hir
     struct StmtElse
     {
         BlockId blk;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -65,6 +69,7 @@ namespace hir
     {
         ExprId cond;
         BlockId body;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -77,6 +82,7 @@ namespace hir
     {
         BlockId body;
         ExprId cond;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -87,6 +93,7 @@ namespace hir
 
     struct StmtBreak
     {
+        lex::Loc loc;
         template <typename V>
         void accept(V& v)
         {
@@ -96,6 +103,7 @@ namespace hir
 
     struct StmtContinue
     {
+        lex::Loc loc;
         template <typename V>
         void accept(V& v)
         {
@@ -106,6 +114,7 @@ namespace hir
     struct StmtReturn
     {
         std::optional<ExprId> value;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -133,6 +142,7 @@ namespace hir
     struct StmtExpr
     {
         ExprId expr;
+        lex::Loc loc;
 
         template <typename V>
         void accept(V& v)
@@ -157,7 +167,6 @@ namespace hir
 
     struct Stmt
     {
-        lex::Loc loc;
         StmtKind kind;
 
         template <typename V>

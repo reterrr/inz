@@ -19,7 +19,7 @@
 #include "stmt_visitor.hpp"
 
 /* decls */
-#include "decl/function_decl.hpp"
+#include "decl/fn_decl.hpp"
 #include "decl/param_decl.hpp"
 #include "decl/struct_decl.hpp"
 #include "decl/type_param_decl.hpp"
@@ -840,7 +840,7 @@ namespace ast::visitor
             }
         }
 
-        void visit(ast::FunctionDecl& n) override
+        void visit(ast::FnDecl& n) override
         {
             pad();
             os << "FunctionDecl name=";

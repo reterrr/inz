@@ -1,0 +1,3 @@
+package kolka::math;
+
+load fn sum(a: i32, b: i32);

@@ -11,6 +11,7 @@ tokens:
     declarations:
       STRUCT: "struct"
       TRAIT: "trait"
+      IMPL: "impl"          # <--- added
       ENUM: "enum"
       FN: "fn"
       TYPE: "type"
@@ -19,6 +20,10 @@ tokens:
       IMM: "imm"
       STATIC: "static"
       PUB: "pub"
+      SELF: "self"          # <--- added (reserved keyword)
+
+    impl_kw:
+      FOR: "for"            # <--- added (used in: impl Trait for Type)
 
     type_kw:
       I8: "i8"
@@ -35,6 +40,7 @@ tokens:
       F64: "f64"
       BOOL: "bool"
       CHAR: "char"
+      VOID: "void"
 
     misc_flow:
       BREAK: "break"
@@ -45,6 +51,8 @@ tokens:
       EXPORT: "export"
       PACKAGE: "package"
       AS: "as"
+      LOAD: "load"
+
 
   identifiers:
     IDENTIFIER: "~"

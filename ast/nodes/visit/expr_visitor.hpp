@@ -32,6 +32,8 @@ namespace ast
     struct PathTypeExpr;
     struct RefTypeExpr;
     struct BuiltinTypeExpr;
+
+    struct SelfExpr;
 }
 
 namespace ast::visitor
@@ -42,7 +44,7 @@ namespace ast::visitor
                   AssignExpr, FieldExpr, CallExpr, CastExpr,
                   RefExpr, IndexExpr, BoolLiteralExpr, FieldInitExpr,
                   ArrayTypeExpr, PathTypeExpr, RefTypeExpr, PathExpr, BuiltinTypeExpr,
-                  CharLiteralExpr, ArrayLiteralExpr>
+                  CharLiteralExpr, ArrayLiteralExpr, SelfExpr>
     {
     };
 }

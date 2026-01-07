@@ -42,7 +42,7 @@
 
 
 // Unqualified %code blocks.
-#line 43 "parser/parser_rules.y"
+#line 46 "parser/parser_rules.y"
 
   #include "lexer/lexer.hpp"
   #include "ast/ast.hpp"
@@ -50,10 +50,11 @@
   #include <iostream>
 
   void yy::parser::error(const location_type& loc, const std::string& msg) {
-    std::cerr << loc.end.line << ':' << loc.end.column << ": " << msg << '\n';
+    std::cerr << filePath << ':' << loc.begin.line << ':' << loc.begin.column
+              << ": " << msg << '\n';
   }
 
-  yy::parser::symbol_type yylex(Scanner& scanner) {
+  yy::parser::symbol_type yy::yylex(Scanner& scanner) {
     scanner.yylex();
 
     const lex::Token& t = scanner.getCurrentToken();
@@ -68,6 +69,7 @@
       case T::TOK_STRING_LITERAL: return yy::parser::make_TOK_STRING_LITERAL(t.u_.sym, L);
       case T::TOK_BOOL_LITERAL:   return yy::parser::make_TOK_BOOL_LITERAL(t.u_.boolean, L);
       case T::TOK_CHAR_LITERAL:   return yy::parser::make_TOK_CHAR_LITERAL(t.u_.ch, L);
+      case T::TOK_SELF:           return yy::parser::make_TOK_SELF(t.u_.sym, L);
 
       /* keywords */
       case T::TOK_IF:       return yy::parser::make_TOK_IF(L);
@@ -106,6 +108,7 @@
       case T::TOK_F64:  return yy::parser::make_TOK_F64(L);
       case T::TOK_BOOL: return yy::parser::make_TOK_BOOL(L);
       case T::TOK_CHAR: return yy::parser::make_TOK_CHAR(L);
+      case T::TOK_VOID: return yy::parser::make_TOK_VOID(L);
 
       /* punctuation */
       case T::TOK_LPAR:        return yy::parser::make_TOK_LPAR(L);
@@ -147,6 +150,10 @@
       case T::TOK_MUL_ASSIGN:  return yy::parser::make_TOK_MUL_ASSIGN(L);
       case T::TOK_DIV_ASSIGN:  return yy::parser::make_TOK_DIV_ASSIGN(L);
 
+      case T::TOK_IMPL:        return yy::parser::make_TOK_IMPL(L);
+      case T::TOK_FOR:         return yy::parser::make_TOK_FOR(L);
+      case T::TOK_LOAD:        return yy::parser::make_TOK_LOAD(L);
+
       /* EOF / unknown */
       case T::TOK_END: return yy::parser::make_YYEOF(L);
       default:         return yy::parser::make_YYUNDEF(L);
@@ -160,7 +167,7 @@
     return L;
   }
 
-#line 164 "parser/parser.cpp"
+#line 171 "parser/parser.cpp"
 
 
 #ifndef YY_
@@ -253,10 +260,10 @@
 
 #line 8 "parser/parser_rules.y"
 namespace yy {
-#line 257 "parser/parser.cpp"
+#line 264 "parser/parser.cpp"
 
   /// Build a parser object.
-  parser::parser (Scanner& scanner_yyarg, ast::Ast& ast_yyarg, Translation& unit_yyarg)
+  parser::parser (Scanner& scanner_yyarg, ast::Ast& ast_yyarg, Translation& unit_yyarg, std::string_view filePath_yyarg)
 #if YYDEBUG
     : yydebug_ (false),
       yycdebug_ (&std::cerr),
@@ -266,7 +273,8 @@ namespace yy {
       yy_lac_established_ (false),
       scanner (scanner_yyarg),
       ast (ast_yyarg),
-      unit (unit_yyarg)
+      unit (unit_yyarg),
+      filePath (filePath_yyarg)
   {}
 
   parser::~parser ()
@@ -325,10 +333,12 @@ namespace yy {
     switch (that.kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
+      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
-      case symbol_kind::S_ident: // ident
+      case symbol_kind::S_ident_no_self: // ident_no_self
+      case symbol_kind::S_ident_any: // ident_any
         value.YY_MOVE_OR_COPY< Str > (YY_MOVE (that.value));
         break;
 
@@ -355,6 +365,8 @@ namespace yy {
         break;
 
       case symbol_kind::S_decl: // decl
+      case symbol_kind::S_trait_decl: // trait_decl
+      case symbol_kind::S_impl_decl: // impl_decl
         value.YY_MOVE_OR_COPY< ast::Decl* > (YY_MOVE (that.value));
         break;
 
@@ -399,22 +411,24 @@ namespace yy {
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
-      case symbol_kind::S_fn_decl_def: // fn_decl_def
-      case symbol_kind::S_fn_decl_fwd: // fn_decl_fwd
-        value.YY_MOVE_OR_COPY< ast::FunctionDecl* > (YY_MOVE (that.value));
+        value.YY_MOVE_OR_COPY< ast::FnDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_if_stmt: // if_stmt
         value.YY_MOVE_OR_COPY< ast::IfStatement* > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_impl_fn_decl: // impl_fn_decl
+      case symbol_kind::S_impl_item: // impl_item
+        value.YY_MOVE_OR_COPY< ast::ImplFnDecl* > (YY_MOVE (that.value));
+        break;
+
       case symbol_kind::S_import_decl: // import_decl
         value.YY_MOVE_OR_COPY< ast::ImportDecl* > (YY_MOVE (that.value));
         break;
 
-      case symbol_kind::S_translation_unit: // translation_unit
-      case symbol_kind::S_module: // module
-        value.YY_MOVE_OR_COPY< ast::Module* > (YY_MOVE (that.value));
+      case symbol_kind::S_load_fn_decl: // load_fn_decl
+        value.YY_MOVE_OR_COPY< ast::LoadFnDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_ref_mutability: // ref_mutability
@@ -422,10 +436,12 @@ namespace yy {
         break;
 
       case symbol_kind::S_param: // param
+      case symbol_kind::S_self_param: // self_param
         value.YY_MOVE_OR_COPY< ast::ParamDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_path_expr: // path_expr
+      case symbol_kind::S_qpath_expr: // qpath_expr
         value.YY_MOVE_OR_COPY< ast::PathExpr* > (YY_MOVE (that.value));
         break;
 
@@ -451,6 +467,11 @@ namespace yy {
       case symbol_kind::S_struct_decl_def: // struct_decl_def
       case symbol_kind::S_struct_decl_fwd: // struct_decl_fwd
         value.YY_MOVE_OR_COPY< ast::StructDecl* > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_trait_fn_decl: // trait_fn_decl
+      case symbol_kind::S_trait_item: // trait_item
+        value.YY_MOVE_OR_COPY< ast::TraitFnDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_ret_type_expr: // ret_type_expr
@@ -496,6 +517,7 @@ namespace yy {
         break;
 
       case symbol_kind::S_path: // path
+      case symbol_kind::S_qpath: // qpath
         value.YY_MOVE_OR_COPY< std::vector<Str> > (YY_MOVE (that.value));
         break;
 
@@ -508,6 +530,8 @@ namespace yy {
         value.YY_MOVE_OR_COPY< std::vector<ast::ElseIfStatement*> > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_array_elems_opt: // array_elems_opt
+      case symbol_kind::S_array_elems: // array_elems
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
         value.YY_MOVE_OR_COPY< std::vector<ast::Expr*> > (YY_MOVE (that.value));
@@ -523,6 +547,11 @@ namespace yy {
         value.YY_MOVE_OR_COPY< std::vector<ast::FieldInitExpr*> > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_impl_item_list_opt: // impl_item_list_opt
+      case symbol_kind::S_impl_item_list: // impl_item_list
+        value.YY_MOVE_OR_COPY< std::vector<ast::ImplFnDecl*> > (YY_MOVE (that.value));
+        break;
+
       case symbol_kind::S_import_list_opt: // import_list_opt
       case symbol_kind::S_import_list: // import_list
         value.YY_MOVE_OR_COPY< std::vector<ast::ImportDecl*> > (YY_MOVE (that.value));
@@ -536,6 +565,11 @@ namespace yy {
       case symbol_kind::S_stmt_list_opt: // stmt_list_opt
       case symbol_kind::S_stmt_list: // stmt_list
         value.YY_MOVE_OR_COPY< std::vector<ast::Statement*> > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_trait_item_list_opt: // trait_item_list_opt
+      case symbol_kind::S_trait_item_list: // trait_item_list
+        value.YY_MOVE_OR_COPY< std::vector<ast::TraitFnDecl*> > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_type_args: // type_args
@@ -564,10 +598,12 @@ namespace yy {
     switch (that.kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
+      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
-      case symbol_kind::S_ident: // ident
+      case symbol_kind::S_ident_no_self: // ident_no_self
+      case symbol_kind::S_ident_any: // ident_any
         value.move< Str > (YY_MOVE (that.value));
         break;
 
@@ -594,6 +630,8 @@ namespace yy {
         break;
 
       case symbol_kind::S_decl: // decl
+      case symbol_kind::S_trait_decl: // trait_decl
+      case symbol_kind::S_impl_decl: // impl_decl
         value.move< ast::Decl* > (YY_MOVE (that.value));
         break;
 
@@ -638,22 +676,24 @@ namespace yy {
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
-      case symbol_kind::S_fn_decl_def: // fn_decl_def
-      case symbol_kind::S_fn_decl_fwd: // fn_decl_fwd
-        value.move< ast::FunctionDecl* > (YY_MOVE (that.value));
+        value.move< ast::FnDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_if_stmt: // if_stmt
         value.move< ast::IfStatement* > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_impl_fn_decl: // impl_fn_decl
+      case symbol_kind::S_impl_item: // impl_item
+        value.move< ast::ImplFnDecl* > (YY_MOVE (that.value));
+        break;
+
       case symbol_kind::S_import_decl: // import_decl
         value.move< ast::ImportDecl* > (YY_MOVE (that.value));
         break;
 
-      case symbol_kind::S_translation_unit: // translation_unit
-      case symbol_kind::S_module: // module
-        value.move< ast::Module* > (YY_MOVE (that.value));
+      case symbol_kind::S_load_fn_decl: // load_fn_decl
+        value.move< ast::LoadFnDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_ref_mutability: // ref_mutability
@@ -661,10 +701,12 @@ namespace yy {
         break;
 
       case symbol_kind::S_param: // param
+      case symbol_kind::S_self_param: // self_param
         value.move< ast::ParamDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_path_expr: // path_expr
+      case symbol_kind::S_qpath_expr: // qpath_expr
         value.move< ast::PathExpr* > (YY_MOVE (that.value));
         break;
 
@@ -690,6 +732,11 @@ namespace yy {
       case symbol_kind::S_struct_decl_def: // struct_decl_def
       case symbol_kind::S_struct_decl_fwd: // struct_decl_fwd
         value.move< ast::StructDecl* > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_trait_fn_decl: // trait_fn_decl
+      case symbol_kind::S_trait_item: // trait_item
+        value.move< ast::TraitFnDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_ret_type_expr: // ret_type_expr
@@ -735,6 +782,7 @@ namespace yy {
         break;
 
       case symbol_kind::S_path: // path
+      case symbol_kind::S_qpath: // qpath
         value.move< std::vector<Str> > (YY_MOVE (that.value));
         break;
 
@@ -747,6 +795,8 @@ namespace yy {
         value.move< std::vector<ast::ElseIfStatement*> > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_array_elems_opt: // array_elems_opt
+      case symbol_kind::S_array_elems: // array_elems
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
         value.move< std::vector<ast::Expr*> > (YY_MOVE (that.value));
@@ -762,6 +812,11 @@ namespace yy {
         value.move< std::vector<ast::FieldInitExpr*> > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_impl_item_list_opt: // impl_item_list_opt
+      case symbol_kind::S_impl_item_list: // impl_item_list
+        value.move< std::vector<ast::ImplFnDecl*> > (YY_MOVE (that.value));
+        break;
+
       case symbol_kind::S_import_list_opt: // import_list_opt
       case symbol_kind::S_import_list: // import_list
         value.move< std::vector<ast::ImportDecl*> > (YY_MOVE (that.value));
@@ -775,6 +830,11 @@ namespace yy {
       case symbol_kind::S_stmt_list_opt: // stmt_list_opt
       case symbol_kind::S_stmt_list: // stmt_list
         value.move< std::vector<ast::Statement*> > (YY_MOVE (that.value));
+        break;
+
+      case symbol_kind::S_trait_item_list_opt: // trait_item_list_opt
+      case symbol_kind::S_trait_item_list: // trait_item_list
+        value.move< std::vector<ast::TraitFnDecl*> > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_type_args: // type_args
@@ -803,10 +863,12 @@ namespace yy {
     switch (that.kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
+      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
-      case symbol_kind::S_ident: // ident
+      case symbol_kind::S_ident_no_self: // ident_no_self
+      case symbol_kind::S_ident_any: // ident_any
         value.copy< Str > (that.value);
         break;
 
@@ -833,6 +895,8 @@ namespace yy {
         break;
 
       case symbol_kind::S_decl: // decl
+      case symbol_kind::S_trait_decl: // trait_decl
+      case symbol_kind::S_impl_decl: // impl_decl
         value.copy< ast::Decl* > (that.value);
         break;
 
@@ -877,22 +941,24 @@ namespace yy {
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
-      case symbol_kind::S_fn_decl_def: // fn_decl_def
-      case symbol_kind::S_fn_decl_fwd: // fn_decl_fwd
-        value.copy< ast::FunctionDecl* > (that.value);
+        value.copy< ast::FnDecl* > (that.value);
         break;
 
       case symbol_kind::S_if_stmt: // if_stmt
         value.copy< ast::IfStatement* > (that.value);
         break;
 
+      case symbol_kind::S_impl_fn_decl: // impl_fn_decl
+      case symbol_kind::S_impl_item: // impl_item
+        value.copy< ast::ImplFnDecl* > (that.value);
+        break;
+
       case symbol_kind::S_import_decl: // import_decl
         value.copy< ast::ImportDecl* > (that.value);
         break;
 
-      case symbol_kind::S_translation_unit: // translation_unit
-      case symbol_kind::S_module: // module
-        value.copy< ast::Module* > (that.value);
+      case symbol_kind::S_load_fn_decl: // load_fn_decl
+        value.copy< ast::LoadFnDecl* > (that.value);
         break;
 
       case symbol_kind::S_ref_mutability: // ref_mutability
@@ -900,10 +966,12 @@ namespace yy {
         break;
 
       case symbol_kind::S_param: // param
+      case symbol_kind::S_self_param: // self_param
         value.copy< ast::ParamDecl* > (that.value);
         break;
 
       case symbol_kind::S_path_expr: // path_expr
+      case symbol_kind::S_qpath_expr: // qpath_expr
         value.copy< ast::PathExpr* > (that.value);
         break;
 
@@ -929,6 +997,11 @@ namespace yy {
       case symbol_kind::S_struct_decl_def: // struct_decl_def
       case symbol_kind::S_struct_decl_fwd: // struct_decl_fwd
         value.copy< ast::StructDecl* > (that.value);
+        break;
+
+      case symbol_kind::S_trait_fn_decl: // trait_fn_decl
+      case symbol_kind::S_trait_item: // trait_item
+        value.copy< ast::TraitFnDecl* > (that.value);
         break;
 
       case symbol_kind::S_ret_type_expr: // ret_type_expr
@@ -974,6 +1047,7 @@ namespace yy {
         break;
 
       case symbol_kind::S_path: // path
+      case symbol_kind::S_qpath: // qpath
         value.copy< std::vector<Str> > (that.value);
         break;
 
@@ -986,6 +1060,8 @@ namespace yy {
         value.copy< std::vector<ast::ElseIfStatement*> > (that.value);
         break;
 
+      case symbol_kind::S_array_elems_opt: // array_elems_opt
+      case symbol_kind::S_array_elems: // array_elems
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
         value.copy< std::vector<ast::Expr*> > (that.value);
@@ -1001,6 +1077,11 @@ namespace yy {
         value.copy< std::vector<ast::FieldInitExpr*> > (that.value);
         break;
 
+      case symbol_kind::S_impl_item_list_opt: // impl_item_list_opt
+      case symbol_kind::S_impl_item_list: // impl_item_list
+        value.copy< std::vector<ast::ImplFnDecl*> > (that.value);
+        break;
+
       case symbol_kind::S_import_list_opt: // import_list_opt
       case symbol_kind::S_import_list: // import_list
         value.copy< std::vector<ast::ImportDecl*> > (that.value);
@@ -1014,6 +1095,11 @@ namespace yy {
       case symbol_kind::S_stmt_list_opt: // stmt_list_opt
       case symbol_kind::S_stmt_list: // stmt_list
         value.copy< std::vector<ast::Statement*> > (that.value);
+        break;
+
+      case symbol_kind::S_trait_item_list_opt: // trait_item_list_opt
+      case symbol_kind::S_trait_item_list: // trait_item_list
+        value.copy< std::vector<ast::TraitFnDecl*> > (that.value);
         break;
 
       case symbol_kind::S_type_args: // type_args
@@ -1041,10 +1127,12 @@ namespace yy {
     switch (that.kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
+      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
-      case symbol_kind::S_ident: // ident
+      case symbol_kind::S_ident_no_self: // ident_no_self
+      case symbol_kind::S_ident_any: // ident_any
         value.move< Str > (that.value);
         break;
 
@@ -1071,6 +1159,8 @@ namespace yy {
         break;
 
       case symbol_kind::S_decl: // decl
+      case symbol_kind::S_trait_decl: // trait_decl
+      case symbol_kind::S_impl_decl: // impl_decl
         value.move< ast::Decl* > (that.value);
         break;
 
@@ -1115,22 +1205,24 @@ namespace yy {
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
-      case symbol_kind::S_fn_decl_def: // fn_decl_def
-      case symbol_kind::S_fn_decl_fwd: // fn_decl_fwd
-        value.move< ast::FunctionDecl* > (that.value);
+        value.move< ast::FnDecl* > (that.value);
         break;
 
       case symbol_kind::S_if_stmt: // if_stmt
         value.move< ast::IfStatement* > (that.value);
         break;
 
+      case symbol_kind::S_impl_fn_decl: // impl_fn_decl
+      case symbol_kind::S_impl_item: // impl_item
+        value.move< ast::ImplFnDecl* > (that.value);
+        break;
+
       case symbol_kind::S_import_decl: // import_decl
         value.move< ast::ImportDecl* > (that.value);
         break;
 
-      case symbol_kind::S_translation_unit: // translation_unit
-      case symbol_kind::S_module: // module
-        value.move< ast::Module* > (that.value);
+      case symbol_kind::S_load_fn_decl: // load_fn_decl
+        value.move< ast::LoadFnDecl* > (that.value);
         break;
 
       case symbol_kind::S_ref_mutability: // ref_mutability
@@ -1138,10 +1230,12 @@ namespace yy {
         break;
 
       case symbol_kind::S_param: // param
+      case symbol_kind::S_self_param: // self_param
         value.move< ast::ParamDecl* > (that.value);
         break;
 
       case symbol_kind::S_path_expr: // path_expr
+      case symbol_kind::S_qpath_expr: // qpath_expr
         value.move< ast::PathExpr* > (that.value);
         break;
 
@@ -1167,6 +1261,11 @@ namespace yy {
       case symbol_kind::S_struct_decl_def: // struct_decl_def
       case symbol_kind::S_struct_decl_fwd: // struct_decl_fwd
         value.move< ast::StructDecl* > (that.value);
+        break;
+
+      case symbol_kind::S_trait_fn_decl: // trait_fn_decl
+      case symbol_kind::S_trait_item: // trait_item
+        value.move< ast::TraitFnDecl* > (that.value);
         break;
 
       case symbol_kind::S_ret_type_expr: // ret_type_expr
@@ -1212,6 +1311,7 @@ namespace yy {
         break;
 
       case symbol_kind::S_path: // path
+      case symbol_kind::S_qpath: // qpath
         value.move< std::vector<Str> > (that.value);
         break;
 
@@ -1224,6 +1324,8 @@ namespace yy {
         value.move< std::vector<ast::ElseIfStatement*> > (that.value);
         break;
 
+      case symbol_kind::S_array_elems_opt: // array_elems_opt
+      case symbol_kind::S_array_elems: // array_elems
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
         value.move< std::vector<ast::Expr*> > (that.value);
@@ -1239,6 +1341,11 @@ namespace yy {
         value.move< std::vector<ast::FieldInitExpr*> > (that.value);
         break;
 
+      case symbol_kind::S_impl_item_list_opt: // impl_item_list_opt
+      case symbol_kind::S_impl_item_list: // impl_item_list
+        value.move< std::vector<ast::ImplFnDecl*> > (that.value);
+        break;
+
       case symbol_kind::S_import_list_opt: // import_list_opt
       case symbol_kind::S_import_list: // import_list
         value.move< std::vector<ast::ImportDecl*> > (that.value);
@@ -1252,6 +1359,11 @@ namespace yy {
       case symbol_kind::S_stmt_list_opt: // stmt_list_opt
       case symbol_kind::S_stmt_list: // stmt_list
         value.move< std::vector<ast::Statement*> > (that.value);
+        break;
+
+      case symbol_kind::S_trait_item_list_opt: // trait_item_list_opt
+      case symbol_kind::S_trait_item_list: // trait_item_list
+        value.move< std::vector<ast::TraitFnDecl*> > (that.value);
         break;
 
       case symbol_kind::S_type_args: // type_args
@@ -1534,10 +1646,12 @@ namespace yy {
       switch (yyr1_[yyn])
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
+      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
-      case symbol_kind::S_ident: // ident
+      case symbol_kind::S_ident_no_self: // ident_no_self
+      case symbol_kind::S_ident_any: // ident_any
         yylhs.value.emplace< Str > ();
         break;
 
@@ -1564,6 +1678,8 @@ namespace yy {
         break;
 
       case symbol_kind::S_decl: // decl
+      case symbol_kind::S_trait_decl: // trait_decl
+      case symbol_kind::S_impl_decl: // impl_decl
         yylhs.value.emplace< ast::Decl* > ();
         break;
 
@@ -1608,22 +1724,24 @@ namespace yy {
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
-      case symbol_kind::S_fn_decl_def: // fn_decl_def
-      case symbol_kind::S_fn_decl_fwd: // fn_decl_fwd
-        yylhs.value.emplace< ast::FunctionDecl* > ();
+        yylhs.value.emplace< ast::FnDecl* > ();
         break;
 
       case symbol_kind::S_if_stmt: // if_stmt
         yylhs.value.emplace< ast::IfStatement* > ();
         break;
 
+      case symbol_kind::S_impl_fn_decl: // impl_fn_decl
+      case symbol_kind::S_impl_item: // impl_item
+        yylhs.value.emplace< ast::ImplFnDecl* > ();
+        break;
+
       case symbol_kind::S_import_decl: // import_decl
         yylhs.value.emplace< ast::ImportDecl* > ();
         break;
 
-      case symbol_kind::S_translation_unit: // translation_unit
-      case symbol_kind::S_module: // module
-        yylhs.value.emplace< ast::Module* > ();
+      case symbol_kind::S_load_fn_decl: // load_fn_decl
+        yylhs.value.emplace< ast::LoadFnDecl* > ();
         break;
 
       case symbol_kind::S_ref_mutability: // ref_mutability
@@ -1631,10 +1749,12 @@ namespace yy {
         break;
 
       case symbol_kind::S_param: // param
+      case symbol_kind::S_self_param: // self_param
         yylhs.value.emplace< ast::ParamDecl* > ();
         break;
 
       case symbol_kind::S_path_expr: // path_expr
+      case symbol_kind::S_qpath_expr: // qpath_expr
         yylhs.value.emplace< ast::PathExpr* > ();
         break;
 
@@ -1660,6 +1780,11 @@ namespace yy {
       case symbol_kind::S_struct_decl_def: // struct_decl_def
       case symbol_kind::S_struct_decl_fwd: // struct_decl_fwd
         yylhs.value.emplace< ast::StructDecl* > ();
+        break;
+
+      case symbol_kind::S_trait_fn_decl: // trait_fn_decl
+      case symbol_kind::S_trait_item: // trait_item
+        yylhs.value.emplace< ast::TraitFnDecl* > ();
         break;
 
       case symbol_kind::S_ret_type_expr: // ret_type_expr
@@ -1705,6 +1830,7 @@ namespace yy {
         break;
 
       case symbol_kind::S_path: // path
+      case symbol_kind::S_qpath: // qpath
         yylhs.value.emplace< std::vector<Str> > ();
         break;
 
@@ -1717,6 +1843,8 @@ namespace yy {
         yylhs.value.emplace< std::vector<ast::ElseIfStatement*> > ();
         break;
 
+      case symbol_kind::S_array_elems_opt: // array_elems_opt
+      case symbol_kind::S_array_elems: // array_elems
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
         yylhs.value.emplace< std::vector<ast::Expr*> > ();
@@ -1732,6 +1860,11 @@ namespace yy {
         yylhs.value.emplace< std::vector<ast::FieldInitExpr*> > ();
         break;
 
+      case symbol_kind::S_impl_item_list_opt: // impl_item_list_opt
+      case symbol_kind::S_impl_item_list: // impl_item_list
+        yylhs.value.emplace< std::vector<ast::ImplFnDecl*> > ();
+        break;
+
       case symbol_kind::S_import_list_opt: // import_list_opt
       case symbol_kind::S_import_list: // import_list
         yylhs.value.emplace< std::vector<ast::ImportDecl*> > ();
@@ -1745,6 +1878,11 @@ namespace yy {
       case symbol_kind::S_stmt_list_opt: // stmt_list_opt
       case symbol_kind::S_stmt_list: // stmt_list
         yylhs.value.emplace< std::vector<ast::Statement*> > ();
+        break;
+
+      case symbol_kind::S_trait_item_list_opt: // trait_item_list_opt
+      case symbol_kind::S_trait_item_list: // trait_item_list
+        yylhs.value.emplace< std::vector<ast::TraitFnDecl*> > ();
         break;
 
       case symbol_kind::S_type_args: // type_args
@@ -1778,255 +1916,315 @@ namespace yy {
           switch (yyn)
             {
   case 2: // translation_unit: module
-#line 325 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Module* > () = yystack_[0].value.as < ast::Module* > (); }
-#line 1784 "parser/parser.cpp"
+#line 359 "parser/parser_rules.y"
+    {  }
+#line 1922 "parser/parser.cpp"
     break;
 
   case 3: // module: TOK_PACKAGE path_expr TOK_SMCLN import_list_opt decl_list_opt
-#line 330 "parser/parser_rules.y"
+#line 364 "parser/parser_rules.y"
     {
-      auto* m = ast.mk_module(yystack_[3].value.as < ast::PathExpr* > (), std::move(yystack_[1].value.as < std::vector<ast::ImportDecl*> > ()), std::move(yystack_[0].value.as < std::vector<ast::Decl*> > ()), combine(yystack_[4].location, yystack_[0].location));
-      unit.addModule(m);
-      yylhs.value.as < ast::Module* > () = m;
+      ast.mk_module(yystack_[3].value.as < ast::PathExpr* > (), std::move(yystack_[1].value.as < std::vector<ast::ImportDecl*> > ()), std::move(yystack_[0].value.as < std::vector<ast::Decl*> > ()), combine(yystack_[4].location, yystack_[0].location));
+      unit.addModule(std::move(ast));
     }
-#line 1794 "parser/parser.cpp"
+#line 1931 "parser/parser.cpp"
     break;
 
   case 4: // import_list_opt: %empty
-#line 339 "parser/parser_rules.y"
+#line 372 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::ImportDecl*> > () = std::vector<ast::ImportDecl*>{}; }
-#line 1800 "parser/parser.cpp"
+#line 1937 "parser/parser.cpp"
     break;
 
   case 5: // import_list_opt: import_list
-#line 341 "parser/parser_rules.y"
+#line 374 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::ImportDecl*> > () = std::move(yystack_[0].value.as < std::vector<ast::ImportDecl*> > ()); }
-#line 1806 "parser/parser.cpp"
+#line 1943 "parser/parser.cpp"
     break;
 
   case 6: // import_list: import_decl
-#line 346 "parser/parser_rules.y"
+#line 379 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::ImportDecl*> > () = std::vector<ast::ImportDecl*>{ yystack_[0].value.as < ast::ImportDecl* > () }; }
-#line 1812 "parser/parser.cpp"
+#line 1949 "parser/parser.cpp"
     break;
 
   case 7: // import_list: import_list import_decl
-#line 348 "parser/parser_rules.y"
+#line 381 "parser/parser_rules.y"
     { yystack_[1].value.as < std::vector<ast::ImportDecl*> > ().push_back(yystack_[0].value.as < ast::ImportDecl* > ()); yylhs.value.as < std::vector<ast::ImportDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::ImportDecl*> > ()); }
-#line 1818 "parser/parser.cpp"
+#line 1955 "parser/parser.cpp"
     break;
 
   case 8: // import_decl: TOK_IMPORT path_expr TOK_SMCLN
-#line 353 "parser/parser_rules.y"
+#line 386 "parser/parser_rules.y"
     { yylhs.value.as < ast::ImportDecl* > () = ast.mk_import_decl(std::move(yystack_[1].value.as < ast::PathExpr* > ()), std::nullopt, /*is_public*/false, combine(yystack_[2].location, yystack_[0].location)); }
-#line 1824 "parser/parser.cpp"
+#line 1961 "parser/parser.cpp"
     break;
 
-  case 9: // import_decl: TOK_IMPORT path_expr TOK_AS ident TOK_SMCLN
-#line 355 "parser/parser_rules.y"
+  case 9: // import_decl: TOK_IMPORT path_expr TOK_AS ident_no_self TOK_SMCLN
+#line 388 "parser/parser_rules.y"
     { yylhs.value.as < ast::ImportDecl* > () = ast.mk_import_decl(std::move(yystack_[3].value.as < ast::PathExpr* > ()), std::optional<Str>{yystack_[1].value.as < Str > ()}, /*is_public*/false, combine(yystack_[4].location, yystack_[0].location)); }
-#line 1830 "parser/parser.cpp"
+#line 1967 "parser/parser.cpp"
     break;
 
-  case 10: // path: ident
-#line 365 "parser/parser_rules.y"
+  case 10: // path: ident_any
+#line 398 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<Str> > () = std::vector<Str>{ yystack_[0].value.as < Str > () }; }
-#line 1836 "parser/parser.cpp"
+#line 1973 "parser/parser.cpp"
     break;
 
-  case 11: // path: path TOK_COLONCOLON ident
-#line 367 "parser/parser_rules.y"
+  case 11: // path: path TOK_COLONCOLON ident_any
+#line 400 "parser/parser_rules.y"
     { yystack_[2].value.as < std::vector<Str> > ().push_back(yystack_[0].value.as < Str > ()); yylhs.value.as < std::vector<Str> > () = std::move(yystack_[2].value.as < std::vector<Str> > ()); }
-#line 1842 "parser/parser.cpp"
+#line 1979 "parser/parser.cpp"
     break;
 
   case 12: // path_expr: path
-#line 372 "parser/parser_rules.y"
+#line 405 "parser/parser_rules.y"
     { yylhs.value.as < ast::PathExpr* > () = ast.mk_path_expr(std::move(yystack_[0].value.as < std::vector<Str> > ()), yystack_[0].location); }
-#line 1848 "parser/parser.cpp"
+#line 1985 "parser/parser.cpp"
     break;
 
-  case 13: // ident: TOK_IDENTIFIER
-#line 377 "parser/parser_rules.y"
-    { yylhs.value.as < Str > () = yystack_[0].value.as < Str > (); }
-#line 1854 "parser/parser.cpp"
+  case 13: // qpath: ident_any TOK_COLONCOLON ident_any
+#line 410 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<Str> > () = std::vector<Str>{ yystack_[2].value.as < Str > (), yystack_[0].value.as < Str > () }; }
+#line 1991 "parser/parser.cpp"
     break;
 
-  case 14: // type_params_opt: %empty
-#line 386 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::vector<ast::TypeParamDecl*>{}; }
-#line 1860 "parser/parser.cpp"
-    break;
-
-  case 15: // type_params_opt: TOK_LESS type_param_list TOK_GREATER
-#line 388 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::TypeParamDecl*> > ()); }
-#line 1866 "parser/parser.cpp"
-    break;
-
-  case 16: // type_param_list: type_param
-#line 393 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::vector<ast::TypeParamDecl*>{ yystack_[0].value.as < ast::TypeParamDecl* > () }; }
-#line 1872 "parser/parser.cpp"
-    break;
-
-  case 17: // type_param_list: type_param_list TOK_COMMA type_param
-#line 395 "parser/parser_rules.y"
-    { yystack_[2].value.as < std::vector<ast::TypeParamDecl*> > ().push_back(yystack_[0].value.as < ast::TypeParamDecl* > ()); yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::move(yystack_[2].value.as < std::vector<ast::TypeParamDecl*> > ()); }
-#line 1878 "parser/parser.cpp"
-    break;
-
-  case 18: // type_param_list: type_param_list TOK_COMMA
-#line 397 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::TypeParamDecl*> > ()); }
-#line 1884 "parser/parser.cpp"
-    break;
-
-  case 19: // type_param: ident
-#line 402 "parser/parser_rules.y"
-    { yylhs.value.as < ast::TypeParamDecl* > () = ast.mk_type_param_decl(yystack_[0].value.as < Str > (), yystack_[0].location); }
-#line 1890 "parser/parser.cpp"
-    break;
-
-  case 20: // type_args: %empty
-#line 407 "parser/parser_rules.y"
-        { yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::vector<ast::TypeExpr*>{}; }
-#line 1896 "parser/parser.cpp"
-    break;
-
-  case 21: // type_args: TOK_TURBOFISH_S type_arg_list TOK_GREATER
-#line 409 "parser/parser_rules.y"
-        { yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::move(yystack_[1].value.as < std::vector<ast::TypeExpr*> > ()); }
-#line 1902 "parser/parser.cpp"
-    break;
-
-  case 22: // type_arg_list: type_expr
-#line 414 "parser/parser_rules.y"
-      { yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::vector<ast::TypeExpr*>{ yystack_[0].value.as < ast::TypeExpr* > () }; }
-#line 1908 "parser/parser.cpp"
-    break;
-
-  case 23: // type_arg_list: type_arg_list TOK_COMMA type_expr
-#line 416 "parser/parser_rules.y"
-      { yystack_[2].value.as < std::vector<ast::TypeExpr*> > ().push_back(yystack_[0].value.as < ast::TypeExpr* > ()); yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::move(yystack_[2].value.as < std::vector<ast::TypeExpr*> > ()); }
-#line 1914 "parser/parser.cpp"
-    break;
-
-  case 24: // type_arg_list: type_arg_list TOK_COMMA
-#line 418 "parser/parser_rules.y"
-      { yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::move(yystack_[1].value.as < std::vector<ast::TypeExpr*> > ()); }
-#line 1920 "parser/parser.cpp"
-    break;
-
-  case 25: // pub_opt: %empty
-#line 427 "parser/parser_rules.y"
-                { yylhs.value.as < kl::rt::boolean > () = false; }
-#line 1926 "parser/parser.cpp"
-    break;
-
-  case 26: // pub_opt: TOK_PUB
-#line 428 "parser/parser_rules.y"
-                { yylhs.value.as < kl::rt::boolean > () = true;  }
-#line 1932 "parser/parser.cpp"
-    break;
-
-  case 27: // decl_list_opt: %empty
-#line 433 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::Decl*> > () = std::vector<ast::Decl*>{}; }
-#line 1938 "parser/parser.cpp"
-    break;
-
-  case 28: // decl_list_opt: decl_list
-#line 435 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::Decl*> > () = std::move(yystack_[0].value.as < std::vector<ast::Decl*> > ()); }
-#line 1944 "parser/parser.cpp"
-    break;
-
-  case 29: // decl_list: decl
-#line 440 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::Decl*> > () = std::vector<ast::Decl*>{ yystack_[0].value.as < ast::Decl* > () }; }
-#line 1950 "parser/parser.cpp"
-    break;
-
-  case 30: // decl_list: decl_list decl
-#line 442 "parser/parser_rules.y"
-    { yystack_[1].value.as < std::vector<ast::Decl*> > ().push_back(yystack_[0].value.as < ast::Decl* > ()); yylhs.value.as < std::vector<ast::Decl*> > () = std::move(yystack_[1].value.as < std::vector<ast::Decl*> > ()); }
-#line 1956 "parser/parser.cpp"
-    break;
-
-  case 31: // decl: fn_decl
-#line 447 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Decl* > () = static_cast<ast::Decl*>(yystack_[0].value.as < ast::FunctionDecl* > ()); }
-#line 1962 "parser/parser.cpp"
-    break;
-
-  case 32: // decl: struct_decl
-#line 449 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Decl* > () = static_cast<ast::Decl*>(yystack_[0].value.as < ast::StructDecl* > ()); }
-#line 1968 "parser/parser.cpp"
-    break;
-
-  case 33: // fn_decl: fn_decl_def
-#line 454 "parser/parser_rules.y"
-    { yylhs.value.as < ast::FunctionDecl* > () = yystack_[0].value.as < ast::FunctionDecl* > (); }
-#line 1974 "parser/parser.cpp"
-    break;
-
-  case 34: // fn_decl: fn_decl_fwd
-#line 456 "parser/parser_rules.y"
-    { yylhs.value.as < ast::FunctionDecl* > () = yystack_[0].value.as < ast::FunctionDecl* > (); }
-#line 1980 "parser/parser.cpp"
-    break;
-
-  case 35: // fn_decl_def: pub_opt TOK_FN ident type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr fn_block
-#line 461 "parser/parser_rules.y"
-    {
-      auto start = yystack_[8].value.as < kl::rt::boolean > () ? yystack_[8].location : yystack_[7].location; /* if pub exists start at TOK_PUB, else TOK_FN */
-      yylhs.value.as < ast::FunctionDecl* > () = ast.mk_fn_decl(
-            yystack_[6].value.as < Str > (),
-            std::move(yystack_[5].value.as < std::vector<ast::TypeParamDecl*> > ()),
-            std::move(yystack_[3].value.as < std::vector<ast::ParamDecl*> > ()),
-            yystack_[1].value.as < ast::TypeExpr* > (),
-            yystack_[0].value.as < ast::BlockStatement* > (),
-            yystack_[8].value.as < kl::rt::boolean > (),                  /* <- second last arg: is_pub */
-            combine(start, yystack_[0].location)
-          );
-    }
+  case 14: // qpath: qpath TOK_COLONCOLON ident_any
+#line 412 "parser/parser_rules.y"
+    { yystack_[2].value.as < std::vector<Str> > ().push_back(yystack_[0].value.as < Str > ()); yylhs.value.as < std::vector<Str> > () = std::move(yystack_[2].value.as < std::vector<Str> > ()); }
 #line 1997 "parser/parser.cpp"
     break;
 
-  case 36: // fn_decl_fwd: pub_opt TOK_FN ident type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr TOK_SMCLN
-#line 477 "parser/parser_rules.y"
+  case 15: // qpath_expr: qpath
+#line 417 "parser/parser_rules.y"
+    { yylhs.value.as < ast::PathExpr* > () = ast.mk_path_expr(std::move(yystack_[0].value.as < std::vector<Str> > ()), yystack_[0].location); }
+#line 2003 "parser/parser.cpp"
+    break;
+
+  case 16: // ident_no_self: TOK_IDENTIFIER
+#line 422 "parser/parser_rules.y"
+    { yylhs.value.as < Str > () = yystack_[0].value.as < Str > (); }
+#line 2009 "parser/parser.cpp"
+    break;
+
+  case 17: // ident_any: TOK_IDENTIFIER
+#line 427 "parser/parser_rules.y"
+    { yylhs.value.as < Str > () = yystack_[0].value.as < Str > (); }
+#line 2015 "parser/parser.cpp"
+    break;
+
+  case 18: // ident_any: TOK_SELF
+#line 429 "parser/parser_rules.y"
+    { yylhs.value.as < Str > () = yystack_[0].value.as < Str > (); }
+#line 2021 "parser/parser.cpp"
+    break;
+
+  case 19: // type_params_opt: %empty
+#line 438 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::vector<ast::TypeParamDecl*>{}; }
+#line 2027 "parser/parser.cpp"
+    break;
+
+  case 20: // type_params_opt: TOK_LESS type_param_list TOK_GREATER
+#line 440 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::TypeParamDecl*> > ()); }
+#line 2033 "parser/parser.cpp"
+    break;
+
+  case 21: // type_param_list: type_param
+#line 445 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::vector<ast::TypeParamDecl*>{ yystack_[0].value.as < ast::TypeParamDecl* > () }; }
+#line 2039 "parser/parser.cpp"
+    break;
+
+  case 22: // type_param_list: type_param_list TOK_COMMA type_param
+#line 447 "parser/parser_rules.y"
+    { yystack_[2].value.as < std::vector<ast::TypeParamDecl*> > ().push_back(yystack_[0].value.as < ast::TypeParamDecl* > ()); yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::move(yystack_[2].value.as < std::vector<ast::TypeParamDecl*> > ()); }
+#line 2045 "parser/parser.cpp"
+    break;
+
+  case 23: // type_param_list: type_param_list TOK_COMMA
+#line 449 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::TypeParamDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::TypeParamDecl*> > ()); }
+#line 2051 "parser/parser.cpp"
+    break;
+
+  case 24: // type_param: ident_no_self
+#line 454 "parser/parser_rules.y"
+    { yylhs.value.as < ast::TypeParamDecl* > () = ast.mk_type_param_decl(yystack_[0].value.as < Str > (), yystack_[0].location); }
+#line 2057 "parser/parser.cpp"
+    break;
+
+  case 25: // type_args: %empty
+#line 459 "parser/parser_rules.y"
+        { yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::vector<ast::TypeExpr*>{}; }
+#line 2063 "parser/parser.cpp"
+    break;
+
+  case 26: // type_args: TOK_TURBOFISH_S type_arg_list TOK_GREATER
+#line 461 "parser/parser_rules.y"
+        { yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::move(yystack_[1].value.as < std::vector<ast::TypeExpr*> > ()); }
+#line 2069 "parser/parser.cpp"
+    break;
+
+  case 27: // type_arg_list: type_expr
+#line 466 "parser/parser_rules.y"
+      { yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::vector<ast::TypeExpr*>{ yystack_[0].value.as < ast::TypeExpr* > () }; }
+#line 2075 "parser/parser.cpp"
+    break;
+
+  case 28: // type_arg_list: type_arg_list TOK_COMMA type_expr
+#line 468 "parser/parser_rules.y"
+      { yystack_[2].value.as < std::vector<ast::TypeExpr*> > ().push_back(yystack_[0].value.as < ast::TypeExpr* > ()); yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::move(yystack_[2].value.as < std::vector<ast::TypeExpr*> > ()); }
+#line 2081 "parser/parser.cpp"
+    break;
+
+  case 29: // type_arg_list: type_arg_list TOK_COMMA
+#line 470 "parser/parser_rules.y"
+      { yylhs.value.as < std::vector<ast::TypeExpr*> > () = std::move(yystack_[1].value.as < std::vector<ast::TypeExpr*> > ()); }
+#line 2087 "parser/parser.cpp"
+    break;
+
+  case 30: // pub_opt: %empty
+#line 479 "parser/parser_rules.y"
+           { yylhs.value.as < kl::rt::boolean > () = false; }
+#line 2093 "parser/parser.cpp"
+    break;
+
+  case 31: // pub_opt: TOK_PUB
+#line 480 "parser/parser_rules.y"
+                { yylhs.value.as < kl::rt::boolean > () = true;  }
+#line 2099 "parser/parser.cpp"
+    break;
+
+  case 32: // decl_list_opt: %empty
+#line 485 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Decl*> > () = std::vector<ast::Decl*>{}; }
+#line 2105 "parser/parser.cpp"
+    break;
+
+  case 33: // decl_list_opt: decl_list
+#line 487 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Decl*> > () = std::move(yystack_[0].value.as < std::vector<ast::Decl*> > ()); }
+#line 2111 "parser/parser.cpp"
+    break;
+
+  case 34: // decl_list: decl
+#line 492 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Decl*> > () = std::vector<ast::Decl*>{ yystack_[0].value.as < ast::Decl* > () }; }
+#line 2117 "parser/parser.cpp"
+    break;
+
+  case 35: // decl_list: decl_list decl
+#line 494 "parser/parser_rules.y"
+    { yystack_[1].value.as < std::vector<ast::Decl*> > ().push_back(yystack_[0].value.as < ast::Decl* > ()); yylhs.value.as < std::vector<ast::Decl*> > () = std::move(yystack_[1].value.as < std::vector<ast::Decl*> > ()); }
+#line 2123 "parser/parser.cpp"
+    break;
+
+  case 36: // decl: fn_decl
+#line 499 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Decl* > () = static_cast<ast::Decl*>(yystack_[0].value.as < ast::FnDecl* > ()); }
+#line 2129 "parser/parser.cpp"
+    break;
+
+  case 37: // decl: load_fn_decl
+#line 501 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Decl* > () = static_cast<ast::Decl*>(yystack_[0].value.as < ast::LoadFnDecl* > ()); }
+#line 2135 "parser/parser.cpp"
+    break;
+
+  case 38: // decl: struct_decl
+#line 503 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Decl* > () = static_cast<ast::Decl*>(yystack_[0].value.as < ast::StructDecl* > ()); }
+#line 2141 "parser/parser.cpp"
+    break;
+
+  case 39: // decl: trait_decl
+#line 505 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Decl* > () = static_cast<ast::Decl*>(yystack_[0].value.as < ast::Decl* > ()); }
+#line 2147 "parser/parser.cpp"
+    break;
+
+  case 40: // decl: impl_decl
+#line 507 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Decl* > () = static_cast<ast::Decl*>(yystack_[0].value.as < ast::Decl* > ()); }
+#line 2153 "parser/parser.cpp"
+    break;
+
+  case 41: // fn_decl: pub_opt TOK_FN ident_no_self type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr fn_block
+#line 512 "parser/parser_rules.y"
     {
-      auto start = yystack_[8].value.as < kl::rt::boolean > () ? yystack_[8].location : yystack_[7].location; /* if pub exists start at TOK_PUB, else TOK_FN */
-      yylhs.value.as < ast::FunctionDecl* > () = ast.mk_fn_decl(
-            yystack_[6].value.as < Str > (),
-            std::move(yystack_[5].value.as < std::vector<ast::TypeParamDecl*> > ()),
-            std::move(yystack_[3].value.as < std::vector<ast::ParamDecl*> > ()),
-            yystack_[1].value.as < ast::TypeExpr* > (),
-            nullptr,
-            yystack_[8].value.as < kl::rt::boolean > (),                  /* <- second last arg: is_pub */
-            combine(start, yystack_[1].location)    /* keep old behavior: span ends at ret_type_expr */
+      auto start = yystack_[8].value.as < kl::rt::boolean > () ? yystack_[8].location : yystack_[7].location; /* TOK_PUB if present else TOK_FN */
+      yylhs.value.as < ast::FnDecl* > () = ast.mk_fn_decl(yystack_[6].value.as < Str > (), std::move(yystack_[5].value.as < std::vector<ast::TypeParamDecl*> > ()), std::move(yystack_[3].value.as < std::vector<ast::ParamDecl*> > ()), yystack_[1].value.as < ast::TypeExpr* > (), yystack_[0].value.as < ast::BlockStatement* > (), yystack_[8].value.as < kl::rt::boolean > (), combine(start, yystack_[0].location));
+    }
+#line 2162 "parser/parser.cpp"
+    break;
+
+  case 42: // load_fn_decl: pub_opt TOK_LOAD TOK_FN ident_no_self TOK_LPAR param_list_opt TOK_RPAR ret_type_expr TOK_SMCLN
+#line 520 "parser/parser_rules.y"
+    {
+      auto start = yystack_[8].value.as < kl::rt::boolean > () ? yystack_[8].location : yystack_[7].location; /* TOK_PUB if present else TOK_LOAD */
+      yylhs.value.as < ast::LoadFnDecl* > () = ast.mk_load_fn_decl(yystack_[5].value.as < Str > (), std::move(yystack_[3].value.as < std::vector<ast::ParamDecl*> > ()), yystack_[1].value.as < ast::TypeExpr* > (), yystack_[8].value.as < kl::rt::boolean > (), combine(start, yystack_[0].location));
+    }
+#line 2171 "parser/parser.cpp"
+    break;
+
+  case 43: // impl_fn_decl: pub_opt TOK_FN ident_no_self type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr fn_block
+#line 528 "parser/parser_rules.y"
+    {
+      auto start = yystack_[8].value.as < kl::rt::boolean > () ? yystack_[8].location : yystack_[7].location; /* TOK_PUB if present else TOK_FN */
+      yylhs.value.as < ast::ImplFnDecl* > () = ast.mk_impl_fn_decl(yystack_[6].value.as < Str > (), std::move(yystack_[5].value.as < std::vector<ast::TypeParamDecl*> > ()), std::move(yystack_[3].value.as < std::vector<ast::ParamDecl*> > ()), yystack_[1].value.as < ast::TypeExpr* > (), yystack_[0].value.as < ast::BlockStatement* > (), yystack_[8].value.as < kl::rt::boolean > (), combine(start, yystack_[0].location));
+    }
+#line 2180 "parser/parser.cpp"
+    break;
+
+  case 44: // trait_fn_decl: pub_opt TOK_FN ident_no_self type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr TOK_SMCLN
+#line 537 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::TraitFnDecl* > () = ast.mk_trait_fn_decl(
+            yystack_[6].value.as < Str > (),                 /* name */
+            std::move(yystack_[5].value.as < std::vector<ast::TypeParamDecl*> > ()),      /* type params */
+            std::move(yystack_[3].value.as < std::vector<ast::ParamDecl*> > ()),      /* params */
+            yystack_[1].value.as < ast::TypeExpr* > (),                 /* ret */
+            nullptr,            /* body absent */
+            yystack_[8].value.as < kl::rt::boolean > (),
+            combine(yystack_[8].location, yystack_[0].location)     /* include semicolon */
           );
     }
-#line 2014 "parser/parser.cpp"
+#line 2196 "parser/parser.cpp"
     break;
 
-  case 37: // struct_decl: struct_decl_def
-#line 494 "parser/parser_rules.y"
+  case 45: // trait_fn_decl: pub_opt TOK_FN ident_no_self type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr fn_block
+#line 549 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::TraitFnDecl* > () = ast.mk_trait_fn_decl(
+            yystack_[6].value.as < Str > (),                 /* name */
+            std::move(yystack_[5].value.as < std::vector<ast::TypeParamDecl*> > ()),      /* type params */
+            std::move(yystack_[3].value.as < std::vector<ast::ParamDecl*> > ()),      /* params */
+            yystack_[1].value.as < ast::TypeExpr* > (),                 /* ret */
+            yystack_[0].value.as < ast::BlockStatement* > (),                 /* body present */
+            yystack_[8].value.as < kl::rt::boolean > (),
+            combine(yystack_[8].location, yystack_[0].location)
+          );
+    }
+#line 2212 "parser/parser.cpp"
+    break;
+
+  case 46: // struct_decl: struct_decl_def
+#line 566 "parser/parser_rules.y"
     { yylhs.value.as < ast::StructDecl* > () = yystack_[0].value.as < ast::StructDecl* > (); }
-#line 2020 "parser/parser.cpp"
+#line 2218 "parser/parser.cpp"
     break;
 
-  case 38: // struct_decl: struct_decl_fwd
-#line 496 "parser/parser_rules.y"
+  case 47: // struct_decl: struct_decl_fwd
+#line 568 "parser/parser_rules.y"
     { yylhs.value.as < ast::StructDecl* > () = yystack_[0].value.as < ast::StructDecl* > (); }
-#line 2026 "parser/parser.cpp"
+#line 2224 "parser/parser.cpp"
     break;
 
-  case 39: // struct_decl_def: pub_opt TOK_STRUCT ident type_params_opt TOK_LCBRA field_decl_list_opt TOK_RCBRA
-#line 501 "parser/parser_rules.y"
+  case 48: // struct_decl_def: pub_opt TOK_STRUCT ident_no_self type_params_opt TOK_LCBRA field_decl_list_opt TOK_RCBRA
+#line 573 "parser/parser_rules.y"
     {
       auto start = yystack_[6].value.as < kl::rt::boolean > () ? yystack_[6].location : yystack_[5].location; /* if pub exists start at TOK_PUB, else TOK_STRUCT */
       yylhs.value.as < ast::StructDecl* > () = ast.mk_struct_decl(
@@ -2037,11 +2235,41 @@ namespace yy {
             combine(start, yystack_[0].location)
           );
     }
-#line 2041 "parser/parser.cpp"
+#line 2239 "parser/parser.cpp"
     break;
 
-  case 40: // struct_decl_fwd: pub_opt TOK_STRUCT ident type_params_opt TOK_SMCLN
-#line 515 "parser/parser_rules.y"
+  case 49: // array_elems_opt: %empty
+#line 587 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Expr*> > () = std::vector<ast::Expr*>{}; }
+#line 2245 "parser/parser.cpp"
+    break;
+
+  case 50: // array_elems_opt: array_elems
+#line 589 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Expr*> > () = std::move(yystack_[0].value.as < std::vector<ast::Expr*> > ()); }
+#line 2251 "parser/parser.cpp"
+    break;
+
+  case 51: // array_elems: expr
+#line 594 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Expr*> > () = std::vector<ast::Expr*>{ yystack_[0].value.as < ast::Expr* > () }; }
+#line 2257 "parser/parser.cpp"
+    break;
+
+  case 52: // array_elems: array_elems TOK_COMMA expr
+#line 596 "parser/parser_rules.y"
+    { yystack_[2].value.as < std::vector<ast::Expr*> > ().push_back(yystack_[0].value.as < ast::Expr* > ()); yylhs.value.as < std::vector<ast::Expr*> > () = std::move(yystack_[2].value.as < std::vector<ast::Expr*> > ()); }
+#line 2263 "parser/parser.cpp"
+    break;
+
+  case 53: // array_elems: array_elems TOK_COMMA
+#line 598 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Expr*> > () = std::move(yystack_[1].value.as < std::vector<ast::Expr*> > ()); }
+#line 2269 "parser/parser.cpp"
+    break;
+
+  case 54: // struct_decl_fwd: pub_opt TOK_STRUCT ident_no_self type_params_opt TOK_SMCLN
+#line 603 "parser/parser_rules.y"
     {
       auto start = yystack_[4].value.as < kl::rt::boolean > () ? yystack_[4].location : yystack_[3].location; /* if pub exists start at TOK_PUB, else TOK_STRUCT */
       yylhs.value.as < ast::StructDecl* > () = ast.mk_struct_decl(
@@ -2052,485 +2280,621 @@ namespace yy {
             combine(start, yystack_[0].location)    /* keep old behavior: include semicolon */
           );
     }
-#line 2056 "parser/parser.cpp"
-    break;
-
-  case 41: // field_decl_list_opt: %empty
-#line 530 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::FieldDecl*> > () = std::vector<ast::FieldDecl*>{}; }
-#line 2062 "parser/parser.cpp"
-    break;
-
-  case 42: // field_decl_list_opt: field_decl_list
-#line 532 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::FieldDecl*> > () = std::move(yystack_[0].value.as < std::vector<ast::FieldDecl*> > ()); }
-#line 2068 "parser/parser.cpp"
-    break;
-
-  case 43: // field_decl_list: field_decl
-#line 537 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::FieldDecl*> > () = std::vector<ast::FieldDecl*>{ yystack_[0].value.as < ast::FieldDecl* > () }; }
-#line 2074 "parser/parser.cpp"
-    break;
-
-  case 44: // field_decl_list: field_decl_list field_decl
-#line 539 "parser/parser_rules.y"
-    { yystack_[1].value.as < std::vector<ast::FieldDecl*> > ().push_back(yystack_[0].value.as < ast::FieldDecl* > ()); yylhs.value.as < std::vector<ast::FieldDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::FieldDecl*> > ()); }
-#line 2080 "parser/parser.cpp"
-    break;
-
-  case 45: // field_decl: ident TOK_COLON type_expr TOK_SMCLN
-#line 544 "parser/parser_rules.y"
-    { yylhs.value.as < ast::FieldDecl* > () = ast.mk_field_decl(yystack_[3].value.as < Str > (), yystack_[1].value.as < ast::TypeExpr* > (), ast::Visibility::Priv, combine(yystack_[3].location, yystack_[0].location)); }
-#line 2086 "parser/parser.cpp"
-    break;
-
-  case 46: // field_decl: TOK_PUB ident TOK_COLON type_expr TOK_SMCLN
-#line 546 "parser/parser_rules.y"
-    { yylhs.value.as < ast::FieldDecl* > () = ast.mk_field_decl(yystack_[3].value.as < Str > (), yystack_[1].value.as < ast::TypeExpr* > (), ast::Visibility::Publ, combine(yystack_[4].location, yystack_[0].location)); }
-#line 2092 "parser/parser.cpp"
-    break;
-
-  case 47: // ret_type_expr: TOK_ARROW type_expr
-#line 551 "parser/parser_rules.y"
-    { yylhs.value.as < ast::TypeExpr* > () = yystack_[0].value.as < ast::TypeExpr* > (); }
-#line 2098 "parser/parser.cpp"
-    break;
-
-  case 48: // param_list_opt: %empty
-#line 556 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::vector<ast::ParamDecl*>{}; }
-#line 2104 "parser/parser.cpp"
-    break;
-
-  case 49: // param_list_opt: param_list
-#line 558 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::move(yystack_[0].value.as < std::vector<ast::ParamDecl*> > ()); }
-#line 2110 "parser/parser.cpp"
-    break;
-
-  case 50: // param_list: param
-#line 563 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::vector<ast::ParamDecl*>{ yystack_[0].value.as < ast::ParamDecl* > () }; }
-#line 2116 "parser/parser.cpp"
-    break;
-
-  case 51: // param_list: param_list TOK_COMMA param
-#line 565 "parser/parser_rules.y"
-    { yystack_[2].value.as < std::vector<ast::ParamDecl*> > ().push_back(yystack_[0].value.as < ast::ParamDecl* > ()); yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::move(yystack_[2].value.as < std::vector<ast::ParamDecl*> > ()); }
-#line 2122 "parser/parser.cpp"
-    break;
-
-  case 52: // param_list: param_list TOK_COMMA
-#line 567 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::ParamDecl*> > ()); }
-#line 2128 "parser/parser.cpp"
-    break;
-
-  case 53: // param: ident TOK_COLON type_expr
-#line 572 "parser/parser_rules.y"
-    { yylhs.value.as < ast::ParamDecl* > () = ast.mk_param_decl(yystack_[2].value.as < Str > (), yystack_[0].value.as < ast::TypeExpr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2134 "parser/parser.cpp"
-    break;
-
-  case 54: // type_expr: ref_type_expr
-#line 584 "parser/parser_rules.y"
-    { yylhs.value.as < ast::TypeExpr* > () = static_cast<ast::TypeExpr*>(yystack_[0].value.as < ast::RefTypeExpr* > ()); }
-#line 2140 "parser/parser.cpp"
-    break;
-
-  case 55: // type_expr: type_postfix
-#line 586 "parser/parser_rules.y"
-    { yylhs.value.as < ast::TypeExpr* > () = yystack_[0].value.as < ast::TypeExpr* > (); }
-#line 2146 "parser/parser.cpp"
-    break;
-
-  case 56: // ref_type_expr: TOK_AMP ref_mutability type_postfix
-#line 591 "parser/parser_rules.y"
-    { yylhs.value.as < ast::RefTypeExpr* > () = ast.mk_ref_type_expr(yystack_[0].value.as < ast::TypeExpr* > (), yystack_[1].value.as < ast::Mutability > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2152 "parser/parser.cpp"
-    break;
-
-  case 57: // ref_mutability: %empty
-#line 595 "parser/parser_rules.y"
-                { yylhs.value.as < ast::Mutability > () = ast::Mutability::Imm; }
-#line 2158 "parser/parser.cpp"
-    break;
-
-  case 58: // ref_mutability: TOK_IMM
-#line 596 "parser/parser_rules.y"
-                { yylhs.value.as < ast::Mutability > () = ast::Mutability::Imm; }
-#line 2164 "parser/parser.cpp"
-    break;
-
-  case 59: // ref_mutability: TOK_MUT
-#line 597 "parser/parser_rules.y"
-                { yylhs.value.as < ast::Mutability > () = ast::Mutability::Mut; }
-#line 2170 "parser/parser.cpp"
-    break;
-
-  case 60: // type_postfix: type_primary
-#line 602 "parser/parser_rules.y"
-    { yylhs.value.as < ast::TypeExpr* > () = yystack_[0].value.as < ast::TypeExpr* > (); }
-#line 2176 "parser/parser.cpp"
-    break;
-
-  case 61: // type_postfix: type_postfix TOK_LBRACK expr TOK_RBRACK
-#line 604 "parser/parser_rules.y"
-    { yylhs.value.as < ast::TypeExpr* > () = static_cast<ast::TypeExpr*>(ast.mk_array_type_expr(yystack_[3].value.as < ast::TypeExpr* > (), yystack_[1].value.as < ast::Expr* > (), combine(yystack_[3].location, yystack_[0].location))); }
-#line 2182 "parser/parser.cpp"
-    break;
-
-  case 62: // type_primary: builtin_type_expr
-#line 609 "parser/parser_rules.y"
-    { yylhs.value.as < ast::TypeExpr* > () = static_cast<ast::TypeExpr*>(yystack_[0].value.as < ast::BuiltinTypeExpr* > ()); }
-#line 2188 "parser/parser.cpp"
-    break;
-
-  case 63: // type_primary: path_type_expr
-#line 611 "parser/parser_rules.y"
-    { yylhs.value.as < ast::TypeExpr* > () = static_cast<ast::TypeExpr*>(yystack_[0].value.as < ast::PathTypeExpr* > ()); }
-#line 2194 "parser/parser.cpp"
-    break;
-
-  case 64: // type_primary: TOK_LPAR type_expr TOK_RPAR
-#line 613 "parser/parser_rules.y"
-    { yylhs.value.as < ast::TypeExpr* > () = yystack_[1].value.as < ast::TypeExpr* > (); }
-#line 2200 "parser/parser.cpp"
-    break;
-
-  case 65: // builtin_type_expr: TOK_I8
-#line 617 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I8,   yystack_[0].location); }
-#line 2206 "parser/parser.cpp"
-    break;
-
-  case 66: // builtin_type_expr: TOK_U8
-#line 618 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U8,   yystack_[0].location); }
-#line 2212 "parser/parser.cpp"
-    break;
-
-  case 67: // builtin_type_expr: TOK_I16
-#line 619 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I16,  yystack_[0].location); }
-#line 2218 "parser/parser.cpp"
-    break;
-
-  case 68: // builtin_type_expr: TOK_U16
-#line 620 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U16,  yystack_[0].location); }
-#line 2224 "parser/parser.cpp"
-    break;
-
-  case 69: // builtin_type_expr: TOK_I32
-#line 621 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I32,  yystack_[0].location); }
-#line 2230 "parser/parser.cpp"
-    break;
-
-  case 70: // builtin_type_expr: TOK_U32
-#line 622 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U32,  yystack_[0].location); }
-#line 2236 "parser/parser.cpp"
-    break;
-
-  case 71: // builtin_type_expr: TOK_I64
-#line 623 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I64,  yystack_[0].location); }
-#line 2242 "parser/parser.cpp"
-    break;
-
-  case 72: // builtin_type_expr: TOK_U64
-#line 624 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U64,  yystack_[0].location); }
-#line 2248 "parser/parser.cpp"
-    break;
-
-  case 73: // builtin_type_expr: TOK_I128
-#line 625 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I128, yystack_[0].location); }
-#line 2254 "parser/parser.cpp"
-    break;
-
-  case 74: // builtin_type_expr: TOK_U128
-#line 626 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U128, yystack_[0].location); }
-#line 2260 "parser/parser.cpp"
-    break;
-
-  case 75: // builtin_type_expr: TOK_F32
-#line 627 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::F32,  yystack_[0].location); }
-#line 2266 "parser/parser.cpp"
-    break;
-
-  case 76: // builtin_type_expr: TOK_F64
-#line 628 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::F64,  yystack_[0].location); }
-#line 2272 "parser/parser.cpp"
-    break;
-
-  case 77: // builtin_type_expr: TOK_BOOL
-#line 629 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::Bool, yystack_[0].location); }
-#line 2278 "parser/parser.cpp"
-    break;
-
-  case 78: // builtin_type_expr: TOK_CHAR
-#line 630 "parser/parser_rules.y"
-              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::Char, yystack_[0].location); }
 #line 2284 "parser/parser.cpp"
     break;
 
-  case 79: // path_type_expr: path_expr type_args
-#line 635 "parser/parser_rules.y"
-    { yylhs.value.as < ast::PathTypeExpr* > () = ast.mk_path_type_expr(yystack_[1].value.as < ast::PathExpr* > (), std::move(yystack_[0].value.as < std::vector<ast::TypeExpr*> > ()), combine(yystack_[1].location, yystack_[0].location)); }
+  case 55: // field_decl_list_opt: %empty
+#line 618 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::FieldDecl*> > () = std::vector<ast::FieldDecl*>{}; }
 #line 2290 "parser/parser.cpp"
     break;
 
-  case 80: // anon_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
-#line 644 "parser/parser_rules.y"
-      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::Anon, combine(yystack_[2].location, yystack_[0].location)); }
+  case 56: // field_decl_list_opt: field_decl_list
+#line 620 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::FieldDecl*> > () = std::move(yystack_[0].value.as < std::vector<ast::FieldDecl*> > ()); }
 #line 2296 "parser/parser.cpp"
     break;
 
-  case 81: // fn_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
-#line 649 "parser/parser_rules.y"
-      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::Fn, combine(yystack_[2].location, yystack_[0].location)); }
+  case 57: // field_decl_list: field_decl
+#line 625 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::FieldDecl*> > () = std::vector<ast::FieldDecl*>{ yystack_[0].value.as < ast::FieldDecl* > () }; }
 #line 2302 "parser/parser.cpp"
     break;
 
-  case 82: // if_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
-#line 654 "parser/parser_rules.y"
-      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::If, combine(yystack_[2].location, yystack_[0].location)); }
+  case 58: // field_decl_list: field_decl_list field_decl
+#line 627 "parser/parser_rules.y"
+    { yystack_[1].value.as < std::vector<ast::FieldDecl*> > ().push_back(yystack_[0].value.as < ast::FieldDecl* > ()); yylhs.value.as < std::vector<ast::FieldDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::FieldDecl*> > ()); }
 #line 2308 "parser/parser.cpp"
     break;
 
-  case 83: // else_if_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
-#line 659 "parser/parser_rules.y"
-      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::ElseIf, combine(yystack_[2].location, yystack_[0].location)); }
+  case 59: // field_decl: ident_no_self TOK_COLON type_expr TOK_SMCLN
+#line 632 "parser/parser_rules.y"
+    { yylhs.value.as < ast::FieldDecl* > () = ast.mk_field_decl(yystack_[3].value.as < Str > (), yystack_[1].value.as < ast::TypeExpr* > (), ast::Visibility::Priv, combine(yystack_[3].location, yystack_[0].location)); }
 #line 2314 "parser/parser.cpp"
     break;
 
-  case 84: // else_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
-#line 664 "parser/parser_rules.y"
-      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::Else, combine(yystack_[2].location, yystack_[0].location)); }
+  case 60: // field_decl: TOK_PUB ident_no_self TOK_COLON type_expr TOK_SMCLN
+#line 634 "parser/parser_rules.y"
+    { yylhs.value.as < ast::FieldDecl* > () = ast.mk_field_decl(yystack_[3].value.as < Str > (), yystack_[1].value.as < ast::TypeExpr* > (), ast::Visibility::Publ, combine(yystack_[4].location, yystack_[0].location)); }
 #line 2320 "parser/parser.cpp"
     break;
 
-  case 85: // while_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
-#line 669 "parser/parser_rules.y"
-      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::While, combine(yystack_[2].location, yystack_[0].location)); }
-#line 2326 "parser/parser.cpp"
+  case 61: // trait_decl: pub_opt TOK_TRAIT ident_no_self type_params_opt TOK_LCBRA trait_item_list_opt TOK_RCBRA
+#line 639 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::Decl* > () = ast.mk_trait_decl(
+        yystack_[4].value.as < Str > (),                 /* name */
+        std::move(yystack_[3].value.as < std::vector<ast::TypeParamDecl*> > ()),      /* tparams: vector<TypeParamDecl*> */
+        std::move(yystack_[1].value.as < std::vector<ast::TraitFnDecl*> > ()),      /* methods: vector<FunctionDecl*> */
+        /*exported=*/yystack_[6].value.as < kl::rt::boolean > (),
+        combine(yystack_[6].location, yystack_[0].location)
+      );
+    }
+#line 2334 "parser/parser.cpp"
     break;
 
-  case 86: // do_while_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
-#line 674 "parser/parser_rules.y"
-      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::DoWhile, combine(yystack_[2].location, yystack_[0].location)); }
-#line 2332 "parser/parser.cpp"
+  case 62: // trait_item_list_opt: %empty
+#line 652 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::TraitFnDecl*> > () = std::vector<ast::TraitFnDecl*>{}; }
+#line 2340 "parser/parser.cpp"
     break;
 
-  case 87: // stmt_list_opt: %empty
-#line 679 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::Statement*> > () = std::vector<ast::Statement*>{}; }
-#line 2338 "parser/parser.cpp"
+  case 63: // trait_item_list_opt: trait_item_list
+#line 654 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::TraitFnDecl*> > () = std::move(yystack_[0].value.as < std::vector<ast::TraitFnDecl*> > ()); }
+#line 2346 "parser/parser.cpp"
     break;
 
-  case 88: // stmt_list_opt: stmt_list
-#line 681 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::Statement*> > () = std::move(yystack_[0].value.as < std::vector<ast::Statement*> > ()); }
-#line 2344 "parser/parser.cpp"
+  case 64: // trait_item_list: trait_item
+#line 659 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::TraitFnDecl*> > () = std::vector<ast::TraitFnDecl*>{ yystack_[0].value.as < ast::TraitFnDecl* > () }; }
+#line 2352 "parser/parser.cpp"
     break;
 
-  case 89: // stmt_list: stmt
-#line 686 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::Statement*> > () = std::vector<ast::Statement*>{ yystack_[0].value.as < ast::Statement* > () }; }
-#line 2350 "parser/parser.cpp"
+  case 65: // trait_item_list: trait_item_list trait_item
+#line 661 "parser/parser_rules.y"
+    { yystack_[1].value.as < std::vector<ast::TraitFnDecl*> > ().push_back(yystack_[0].value.as < ast::TraitFnDecl* > ()); yylhs.value.as < std::vector<ast::TraitFnDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::TraitFnDecl*> > ()); }
+#line 2358 "parser/parser.cpp"
     break;
 
-  case 90: // stmt_list: stmt_list stmt
-#line 688 "parser/parser_rules.y"
-    { yystack_[1].value.as < std::vector<ast::Statement*> > ().push_back(yystack_[0].value.as < ast::Statement* > ()); yylhs.value.as < std::vector<ast::Statement*> > () = std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()); }
-#line 2356 "parser/parser.cpp"
+  case 66: // trait_item: trait_fn_decl
+#line 666 "parser/parser_rules.y"
+    { yylhs.value.as < ast::TraitFnDecl* > () = yystack_[0].value.as < ast::TraitFnDecl* > (); }
+#line 2364 "parser/parser.cpp"
     break;
 
-  case 91: // stmt: simple_stmt
-#line 693 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Statement* > () = yystack_[0].value.as < ast::Statement* > (); }
-#line 2362 "parser/parser.cpp"
-    break;
-
-  case 92: // stmt: compound_stmt
-#line 695 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Statement* > () = yystack_[0].value.as < ast::Statement* > (); }
-#line 2368 "parser/parser.cpp"
-    break;
-
-  case 93: // simple_stmt: var_stmt
-#line 699 "parser/parser_rules.y"
-                  { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::VarStmt* > ()); }
-#line 2374 "parser/parser.cpp"
-    break;
-
-  case 94: // simple_stmt: return_stmt
-#line 700 "parser/parser_rules.y"
-                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::ReturnStatement* > ()); }
+  case 67: // impl_decl: TOK_IMPL type_params_opt type_expr TOK_FOR type_expr TOK_LCBRA impl_item_list_opt TOK_RCBRA
+#line 672 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::Decl* > () = static_cast<ast::Decl*>(
+        ast.mk_impl_decl(
+          std::move(yystack_[6].value.as < std::vector<ast::TypeParamDecl*> > ()),   // tparams
+          yystack_[5].value.as < ast::TypeExpr* > (),              // traitType (TypeExpr*)
+          yystack_[3].value.as < ast::TypeExpr* > (),              // selfType  (TypeExpr*)
+          std::move(yystack_[1].value.as < std::vector<ast::ImplFnDecl*> > ()),   // methods   (vector<FunctionDecl*>)
+          combine(yystack_[7].location, yystack_[0].location)
+        )
+      );
+    }
 #line 2380 "parser/parser.cpp"
     break;
 
-  case 95: // simple_stmt: break_stmt
+  case 68: // impl_decl: TOK_IMPL type_params_opt type_expr TOK_LCBRA impl_item_list_opt TOK_RCBRA
+#line 684 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::Decl* > () = static_cast<ast::Decl*>(
+        ast.mk_impl_decl(
+          std::move(yystack_[4].value.as < std::vector<ast::TypeParamDecl*> > ()),   // tparams
+          nullptr,         // traitType absent => inherent impl
+          yystack_[3].value.as < ast::TypeExpr* > (),              // selfType
+          std::move(yystack_[1].value.as < std::vector<ast::ImplFnDecl*> > ()),   // methods
+          combine(yystack_[5].location, yystack_[0].location)
+        )
+      );
+    }
+#line 2396 "parser/parser.cpp"
+    break;
+
+  case 69: // impl_item_list_opt: %empty
+#line 699 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::ImplFnDecl*> > () = std::vector<ast::ImplFnDecl*>{}; }
+#line 2402 "parser/parser.cpp"
+    break;
+
+  case 70: // impl_item_list_opt: impl_item_list
 #line 701 "parser/parser_rules.y"
-                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::BreakStatement* > ()); }
-#line 2386 "parser/parser.cpp"
+    { yylhs.value.as < std::vector<ast::ImplFnDecl*> > () = std::move(yystack_[0].value.as < std::vector<ast::ImplFnDecl*> > ()); }
+#line 2408 "parser/parser.cpp"
     break;
 
-  case 96: // simple_stmt: continue_stmt
-#line 702 "parser/parser_rules.y"
-                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::ContinueStatement* > ()); }
-#line 2392 "parser/parser.cpp"
+  case 71: // impl_item_list: impl_item
+#line 706 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::ImplFnDecl*> > () = std::vector<ast::ImplFnDecl*>{ yystack_[0].value.as < ast::ImplFnDecl* > () }; }
+#line 2414 "parser/parser.cpp"
     break;
 
-  case 97: // simple_stmt: expr_stmt
-#line 703 "parser/parser_rules.y"
-                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::ExprStatement* > ()); }
-#line 2398 "parser/parser.cpp"
-    break;
-
-  case 98: // compound_stmt: anon_block
-#line 707 "parser/parser_rules.y"
-                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::BlockStatement* > ()); }
-#line 2404 "parser/parser.cpp"
-    break;
-
-  case 99: // compound_stmt: if_stmt
+  case 72: // impl_item_list: impl_item_list impl_item
 #line 708 "parser/parser_rules.y"
-                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::IfStatement* > ()); }
-#line 2410 "parser/parser.cpp"
+    { yystack_[1].value.as < std::vector<ast::ImplFnDecl*> > ().push_back(yystack_[0].value.as < ast::ImplFnDecl* > ()); yylhs.value.as < std::vector<ast::ImplFnDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::ImplFnDecl*> > ()); }
+#line 2420 "parser/parser.cpp"
     break;
 
-  case 100: // compound_stmt: while_stmt
-#line 709 "parser/parser_rules.y"
-                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::WhileStatement* > ()); }
-#line 2416 "parser/parser.cpp"
+  case 73: // impl_item: impl_fn_decl
+#line 713 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ImplFnDecl* > () = yystack_[0].value.as < ast::ImplFnDecl* > (); }
+#line 2426 "parser/parser.cpp"
     break;
 
-  case 101: // compound_stmt: do_while_stmt
-#line 710 "parser/parser_rules.y"
-                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::DoWhileStatement* > ()); }
-#line 2422 "parser/parser.cpp"
+  case 74: // ret_type_expr: TOK_ARROW type_expr
+#line 719 "parser/parser_rules.y"
+    { yylhs.value.as < ast::TypeExpr* > () = yystack_[0].value.as < ast::TypeExpr* > (); }
+#line 2432 "parser/parser.cpp"
     break;
 
-  case 102: // return_stmt: TOK_RETURN expr_opt TOK_SMCLN
-#line 715 "parser/parser_rules.y"
-    { yylhs.value.as < ast::ReturnStatement* > () = ast.mk_return_stmt(yystack_[1].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2428 "parser/parser.cpp"
+  case 75: // param_list_opt: %empty
+#line 724 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::vector<ast::ParamDecl*>{}; }
+#line 2438 "parser/parser.cpp"
     break;
 
-  case 103: // if_stmt: TOK_IF TOK_LPAR expr TOK_RPAR if_block elseif_list else_part
-#line 720 "parser/parser_rules.y"
-    { yylhs.value.as < ast::IfStatement* > () = ast.mk_if_stmt(yystack_[4].value.as < ast::Expr* > (), yystack_[2].value.as < ast::BlockStatement* > (), std::move(yystack_[1].value.as < std::vector<ast::ElseIfStatement*> > ()), yystack_[0].value.as < ast::ElseStatement* > (), combine(yystack_[6].location, yystack_[0].location)); }
-#line 2434 "parser/parser.cpp"
+  case 76: // param_list_opt: param_list
+#line 726 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::move(yystack_[0].value.as < std::vector<ast::ParamDecl*> > ()); }
+#line 2444 "parser/parser.cpp"
     break;
 
-  case 104: // elseif_list: %empty
-#line 725 "parser/parser_rules.y"
-    { yylhs.value.as < std::vector<ast::ElseIfStatement*> > () = std::vector<ast::ElseIfStatement*>{}; }
-#line 2440 "parser/parser.cpp"
+  case 77: // param_list: param
+#line 731 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::vector<ast::ParamDecl*>{ yystack_[0].value.as < ast::ParamDecl* > () }; }
+#line 2450 "parser/parser.cpp"
     break;
 
-  case 105: // elseif_list: elseif_list elseif
-#line 727 "parser/parser_rules.y"
-    { yystack_[1].value.as < std::vector<ast::ElseIfStatement*> > ().push_back(yystack_[0].value.as < ast::ElseIfStatement* > ()); yylhs.value.as < std::vector<ast::ElseIfStatement*> > () = std::move(yystack_[1].value.as < std::vector<ast::ElseIfStatement*> > ()); }
-#line 2446 "parser/parser.cpp"
+  case 78: // param_list: param_list TOK_COMMA param
+#line 733 "parser/parser_rules.y"
+    { yystack_[2].value.as < std::vector<ast::ParamDecl*> > ().push_back(yystack_[0].value.as < ast::ParamDecl* > ()); yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::move(yystack_[2].value.as < std::vector<ast::ParamDecl*> > ()); }
+#line 2456 "parser/parser.cpp"
     break;
 
-  case 106: // elseif: TOK_ELSE TOK_IF TOK_LPAR expr TOK_RPAR else_if_block
-#line 732 "parser/parser_rules.y"
-    { yylhs.value.as < ast::ElseIfStatement* > () = ast.mk_else_if_stmt(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::BlockStatement* > (), combine(yystack_[5].location, yystack_[0].location)); }
-#line 2452 "parser/parser.cpp"
+  case 79: // param_list: param_list TOK_COMMA
+#line 735 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::ParamDecl*> > () = std::move(yystack_[1].value.as < std::vector<ast::ParamDecl*> > ()); }
+#line 2462 "parser/parser.cpp"
     break;
 
-  case 107: // else_part: %empty
-#line 737 "parser/parser_rules.y"
-    { yylhs.value.as < ast::ElseStatement* > () = nullptr; }
-#line 2458 "parser/parser.cpp"
+  case 80: // param: self_param
+#line 740 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ParamDecl* > () = yystack_[0].value.as < ast::ParamDecl* > (); }
+#line 2468 "parser/parser.cpp"
     break;
 
-  case 108: // else_part: TOK_ELSE else_block
-#line 739 "parser/parser_rules.y"
-    { yylhs.value.as < ast::ElseStatement* > () = ast.mk_else_stmt(yystack_[0].value.as < ast::BlockStatement* > (), combine(yystack_[1].location, yystack_[0].location)); }
-#line 2464 "parser/parser.cpp"
+  case 81: // param: ident_no_self TOK_COLON type_expr
+#line 742 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ParamDecl* > () = ast.mk_param_decl(yystack_[2].value.as < Str > (), yystack_[0].value.as < ast::TypeExpr* > (), combine(yystack_[2].location, yystack_[0].location)); }
+#line 2474 "parser/parser.cpp"
     break;
 
-  case 109: // while_stmt: TOK_WHILE TOK_LPAR expr TOK_RPAR while_block
-#line 744 "parser/parser_rules.y"
-    { yylhs.value.as < ast::WhileStatement* > () = ast.mk_while_stmt(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::BlockStatement* > (), combine(yystack_[4].location, yystack_[0].location)); }
-#line 2470 "parser/parser.cpp"
+  case 82: // self_param: TOK_SELF
+#line 748 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ParamDecl* > () = ast.mk_self_param_decl(yystack_[0].value.as < Str > (), ast::SelfParamKind::Value, yystack_[0].location); }
+#line 2480 "parser/parser.cpp"
     break;
 
-  case 110: // do_while_stmt: TOK_DO do_while_block TOK_WHILE TOK_LPAR expr TOK_RPAR TOK_SMCLN
-#line 749 "parser/parser_rules.y"
-    { yylhs.value.as < ast::DoWhileStatement* > () = ast.mk_do_while_stmt(yystack_[2].value.as < ast::Expr* > (), yystack_[5].value.as < ast::BlockStatement* > (), combine(yystack_[6].location, yystack_[0].location)); }
-#line 2476 "parser/parser.cpp"
+  case 83: // self_param: TOK_AMP TOK_SELF
+#line 750 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ParamDecl* > () = ast.mk_self_param_decl(yystack_[0].value.as < Str > (), ast::SelfParamKind::Ref, combine(yystack_[1].location, yystack_[0].location)); }
+#line 2486 "parser/parser.cpp"
     break;
 
-  case 111: // break_stmt: TOK_BREAK TOK_SMCLN
-#line 754 "parser/parser_rules.y"
-    { yylhs.value.as < ast::BreakStatement* > () = ast.mk_break_stmt(combine(yystack_[1].location, yystack_[0].location)); }
-#line 2482 "parser/parser.cpp"
+  case 84: // self_param: TOK_AMP TOK_MUT TOK_SELF
+#line 752 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ParamDecl* > () = ast.mk_self_param_decl(yystack_[0].value.as < Str > (), ast::SelfParamKind::RefMut, combine(yystack_[2].location, yystack_[0].location)); }
+#line 2492 "parser/parser.cpp"
     break;
 
-  case 112: // continue_stmt: TOK_CONTINUE TOK_SMCLN
-#line 759 "parser/parser_rules.y"
-    { yylhs.value.as < ast::ContinueStatement* > () = ast.mk_continue_stmt(combine(yystack_[1].location, yystack_[0].location)); }
-#line 2488 "parser/parser.cpp"
-    break;
-
-  case 113: // expr_stmt: expr TOK_SMCLN
+  case 85: // type_expr: ref_type_expr
 #line 764 "parser/parser_rules.y"
-    { yylhs.value.as < ast::ExprStatement* > () = ast.mk_expr_stmt(yystack_[1].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
-#line 2494 "parser/parser.cpp"
+    { yylhs.value.as < ast::TypeExpr* > () = static_cast<ast::TypeExpr*>(yystack_[0].value.as < ast::RefTypeExpr* > ()); }
+#line 2498 "parser/parser.cpp"
     break;
 
-  case 114: // var_stmt: var_stmt_default
+  case 86: // type_expr: type_postfix
+#line 766 "parser/parser_rules.y"
+    { yylhs.value.as < ast::TypeExpr* > () = yystack_[0].value.as < ast::TypeExpr* > (); }
+#line 2504 "parser/parser.cpp"
+    break;
+
+  case 87: // ref_type_expr: TOK_AMP ref_mutability type_postfix
+#line 771 "parser/parser_rules.y"
+    { yylhs.value.as < ast::RefTypeExpr* > () = ast.mk_ref_type_expr(yystack_[0].value.as < ast::TypeExpr* > (), yystack_[1].value.as < ast::Mutability > (), combine(yystack_[2].location, yystack_[0].location)); }
+#line 2510 "parser/parser.cpp"
+    break;
+
+  case 88: // ref_mutability: %empty
+#line 775 "parser/parser_rules.y"
+           { yylhs.value.as < ast::Mutability > () = ast::Mutability::Imm; }
+#line 2516 "parser/parser.cpp"
+    break;
+
+  case 89: // ref_mutability: TOK_IMM
+#line 776 "parser/parser_rules.y"
+                { yylhs.value.as < ast::Mutability > () = ast::Mutability::Imm; }
+#line 2522 "parser/parser.cpp"
+    break;
+
+  case 90: // ref_mutability: TOK_MUT
+#line 777 "parser/parser_rules.y"
+                { yylhs.value.as < ast::Mutability > () = ast::Mutability::Mut; }
+#line 2528 "parser/parser.cpp"
+    break;
+
+  case 91: // type_postfix: type_primary
+#line 782 "parser/parser_rules.y"
+    { yylhs.value.as < ast::TypeExpr* > () = yystack_[0].value.as < ast::TypeExpr* > (); }
+#line 2534 "parser/parser.cpp"
+    break;
+
+  case 92: // type_postfix: type_postfix TOK_LBRACK expr TOK_RBRACK
 #line 784 "parser/parser_rules.y"
-                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
-#line 2500 "parser/parser.cpp"
+    { yylhs.value.as < ast::TypeExpr* > () = static_cast<ast::TypeExpr*>(ast.mk_array_type_expr(yystack_[3].value.as < ast::TypeExpr* > (), yystack_[1].value.as < ast::Expr* > (), combine(yystack_[3].location, yystack_[0].location))); }
+#line 2540 "parser/parser.cpp"
     break;
 
-  case 115: // var_stmt: var_stmt_imm
-#line 785 "parser/parser_rules.y"
-                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
-#line 2506 "parser/parser.cpp"
-    break;
-
-  case 116: // var_stmt: var_stmt_mut
-#line 786 "parser/parser_rules.y"
-                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
-#line 2512 "parser/parser.cpp"
-    break;
-
-  case 117: // var_stmt: var_stmt_static_default
-#line 787 "parser/parser_rules.y"
-                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
-#line 2518 "parser/parser.cpp"
-    break;
-
-  case 118: // var_stmt: var_stmt_static_imm
-#line 788 "parser/parser_rules.y"
-                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
-#line 2524 "parser/parser.cpp"
-    break;
-
-  case 119: // var_stmt: var_stmt_static_mut
+  case 93: // type_primary: builtin_type_expr
 #line 789 "parser/parser_rules.y"
-                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
-#line 2530 "parser/parser.cpp"
+    { yylhs.value.as < ast::TypeExpr* > () = static_cast<ast::TypeExpr*>(yystack_[0].value.as < ast::BuiltinTypeExpr* > ()); }
+#line 2546 "parser/parser.cpp"
     break;
 
-  case 120: // var_stmt_default: ident TOK_COLON type_expr TOK_SMCLN
+  case 94: // type_primary: path_type_expr
+#line 791 "parser/parser_rules.y"
+    { yylhs.value.as < ast::TypeExpr* > () = static_cast<ast::TypeExpr*>(yystack_[0].value.as < ast::PathTypeExpr* > ()); }
+#line 2552 "parser/parser.cpp"
+    break;
+
+  case 95: // type_primary: TOK_LPAR type_expr TOK_RPAR
+#line 793 "parser/parser_rules.y"
+    { yylhs.value.as < ast::TypeExpr* > () = yystack_[1].value.as < ast::TypeExpr* > (); }
+#line 2558 "parser/parser.cpp"
+    break;
+
+  case 96: // builtin_type_expr: TOK_I8
+#line 797 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I8,   yystack_[0].location); }
+#line 2564 "parser/parser.cpp"
+    break;
+
+  case 97: // builtin_type_expr: TOK_U8
 #line 798 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U8,   yystack_[0].location); }
+#line 2570 "parser/parser.cpp"
+    break;
+
+  case 98: // builtin_type_expr: TOK_I16
+#line 799 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I16,  yystack_[0].location); }
+#line 2576 "parser/parser.cpp"
+    break;
+
+  case 99: // builtin_type_expr: TOK_U16
+#line 800 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U16,  yystack_[0].location); }
+#line 2582 "parser/parser.cpp"
+    break;
+
+  case 100: // builtin_type_expr: TOK_I32
+#line 801 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I32,  yystack_[0].location); }
+#line 2588 "parser/parser.cpp"
+    break;
+
+  case 101: // builtin_type_expr: TOK_U32
+#line 802 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U32,  yystack_[0].location); }
+#line 2594 "parser/parser.cpp"
+    break;
+
+  case 102: // builtin_type_expr: TOK_I64
+#line 803 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I64,  yystack_[0].location); }
+#line 2600 "parser/parser.cpp"
+    break;
+
+  case 103: // builtin_type_expr: TOK_U64
+#line 804 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U64,  yystack_[0].location); }
+#line 2606 "parser/parser.cpp"
+    break;
+
+  case 104: // builtin_type_expr: TOK_I128
+#line 805 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::I128, yystack_[0].location); }
+#line 2612 "parser/parser.cpp"
+    break;
+
+  case 105: // builtin_type_expr: TOK_U128
+#line 806 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::U128, yystack_[0].location); }
+#line 2618 "parser/parser.cpp"
+    break;
+
+  case 106: // builtin_type_expr: TOK_F32
+#line 807 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::F32,  yystack_[0].location); }
+#line 2624 "parser/parser.cpp"
+    break;
+
+  case 107: // builtin_type_expr: TOK_F64
+#line 808 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::F64,  yystack_[0].location); }
+#line 2630 "parser/parser.cpp"
+    break;
+
+  case 108: // builtin_type_expr: TOK_BOOL
+#line 809 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::Bool, yystack_[0].location); }
+#line 2636 "parser/parser.cpp"
+    break;
+
+  case 109: // builtin_type_expr: TOK_CHAR
+#line 810 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::Char, yystack_[0].location); }
+#line 2642 "parser/parser.cpp"
+    break;
+
+  case 110: // builtin_type_expr: TOK_VOID
+#line 811 "parser/parser_rules.y"
+              { yylhs.value.as < ast::BuiltinTypeExpr* > () = ast.mk_builtin_type_expr(kl::rt::BuiltinTypeExprKind::Void, yystack_[0].location); }
+#line 2648 "parser/parser.cpp"
+    break;
+
+  case 111: // path_type_expr: path_expr type_args
+#line 816 "parser/parser_rules.y"
+    { yylhs.value.as < ast::PathTypeExpr* > () = ast.mk_path_type_expr(yystack_[1].value.as < ast::PathExpr* > (), std::move(yystack_[0].value.as < std::vector<ast::TypeExpr*> > ()), combine(yystack_[1].location, yystack_[0].location)); }
+#line 2654 "parser/parser.cpp"
+    break;
+
+  case 112: // anon_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
+#line 825 "parser/parser_rules.y"
+      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::Anon, combine(yystack_[2].location, yystack_[0].location)); }
+#line 2660 "parser/parser.cpp"
+    break;
+
+  case 113: // fn_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
+#line 830 "parser/parser_rules.y"
+      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::Fn, combine(yystack_[2].location, yystack_[0].location)); }
+#line 2666 "parser/parser.cpp"
+    break;
+
+  case 114: // if_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
+#line 835 "parser/parser_rules.y"
+      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::If, combine(yystack_[2].location, yystack_[0].location)); }
+#line 2672 "parser/parser.cpp"
+    break;
+
+  case 115: // else_if_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
+#line 840 "parser/parser_rules.y"
+      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::ElseIf, combine(yystack_[2].location, yystack_[0].location)); }
+#line 2678 "parser/parser.cpp"
+    break;
+
+  case 116: // else_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
+#line 845 "parser/parser_rules.y"
+      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::Else, combine(yystack_[2].location, yystack_[0].location)); }
+#line 2684 "parser/parser.cpp"
+    break;
+
+  case 117: // while_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
+#line 850 "parser/parser_rules.y"
+      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::While, combine(yystack_[2].location, yystack_[0].location)); }
+#line 2690 "parser/parser.cpp"
+    break;
+
+  case 118: // do_while_block: TOK_LCBRA stmt_list_opt TOK_RCBRA
+#line 855 "parser/parser_rules.y"
+      { yylhs.value.as < ast::BlockStatement* > () = ast.mk_block_stmt(std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()), ast::BlockKind::DoWhile, combine(yystack_[2].location, yystack_[0].location)); }
+#line 2696 "parser/parser.cpp"
+    break;
+
+  case 119: // stmt_list_opt: %empty
+#line 860 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Statement*> > () = std::vector<ast::Statement*>{}; }
+#line 2702 "parser/parser.cpp"
+    break;
+
+  case 120: // stmt_list_opt: stmt_list
+#line 862 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Statement*> > () = std::move(yystack_[0].value.as < std::vector<ast::Statement*> > ()); }
+#line 2708 "parser/parser.cpp"
+    break;
+
+  case 121: // stmt_list: stmt
+#line 867 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::Statement*> > () = std::vector<ast::Statement*>{ yystack_[0].value.as < ast::Statement* > () }; }
+#line 2714 "parser/parser.cpp"
+    break;
+
+  case 122: // stmt_list: stmt_list stmt
+#line 869 "parser/parser_rules.y"
+    { yystack_[1].value.as < std::vector<ast::Statement*> > ().push_back(yystack_[0].value.as < ast::Statement* > ()); yylhs.value.as < std::vector<ast::Statement*> > () = std::move(yystack_[1].value.as < std::vector<ast::Statement*> > ()); }
+#line 2720 "parser/parser.cpp"
+    break;
+
+  case 123: // stmt: simple_stmt
+#line 874 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Statement* > () = yystack_[0].value.as < ast::Statement* > (); }
+#line 2726 "parser/parser.cpp"
+    break;
+
+  case 124: // stmt: compound_stmt
+#line 876 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Statement* > () = yystack_[0].value.as < ast::Statement* > (); }
+#line 2732 "parser/parser.cpp"
+    break;
+
+  case 125: // simple_stmt: var_stmt
+#line 880 "parser/parser_rules.y"
+                  { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::VarStmt* > ()); }
+#line 2738 "parser/parser.cpp"
+    break;
+
+  case 126: // simple_stmt: return_stmt
+#line 881 "parser/parser_rules.y"
+                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::ReturnStatement* > ()); }
+#line 2744 "parser/parser.cpp"
+    break;
+
+  case 127: // simple_stmt: break_stmt
+#line 882 "parser/parser_rules.y"
+                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::BreakStatement* > ()); }
+#line 2750 "parser/parser.cpp"
+    break;
+
+  case 128: // simple_stmt: continue_stmt
+#line 883 "parser/parser_rules.y"
+                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::ContinueStatement* > ()); }
+#line 2756 "parser/parser.cpp"
+    break;
+
+  case 129: // simple_stmt: expr_stmt
+#line 884 "parser/parser_rules.y"
+                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::ExprStatement* > ()); }
+#line 2762 "parser/parser.cpp"
+    break;
+
+  case 130: // compound_stmt: anon_block
+#line 888 "parser/parser_rules.y"
+                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::BlockStatement* > ()); }
+#line 2768 "parser/parser.cpp"
+    break;
+
+  case 131: // compound_stmt: if_stmt
+#line 889 "parser/parser_rules.y"
+                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::IfStatement* > ()); }
+#line 2774 "parser/parser.cpp"
+    break;
+
+  case 132: // compound_stmt: while_stmt
+#line 890 "parser/parser_rules.y"
+                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::WhileStatement* > ()); }
+#line 2780 "parser/parser.cpp"
+    break;
+
+  case 133: // compound_stmt: do_while_stmt
+#line 891 "parser/parser_rules.y"
+                   { yylhs.value.as < ast::Statement* > () = static_cast<ast::Statement*>(yystack_[0].value.as < ast::DoWhileStatement* > ()); }
+#line 2786 "parser/parser.cpp"
+    break;
+
+  case 134: // return_stmt: TOK_RETURN expr_opt TOK_SMCLN
+#line 896 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ReturnStatement* > () = ast.mk_return_stmt(yystack_[1].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
+#line 2792 "parser/parser.cpp"
+    break;
+
+  case 135: // if_stmt: TOK_IF TOK_LPAR expr TOK_RPAR if_block elseif_list else_part
+#line 901 "parser/parser_rules.y"
+    { yylhs.value.as < ast::IfStatement* > () = ast.mk_if_stmt(yystack_[4].value.as < ast::Expr* > (), yystack_[2].value.as < ast::BlockStatement* > (), std::move(yystack_[1].value.as < std::vector<ast::ElseIfStatement*> > ()), yystack_[0].value.as < ast::ElseStatement* > (), combine(yystack_[6].location, yystack_[0].location)); }
+#line 2798 "parser/parser.cpp"
+    break;
+
+  case 136: // elseif_list: %empty
+#line 906 "parser/parser_rules.y"
+    { yylhs.value.as < std::vector<ast::ElseIfStatement*> > () = std::vector<ast::ElseIfStatement*>{}; }
+#line 2804 "parser/parser.cpp"
+    break;
+
+  case 137: // elseif_list: elseif_list elseif
+#line 908 "parser/parser_rules.y"
+    { yystack_[1].value.as < std::vector<ast::ElseIfStatement*> > ().push_back(yystack_[0].value.as < ast::ElseIfStatement* > ()); yylhs.value.as < std::vector<ast::ElseIfStatement*> > () = std::move(yystack_[1].value.as < std::vector<ast::ElseIfStatement*> > ()); }
+#line 2810 "parser/parser.cpp"
+    break;
+
+  case 138: // elseif: TOK_ELSE TOK_IF TOK_LPAR expr TOK_RPAR else_if_block
+#line 913 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ElseIfStatement* > () = ast.mk_else_if_stmt(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::BlockStatement* > (), combine(yystack_[5].location, yystack_[0].location)); }
+#line 2816 "parser/parser.cpp"
+    break;
+
+  case 139: // else_part: %empty
+#line 918 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ElseStatement* > () = nullptr; }
+#line 2822 "parser/parser.cpp"
+    break;
+
+  case 140: // else_part: TOK_ELSE else_block
+#line 920 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ElseStatement* > () = ast.mk_else_stmt(yystack_[0].value.as < ast::BlockStatement* > (), combine(yystack_[1].location, yystack_[0].location)); }
+#line 2828 "parser/parser.cpp"
+    break;
+
+  case 141: // while_stmt: TOK_WHILE TOK_LPAR expr TOK_RPAR while_block
+#line 925 "parser/parser_rules.y"
+    { yylhs.value.as < ast::WhileStatement* > () = ast.mk_while_stmt(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::BlockStatement* > (), combine(yystack_[4].location, yystack_[0].location)); }
+#line 2834 "parser/parser.cpp"
+    break;
+
+  case 142: // do_while_stmt: TOK_DO do_while_block TOK_WHILE TOK_LPAR expr TOK_RPAR TOK_SMCLN
+#line 930 "parser/parser_rules.y"
+    { yylhs.value.as < ast::DoWhileStatement* > () = ast.mk_do_while_stmt(yystack_[2].value.as < ast::Expr* > (), yystack_[5].value.as < ast::BlockStatement* > (), combine(yystack_[6].location, yystack_[0].location)); }
+#line 2840 "parser/parser.cpp"
+    break;
+
+  case 143: // break_stmt: TOK_BREAK TOK_SMCLN
+#line 935 "parser/parser_rules.y"
+    { yylhs.value.as < ast::BreakStatement* > () = ast.mk_break_stmt(combine(yystack_[1].location, yystack_[0].location)); }
+#line 2846 "parser/parser.cpp"
+    break;
+
+  case 144: // continue_stmt: TOK_CONTINUE TOK_SMCLN
+#line 940 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ContinueStatement* > () = ast.mk_continue_stmt(combine(yystack_[1].location, yystack_[0].location)); }
+#line 2852 "parser/parser.cpp"
+    break;
+
+  case 145: // expr_stmt: expr TOK_SMCLN
+#line 945 "parser/parser_rules.y"
+    { yylhs.value.as < ast::ExprStatement* > () = ast.mk_expr_stmt(yystack_[1].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
+#line 2858 "parser/parser.cpp"
+    break;
+
+  case 146: // var_stmt: var_stmt_default
+#line 965 "parser/parser_rules.y"
+                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
+#line 2864 "parser/parser.cpp"
+    break;
+
+  case 147: // var_stmt: var_stmt_imm
+#line 966 "parser/parser_rules.y"
+                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
+#line 2870 "parser/parser.cpp"
+    break;
+
+  case 148: // var_stmt: var_stmt_mut
+#line 967 "parser/parser_rules.y"
+                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
+#line 2876 "parser/parser.cpp"
+    break;
+
+  case 149: // var_stmt: var_stmt_static_default
+#line 968 "parser/parser_rules.y"
+                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
+#line 2882 "parser/parser.cpp"
+    break;
+
+  case 150: // var_stmt: var_stmt_static_imm
+#line 969 "parser/parser_rules.y"
+                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
+#line 2888 "parser/parser.cpp"
+    break;
+
+  case 151: // var_stmt: var_stmt_static_mut
+#line 970 "parser/parser_rules.y"
+                            { yylhs.value.as < ast::VarStmt* > () = yystack_[0].value.as < ast::VarStmt* > (); }
+#line 2894 "parser/parser.cpp"
+    break;
+
+  case 152: // var_stmt_default: ident_no_self TOK_COLON type_expr TOK_SMCLN
+#line 979 "parser/parser_rules.y"
     {
       yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
              yystack_[3].value.as < Str > (),                                /* name */
@@ -2541,616 +2905,650 @@ namespace yy {
              combine(yystack_[3].location, yystack_[0].location)
            );
     }
-#line 2545 "parser/parser.cpp"
+#line 2909 "parser/parser.cpp"
     break;
 
-  case 121: // var_stmt_default: ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
-#line 809 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[5].value.as < Str > (),
-             yystack_[3].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Imm,
-             ast::Storage::Auto,
-             /*init*/yystack_[1].value.as < ast::Expr* > (),
-             combine(yystack_[5].location, yystack_[0].location)
-           );
-    }
-#line 2560 "parser/parser.cpp"
-    break;
-
-  case 122: // var_stmt_imm: TOK_IMM ident TOK_COLON type_expr TOK_SMCLN
-#line 823 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[3].value.as < Str > (),
-             yystack_[1].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Imm,
-             ast::Storage::Auto,
-             /*init*/nullptr,
-             combine(yystack_[4].location, yystack_[0].location)
-           );
-    }
-#line 2575 "parser/parser.cpp"
-    break;
-
-  case 123: // var_stmt_imm: TOK_IMM ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
-#line 834 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[5].value.as < Str > (),
-             yystack_[3].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Imm,
-             ast::Storage::Auto,
-             /*init*/yystack_[1].value.as < ast::Expr* > (),
-             combine(yystack_[6].location, yystack_[0].location)
-           );
-    }
-#line 2590 "parser/parser.cpp"
-    break;
-
-  case 124: // var_stmt_mut: TOK_MUT ident TOK_COLON type_expr TOK_SMCLN
-#line 848 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[3].value.as < Str > (),
-             yystack_[1].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Mut,
-             ast::Storage::Auto,
-             /*init*/nullptr,
-             combine(yystack_[4].location, yystack_[0].location)
-           );
-    }
-#line 2605 "parser/parser.cpp"
-    break;
-
-  case 125: // var_stmt_mut: TOK_MUT ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
-#line 859 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[5].value.as < Str > (),
-             yystack_[3].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Mut,
-             ast::Storage::Auto,
-             /*init*/yystack_[1].value.as < ast::Expr* > (),
-             combine(yystack_[6].location, yystack_[0].location)
-           );
-    }
-#line 2620 "parser/parser.cpp"
-    break;
-
-  case 126: // var_stmt_static_default: TOK_STATIC ident TOK_COLON type_expr TOK_SMCLN
-#line 877 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[3].value.as < Str > (),
-             yystack_[1].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Imm,
-             ast::Storage::Static,
-             /*init*/nullptr,
-             combine(yystack_[4].location, yystack_[0].location)
-           );
-    }
-#line 2635 "parser/parser.cpp"
-    break;
-
-  case 127: // var_stmt_static_default: TOK_STATIC ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
-#line 888 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[5].value.as < Str > (),
-             yystack_[3].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Imm,
-             ast::Storage::Static,
-             /*init*/yystack_[1].value.as < ast::Expr* > (),
-             combine(yystack_[6].location, yystack_[0].location)
-           );
-    }
-#line 2650 "parser/parser.cpp"
-    break;
-
-  case 128: // var_stmt_static_imm: TOK_STATIC TOK_IMM ident TOK_COLON type_expr TOK_SMCLN
-#line 902 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[3].value.as < Str > (),
-             yystack_[1].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Imm,
-             ast::Storage::Static,
-             /*init*/nullptr,
-             combine(yystack_[5].location, yystack_[0].location)
-           );
-    }
-#line 2665 "parser/parser.cpp"
-    break;
-
-  case 129: // var_stmt_static_imm: TOK_STATIC TOK_IMM ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
-#line 913 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[5].value.as < Str > (),
-             yystack_[3].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Imm,
-             ast::Storage::Static,
-             /*init*/yystack_[1].value.as < ast::Expr* > (),
-             combine(yystack_[7].location, yystack_[0].location)
-           );
-    }
-#line 2680 "parser/parser.cpp"
-    break;
-
-  case 130: // var_stmt_static_mut: TOK_STATIC TOK_MUT ident TOK_COLON type_expr TOK_SMCLN
-#line 927 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[3].value.as < Str > (),
-             yystack_[1].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Mut,
-             ast::Storage::Static,
-             /*init*/nullptr,
-             combine(yystack_[5].location, yystack_[0].location)
-           );
-    }
-#line 2695 "parser/parser.cpp"
-    break;
-
-  case 131: // var_stmt_static_mut: TOK_STATIC TOK_MUT ident TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
-#line 938 "parser/parser_rules.y"
-    {
-      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
-             yystack_[5].value.as < Str > (),
-             yystack_[3].value.as < ast::TypeExpr* > (),
-             ast::Mutability::Mut,
-             ast::Storage::Static,
-             /*init*/yystack_[1].value.as < ast::Expr* > (),
-             combine(yystack_[7].location, yystack_[0].location)
-           );
-    }
-#line 2710 "parser/parser.cpp"
-    break;
-
-  case 132: // expr: assign
-#line 958 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2716 "parser/parser.cpp"
-    break;
-
-  case 133: // expr_opt: %empty
-#line 962 "parser/parser_rules.y"
-                { yylhs.value.as < ast::Expr* > () = nullptr; }
-#line 2722 "parser/parser.cpp"
-    break;
-
-  case 134: // expr_opt: expr
-#line 963 "parser/parser_rules.y"
-                { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2728 "parser/parser.cpp"
-    break;
-
-  case 135: // assign: cond
-#line 968 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2734 "parser/parser.cpp"
-    break;
-
-  case 136: // assign: postfix TOK_ASSIGN assign
-#line 969 "parser/parser_rules.y"
-                                   { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Assign,   combine(yystack_[2].location, yystack_[0].location)); }
-#line 2740 "parser/parser.cpp"
-    break;
-
-  case 137: // assign: postfix TOK_PLUS_ASSIGN assign
-#line 970 "parser/parser_rules.y"
-                                   { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Add,      combine(yystack_[2].location, yystack_[0].location)); }
-#line 2746 "parser/parser.cpp"
-    break;
-
-  case 138: // assign: postfix TOK_MIN_ASSIGN assign
-#line 971 "parser/parser_rules.y"
-                                   { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Subtract, combine(yystack_[2].location, yystack_[0].location)); }
-#line 2752 "parser/parser.cpp"
-    break;
-
-  case 139: // assign: postfix TOK_MUL_ASSIGN assign
-#line 972 "parser/parser_rules.y"
-                                   { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Multiply, combine(yystack_[2].location, yystack_[0].location)); }
-#line 2758 "parser/parser.cpp"
-    break;
-
-  case 140: // assign: postfix TOK_DIV_ASSIGN assign
-#line 973 "parser/parser_rules.y"
-                                   { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Divide,   combine(yystack_[2].location, yystack_[0].location)); }
-#line 2764 "parser/parser.cpp"
-    break;
-
-  case 141: // cond: logic_or
-#line 978 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2770 "parser/parser.cpp"
-    break;
-
-  case 142: // logic_or: logic_and
-#line 983 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2776 "parser/parser.cpp"
-    break;
-
-  case 143: // logic_or: logic_or TOK_BOOL_OR logic_and
-#line 985 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::logical_or, yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2782 "parser/parser.cpp"
-    break;
-
-  case 144: // logic_and: equality
+  case 153: // var_stmt_default: ident_no_self TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
 #line 990 "parser/parser_rules.y"
-    { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2788 "parser/parser.cpp"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[5].value.as < Str > (),
+             yystack_[3].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Imm,
+             ast::Storage::Auto,
+             /*init*/yystack_[1].value.as < ast::Expr* > (),
+             combine(yystack_[5].location, yystack_[0].location)
+           );
+    }
+#line 2924 "parser/parser.cpp"
     break;
 
-  case 145: // logic_and: logic_and TOK_BOOL_AND equality
-#line 992 "parser/parser_rules.y"
+  case 154: // var_stmt_imm: TOK_IMM ident_no_self TOK_COLON type_expr TOK_SMCLN
+#line 1004 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[3].value.as < Str > (),
+             yystack_[1].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Imm,
+             ast::Storage::Auto,
+             /*init*/nullptr,
+             combine(yystack_[4].location, yystack_[0].location)
+           );
+    }
+#line 2939 "parser/parser.cpp"
+    break;
+
+  case 155: // var_stmt_imm: TOK_IMM ident_no_self TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
+#line 1015 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[5].value.as < Str > (),
+             yystack_[3].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Imm,
+             ast::Storage::Auto,
+             /*init*/yystack_[1].value.as < ast::Expr* > (),
+             combine(yystack_[6].location, yystack_[0].location)
+           );
+    }
+#line 2954 "parser/parser.cpp"
+    break;
+
+  case 156: // var_stmt_mut: TOK_MUT ident_no_self TOK_COLON type_expr TOK_SMCLN
+#line 1029 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[3].value.as < Str > (),
+             yystack_[1].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Mut,
+             ast::Storage::Auto,
+             /*init*/nullptr,
+             combine(yystack_[4].location, yystack_[0].location)
+           );
+    }
+#line 2969 "parser/parser.cpp"
+    break;
+
+  case 157: // var_stmt_mut: TOK_MUT ident_no_self TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
+#line 1040 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[5].value.as < Str > (),
+             yystack_[3].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Mut,
+             ast::Storage::Auto,
+             /*init*/yystack_[1].value.as < ast::Expr* > (),
+             combine(yystack_[6].location, yystack_[0].location)
+           );
+    }
+#line 2984 "parser/parser.cpp"
+    break;
+
+  case 158: // var_stmt_static_default: TOK_STATIC ident_no_self TOK_COLON type_expr TOK_SMCLN
+#line 1058 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[3].value.as < Str > (),
+             yystack_[1].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Imm,
+             ast::Storage::Static,
+             /*init*/nullptr,
+             combine(yystack_[4].location, yystack_[0].location)
+           );
+    }
+#line 2999 "parser/parser.cpp"
+    break;
+
+  case 159: // var_stmt_static_default: TOK_STATIC ident_no_self TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
+#line 1069 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[5].value.as < Str > (),
+             yystack_[3].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Imm,
+             ast::Storage::Static,
+             /*init*/yystack_[1].value.as < ast::Expr* > (),
+             combine(yystack_[6].location, yystack_[0].location)
+           );
+    }
+#line 3014 "parser/parser.cpp"
+    break;
+
+  case 160: // var_stmt_static_imm: TOK_STATIC TOK_IMM ident_no_self TOK_COLON type_expr TOK_SMCLN
+#line 1083 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[3].value.as < Str > (),
+             yystack_[1].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Imm,
+             ast::Storage::Static,
+             /*init*/nullptr,
+             combine(yystack_[5].location, yystack_[0].location)
+           );
+    }
+#line 3029 "parser/parser.cpp"
+    break;
+
+  case 161: // var_stmt_static_imm: TOK_STATIC TOK_IMM ident_no_self TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
+#line 1094 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[5].value.as < Str > (),
+             yystack_[3].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Imm,
+             ast::Storage::Static,
+             /*init*/yystack_[1].value.as < ast::Expr* > (),
+             combine(yystack_[7].location, yystack_[0].location)
+           );
+    }
+#line 3044 "parser/parser.cpp"
+    break;
+
+  case 162: // var_stmt_static_mut: TOK_STATIC TOK_MUT ident_no_self TOK_COLON type_expr TOK_SMCLN
+#line 1108 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[3].value.as < Str > (),
+             yystack_[1].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Mut,
+             ast::Storage::Static,
+             /*init*/nullptr,
+             combine(yystack_[5].location, yystack_[0].location)
+           );
+    }
+#line 3059 "parser/parser.cpp"
+    break;
+
+  case 163: // var_stmt_static_mut: TOK_STATIC TOK_MUT ident_no_self TOK_COLON type_expr TOK_ASSIGN assign TOK_SMCLN
+#line 1119 "parser/parser_rules.y"
+    {
+      yylhs.value.as < ast::VarStmt* > () = ast.mk_var_stmt(
+             yystack_[5].value.as < Str > (),
+             yystack_[3].value.as < ast::TypeExpr* > (),
+             ast::Mutability::Mut,
+             ast::Storage::Static,
+             /*init*/yystack_[1].value.as < ast::Expr* > (),
+             combine(yystack_[7].location, yystack_[0].location)
+           );
+    }
+#line 3074 "parser/parser.cpp"
+    break;
+
+  case 164: // expr: assign
+#line 1138 "parser/parser_rules.y"
+           { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
+#line 3080 "parser/parser.cpp"
+    break;
+
+  case 165: // expr_opt: %empty
+#line 1142 "parser/parser_rules.y"
+           { yylhs.value.as < ast::Expr* > () = nullptr; }
+#line 3086 "parser/parser.cpp"
+    break;
+
+  case 166: // expr_opt: expr
+#line 1143 "parser/parser_rules.y"
+           { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
+#line 3092 "parser/parser.cpp"
+    break;
+
+  case 167: // assign: cond
+#line 1148 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
+#line 3098 "parser/parser.cpp"
+    break;
+
+  case 168: // assign: unary TOK_ASSIGN assign
+#line 1150 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Assign,   combine(yystack_[2].location, yystack_[0].location)); }
+#line 3104 "parser/parser.cpp"
+    break;
+
+  case 169: // assign: unary TOK_PLUS_ASSIGN assign
+#line 1152 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Add,      combine(yystack_[2].location, yystack_[0].location)); }
+#line 3110 "parser/parser.cpp"
+    break;
+
+  case 170: // assign: unary TOK_MIN_ASSIGN assign
+#line 1154 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Subtract, combine(yystack_[2].location, yystack_[0].location)); }
+#line 3116 "parser/parser.cpp"
+    break;
+
+  case 171: // assign: unary TOK_MUL_ASSIGN assign
+#line 1156 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Multiply, combine(yystack_[2].location, yystack_[0].location)); }
+#line 3122 "parser/parser.cpp"
+    break;
+
+  case 172: // assign: unary TOK_DIV_ASSIGN assign
+#line 1158 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = ast.mk_assign_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), ast::AssignOp::Divide,   combine(yystack_[2].location, yystack_[0].location)); }
+#line 3128 "parser/parser.cpp"
+    break;
+
+  case 173: // cond: logic_or
+#line 1162 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
+#line 3134 "parser/parser.cpp"
+    break;
+
+  case 174: // logic_or: logic_and
+#line 1167 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
+#line 3140 "parser/parser.cpp"
+    break;
+
+  case 175: // logic_or: logic_or TOK_BOOL_OR logic_and
+#line 1169 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::logical_or, yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
+#line 3146 "parser/parser.cpp"
+    break;
+
+  case 176: // logic_and: equality
+#line 1174 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
+#line 3152 "parser/parser.cpp"
+    break;
+
+  case 177: // logic_and: logic_and TOK_BOOL_AND equality
+#line 1176 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::logical_and, yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2794 "parser/parser.cpp"
+#line 3158 "parser/parser.cpp"
     break;
 
-  case 146: // equality: relational
-#line 997 "parser/parser_rules.y"
+  case 178: // equality: relational
+#line 1181 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2800 "parser/parser.cpp"
+#line 3164 "parser/parser.cpp"
     break;
 
-  case 147: // equality: equality TOK_EQUAL relational
-#line 999 "parser/parser_rules.y"
+  case 179: // equality: equality TOK_EQUAL relational
+#line 1183 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::equal,     yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2806 "parser/parser.cpp"
+#line 3170 "parser/parser.cpp"
     break;
 
-  case 148: // equality: equality TOK_NEQUAL relational
-#line 1001 "parser/parser_rules.y"
+  case 180: // equality: equality TOK_NEQUAL relational
+#line 1185 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::not_equal, yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2812 "parser/parser.cpp"
+#line 3176 "parser/parser.cpp"
     break;
 
-  case 149: // relational: additive
-#line 1006 "parser/parser_rules.y"
+  case 181: // relational: additive
+#line 1190 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2818 "parser/parser.cpp"
+#line 3182 "parser/parser.cpp"
     break;
 
-  case 150: // relational: relational TOK_LESS additive
-#line 1008 "parser/parser_rules.y"
+  case 182: // relational: relational TOK_LESS additive
+#line 1192 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::less,          yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2824 "parser/parser.cpp"
+#line 3188 "parser/parser.cpp"
     break;
 
-  case 151: // relational: relational TOK_LEQ additive
-#line 1010 "parser/parser_rules.y"
+  case 183: // relational: relational TOK_LEQ additive
+#line 1194 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::less_equal,    yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2830 "parser/parser.cpp"
+#line 3194 "parser/parser.cpp"
     break;
 
-  case 152: // relational: relational TOK_GREATER additive
-#line 1012 "parser/parser_rules.y"
+  case 184: // relational: relational TOK_GREATER additive
+#line 1196 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::greater,       yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2836 "parser/parser.cpp"
+#line 3200 "parser/parser.cpp"
     break;
 
-  case 153: // relational: relational TOK_GEQ additive
-#line 1014 "parser/parser_rules.y"
+  case 185: // relational: relational TOK_GEQ additive
+#line 1198 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::greater_equal, yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2842 "parser/parser.cpp"
+#line 3206 "parser/parser.cpp"
     break;
 
-  case 154: // additive: multiplicative
-#line 1019 "parser/parser_rules.y"
+  case 186: // additive: multiplicative
+#line 1203 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2848 "parser/parser.cpp"
+#line 3212 "parser/parser.cpp"
     break;
 
-  case 155: // additive: additive TOK_PLUS multiplicative
-#line 1021 "parser/parser_rules.y"
+  case 187: // additive: additive TOK_PLUS multiplicative
+#line 1205 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::add,      yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2854 "parser/parser.cpp"
+#line 3218 "parser/parser.cpp"
     break;
 
-  case 156: // additive: additive TOK_MINUS multiplicative
-#line 1023 "parser/parser_rules.y"
+  case 188: // additive: additive TOK_MINUS multiplicative
+#line 1207 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::subtract, yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2860 "parser/parser.cpp"
+#line 3224 "parser/parser.cpp"
     break;
 
-  case 157: // multiplicative: unary
-#line 1028 "parser/parser_rules.y"
+  case 189: // multiplicative: unary
+#line 1212 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2866 "parser/parser.cpp"
+#line 3230 "parser/parser.cpp"
     break;
 
-  case 158: // multiplicative: multiplicative TOK_STAR unary
-#line 1030 "parser/parser_rules.y"
+  case 190: // multiplicative: multiplicative TOK_STAR unary
+#line 1214 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::multiply, yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2872 "parser/parser.cpp"
+#line 3236 "parser/parser.cpp"
     break;
 
-  case 159: // multiplicative: multiplicative TOK_SLASH unary
-#line 1032 "parser/parser_rules.y"
+  case 191: // multiplicative: multiplicative TOK_SLASH unary
+#line 1216 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::divide,   yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2878 "parser/parser.cpp"
+#line 3242 "parser/parser.cpp"
     break;
 
-  case 160: // multiplicative: multiplicative TOK_MODULO unary
-#line 1034 "parser/parser_rules.y"
+  case 192: // multiplicative: multiplicative TOK_MODULO unary
+#line 1218 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_binary_op_expr(ast::BinaryOp::modulo,   yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2884 "parser/parser.cpp"
+#line 3248 "parser/parser.cpp"
     break;
 
-  case 161: // unary: TOK_MINUS unary
-#line 1039 "parser/parser_rules.y"
+  case 193: // unary: TOK_MINUS unary
+#line 1223 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_unary_op_expr(ast::UnaryOp::negation,     yystack_[0].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
-#line 2890 "parser/parser.cpp"
+#line 3254 "parser/parser.cpp"
     break;
 
-  case 162: // unary: TOK_NEGATION unary
-#line 1041 "parser/parser_rules.y"
+  case 194: // unary: TOK_NEGATION unary
+#line 1225 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_unary_op_expr(ast::UnaryOp::logical_not,  yystack_[0].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
-#line 2896 "parser/parser.cpp"
+#line 3260 "parser/parser.cpp"
     break;
 
-  case 163: // unary: TOK_INC unary
-#line 1043 "parser/parser_rules.y"
+  case 195: // unary: TOK_INC unary
+#line 1227 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_unary_op_expr(ast::UnaryOp::preincrement, yystack_[0].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
-#line 2902 "parser/parser.cpp"
+#line 3266 "parser/parser.cpp"
     break;
 
-  case 164: // unary: TOK_DEC unary
-#line 1045 "parser/parser_rules.y"
+  case 196: // unary: TOK_DEC unary
+#line 1229 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_unary_op_expr(ast::UnaryOp::predecrement, yystack_[0].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
-#line 2908 "parser/parser.cpp"
+#line 3272 "parser/parser.cpp"
     break;
 
-  case 165: // unary: postfix
-#line 1047 "parser/parser_rules.y"
+  case 197: // unary: TOK_STAR unary
+#line 1231 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = ast.mk_unary_op_expr(ast::UnaryOp::deref,        yystack_[0].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
+#line 3278 "parser/parser.cpp"
+    break;
+
+  case 198: // unary: TOK_AMP unary
+#line 1233 "parser/parser_rules.y"
+      { yylhs.value.as < ast::Expr* > () = ast.mk_unary_op_expr(ast::UnaryOp::addr_of,      yystack_[0].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
+#line 3284 "parser/parser.cpp"
+    break;
+
+  case 199: // unary: TOK_AMP TOK_MUT unary
+#line 1235 "parser/parser_rules.y"
+      { yylhs.value.as < ast::Expr* > () = ast.mk_unary_op_expr(ast::UnaryOp::addr_of_mut,  yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
+#line 3290 "parser/parser.cpp"
+    break;
+
+  case 200: // unary: postfix
+#line 1237 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2914 "parser/parser.cpp"
+#line 3296 "parser/parser.cpp"
     break;
 
-  case 166: // postfix: primary
-#line 1052 "parser/parser_rules.y"
+  case 201: // postfix: primary
+#line 1242 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = yystack_[0].value.as < ast::Expr* > (); }
-#line 2920 "parser/parser.cpp"
+#line 3302 "parser/parser.cpp"
     break;
 
-  case 167: // postfix: postfix type_args TOK_LPAR arg_list_opt TOK_RPAR
-#line 1054 "parser/parser_rules.y"
+  case 202: // postfix: postfix type_args TOK_LPAR arg_list_opt TOK_RPAR
+#line 1244 "parser/parser_rules.y"
     {
       yylhs.value.as < ast::Expr* > () = ast.mk_call_expr(yystack_[4].value.as < ast::Expr* > (), std::move(yystack_[3].value.as < std::vector<ast::TypeExpr*> > ()), std::move(yystack_[1].value.as < std::vector<ast::Expr*> > ()), combine(yystack_[4].location, yystack_[0].location));
     }
-#line 2928 "parser/parser.cpp"
+#line 3310 "parser/parser.cpp"
     break;
 
-  case 168: // postfix: postfix TOK_LBRACK expr TOK_RBRACK
-#line 1058 "parser/parser_rules.y"
+  case 203: // postfix: postfix TOK_LBRACK expr TOK_RBRACK
+#line 1248 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_index(yystack_[3].value.as < ast::Expr* > (), yystack_[1].value.as < ast::Expr* > (), combine(yystack_[3].location, yystack_[0].location)); }
-#line 2934 "parser/parser.cpp"
+#line 3316 "parser/parser.cpp"
     break;
 
-  case 169: // postfix: postfix TOK_DOT ident
-#line 1060 "parser/parser_rules.y"
+  case 204: // postfix: postfix TOK_DOT ident_no_self
+#line 1250 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_field_expr(yystack_[2].value.as < ast::Expr* > (), yystack_[0].value.as < Str > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 2940 "parser/parser.cpp"
+#line 3322 "parser/parser.cpp"
     break;
 
-  case 170: // postfix: postfix TOK_INC
-#line 1062 "parser/parser_rules.y"
+  case 205: // postfix: postfix TOK_INC
+#line 1252 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_unary_op_expr(ast::UnaryOp::postincrement, yystack_[1].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
-#line 2946 "parser/parser.cpp"
+#line 3328 "parser/parser.cpp"
     break;
 
-  case 171: // postfix: postfix TOK_DEC
-#line 1064 "parser/parser_rules.y"
+  case 206: // postfix: postfix TOK_DEC
+#line 1254 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_unary_op_expr(ast::UnaryOp::postdecrement, yystack_[1].value.as < ast::Expr* > (), combine(yystack_[1].location, yystack_[0].location)); }
-#line 2952 "parser/parser.cpp"
+#line 3334 "parser/parser.cpp"
     break;
 
-  case 172: // postfix: postfix type_args TOK_LCBRA field_inits_opt TOK_RCBRA
-#line 1066 "parser/parser_rules.y"
+  case 207: // postfix: postfix type_args TOK_LCBRA field_inits_opt TOK_RCBRA
+#line 1256 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_struct_literal_expr(yystack_[4].value.as < ast::Expr* > (), std::move(yystack_[3].value.as < std::vector<ast::TypeExpr*> > ()), std::move(yystack_[1].value.as < std::vector<ast::FieldInitExpr*> > ()), combine(yystack_[4].location, yystack_[1].location)); }
-#line 2958 "parser/parser.cpp"
+#line 3340 "parser/parser.cpp"
     break;
 
-  case 173: // arg_list_opt: %empty
-#line 1071 "parser/parser_rules.y"
+  case 208: // postfix: TOK_LBRACK array_elems_opt TOK_RBRACK
+#line 1258 "parser/parser_rules.y"
+      {
+        yylhs.value.as < ast::Expr* > () = static_cast<ast::Expr*>(
+               ast.mk_array_literal_expr(std::move(yystack_[1].value.as < std::vector<ast::Expr*> > ()), combine(yystack_[2].location, yystack_[0].location))
+             );
+      }
+#line 3350 "parser/parser.cpp"
+    break;
+
+  case 209: // arg_list_opt: %empty
+#line 1267 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::Expr*> > () = std::vector<ast::Expr*>{}; }
-#line 2964 "parser/parser.cpp"
+#line 3356 "parser/parser.cpp"
     break;
 
-  case 174: // arg_list_opt: arg_list
-#line 1073 "parser/parser_rules.y"
+  case 210: // arg_list_opt: arg_list
+#line 1269 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::Expr*> > () = std::move(yystack_[0].value.as < std::vector<ast::Expr*> > ()); }
-#line 2970 "parser/parser.cpp"
+#line 3362 "parser/parser.cpp"
     break;
 
-  case 175: // arg_list: expr
-#line 1078 "parser/parser_rules.y"
+  case 211: // arg_list: expr
+#line 1274 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::Expr*> > () = std::vector<ast::Expr*>{ yystack_[0].value.as < ast::Expr* > () }; }
-#line 2976 "parser/parser.cpp"
+#line 3368 "parser/parser.cpp"
     break;
 
-  case 176: // arg_list: arg_list TOK_COMMA expr
-#line 1080 "parser/parser_rules.y"
+  case 212: // arg_list: arg_list TOK_COMMA expr
+#line 1276 "parser/parser_rules.y"
     { yystack_[2].value.as < std::vector<ast::Expr*> > ().push_back(yystack_[0].value.as < ast::Expr* > ()); yylhs.value.as < std::vector<ast::Expr*> > () = std::move(yystack_[2].value.as < std::vector<ast::Expr*> > ()); }
-#line 2982 "parser/parser.cpp"
+#line 3374 "parser/parser.cpp"
     break;
 
-  case 177: // arg_list: arg_list TOK_COMMA
-#line 1082 "parser/parser_rules.y"
+  case 213: // arg_list: arg_list TOK_COMMA
+#line 1278 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::Expr*> > () = std::move(yystack_[1].value.as < std::vector<ast::Expr*> > ()); }
-#line 2988 "parser/parser.cpp"
+#line 3380 "parser/parser.cpp"
     break;
 
-  case 178: // int_literal_type_opt: %empty
-#line 1090 "parser/parser_rules.y"
-                    { yylhs.value.as < std::optional<kl::rt::IntKind> > () = std::nullopt; }
-#line 2994 "parser/parser.cpp"
+  case 214: // int_literal_type_opt: %empty
+#line 1286 "parser/parser_rules.y"
+               { yylhs.value.as < std::optional<kl::rt::IntKind> > () = std::nullopt; }
+#line 3386 "parser/parser.cpp"
     break;
 
-  case 179: // int_literal_type_opt: TOK_AS TOK_I8
-#line 1091 "parser/parser_rules.y"
+  case 215: // int_literal_type_opt: TOK_AS TOK_I8
+#line 1287 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::I8; }
-#line 3000 "parser/parser.cpp"
+#line 3392 "parser/parser.cpp"
     break;
 
-  case 180: // int_literal_type_opt: TOK_AS TOK_U8
-#line 1092 "parser/parser_rules.y"
+  case 216: // int_literal_type_opt: TOK_AS TOK_U8
+#line 1288 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::U8; }
-#line 3006 "parser/parser.cpp"
+#line 3398 "parser/parser.cpp"
     break;
 
-  case 181: // int_literal_type_opt: TOK_AS TOK_I16
-#line 1093 "parser/parser_rules.y"
+  case 217: // int_literal_type_opt: TOK_AS TOK_I16
+#line 1289 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::I16; }
-#line 3012 "parser/parser.cpp"
+#line 3404 "parser/parser.cpp"
     break;
 
-  case 182: // int_literal_type_opt: TOK_AS TOK_U16
-#line 1094 "parser/parser_rules.y"
+  case 218: // int_literal_type_opt: TOK_AS TOK_U16
+#line 1290 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::U16; }
-#line 3018 "parser/parser.cpp"
+#line 3410 "parser/parser.cpp"
     break;
 
-  case 183: // int_literal_type_opt: TOK_AS TOK_I32
-#line 1095 "parser/parser_rules.y"
+  case 219: // int_literal_type_opt: TOK_AS TOK_I32
+#line 1291 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::I32; }
-#line 3024 "parser/parser.cpp"
+#line 3416 "parser/parser.cpp"
     break;
 
-  case 184: // int_literal_type_opt: TOK_AS TOK_U32
-#line 1096 "parser/parser_rules.y"
+  case 220: // int_literal_type_opt: TOK_AS TOK_U32
+#line 1292 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::U32; }
-#line 3030 "parser/parser.cpp"
+#line 3422 "parser/parser.cpp"
     break;
 
-  case 185: // int_literal_type_opt: TOK_AS TOK_I64
-#line 1097 "parser/parser_rules.y"
+  case 221: // int_literal_type_opt: TOK_AS TOK_I64
+#line 1293 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::I64; }
-#line 3036 "parser/parser.cpp"
+#line 3428 "parser/parser.cpp"
     break;
 
-  case 186: // int_literal_type_opt: TOK_AS TOK_U64
-#line 1098 "parser/parser_rules.y"
+  case 222: // int_literal_type_opt: TOK_AS TOK_U64
+#line 1294 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::U64; }
-#line 3042 "parser/parser.cpp"
+#line 3434 "parser/parser.cpp"
     break;
 
-  case 187: // int_literal_type_opt: TOK_AS TOK_I128
-#line 1099 "parser/parser_rules.y"
+  case 223: // int_literal_type_opt: TOK_AS TOK_I128
+#line 1295 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::I128; }
-#line 3048 "parser/parser.cpp"
+#line 3440 "parser/parser.cpp"
     break;
 
-  case 188: // int_literal_type_opt: TOK_AS TOK_U128
-#line 1100 "parser/parser_rules.y"
+  case 224: // int_literal_type_opt: TOK_AS TOK_U128
+#line 1296 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::IntKind> > () = kl::rt::IntKind::U128; }
-#line 3054 "parser/parser.cpp"
+#line 3446 "parser/parser.cpp"
     break;
 
-  case 189: // float_literal_type_opt: %empty
-#line 1104 "parser/parser_rules.y"
-                    { yylhs.value.as < std::optional<kl::rt::FloatKind> > () = std::nullopt; }
-#line 3060 "parser/parser.cpp"
+  case 225: // float_literal_type_opt: %empty
+#line 1300 "parser/parser_rules.y"
+               { yylhs.value.as < std::optional<kl::rt::FloatKind> > () = std::nullopt; }
+#line 3452 "parser/parser.cpp"
     break;
 
-  case 190: // float_literal_type_opt: TOK_AS TOK_F32
-#line 1105 "parser/parser_rules.y"
+  case 226: // float_literal_type_opt: TOK_AS TOK_F32
+#line 1301 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::FloatKind> > () = kl::rt::FloatKind::F32; }
-#line 3066 "parser/parser.cpp"
+#line 3458 "parser/parser.cpp"
     break;
 
-  case 191: // float_literal_type_opt: TOK_AS TOK_F64
-#line 1106 "parser/parser_rules.y"
+  case 227: // float_literal_type_opt: TOK_AS TOK_F64
+#line 1302 "parser/parser_rules.y"
                     { yylhs.value.as < std::optional<kl::rt::FloatKind> > () = kl::rt::FloatKind::F64; }
-#line 3072 "parser/parser.cpp"
+#line 3464 "parser/parser.cpp"
     break;
 
-  case 192: // primary: path_expr
-#line 1115 "parser/parser_rules.y"
+  case 228: // primary: ident_no_self
+#line 1311 "parser/parser_rules.y"
+    { yylhs.value.as < ast::Expr* > () = ast.mk_ref_expr(yystack_[0].value.as < Str > (), yystack_[0].location); }
+#line 3470 "parser/parser.cpp"
+    break;
+
+  case 229: // primary: qpath_expr
+#line 1313 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = static_cast<ast::Expr*>(yystack_[0].value.as < ast::PathExpr* > ()); }
-#line 3078 "parser/parser.cpp"
+#line 3476 "parser/parser.cpp"
     break;
 
-  case 193: // primary: TOK_INT_LITERAL int_literal_type_opt
-#line 1117 "parser/parser_rules.y"
+  case 230: // primary: TOK_INT_LITERAL int_literal_type_opt
+#line 1315 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_int_literal_expr(yystack_[1].value.as < Str > (), yystack_[0].value.as < std::optional<kl::rt::IntKind> > (), yystack_[1].location); }
-#line 3084 "parser/parser.cpp"
+#line 3482 "parser/parser.cpp"
     break;
 
-  case 194: // primary: TOK_FLOAT_LITERAL float_literal_type_opt
-#line 1119 "parser/parser_rules.y"
+  case 231: // primary: TOK_FLOAT_LITERAL float_literal_type_opt
+#line 1317 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_float_literal_expr(yystack_[1].value.as < Str > (), yystack_[0].value.as < std::optional<kl::rt::FloatKind> > (), yystack_[1].location); }
-#line 3090 "parser/parser.cpp"
+#line 3488 "parser/parser.cpp"
     break;
 
-  case 195: // primary: TOK_STRING_LITERAL
-#line 1121 "parser/parser_rules.y"
+  case 232: // primary: TOK_STRING_LITERAL
+#line 1319 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_str_literal_expr(yystack_[0].value.as < Str > (), yystack_[0].location); }
-#line 3096 "parser/parser.cpp"
+#line 3494 "parser/parser.cpp"
     break;
 
-  case 196: // primary: TOK_BOOL_LITERAL
-#line 1123 "parser/parser_rules.y"
+  case 233: // primary: TOK_BOOL_LITERAL
+#line 1321 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_bool_literal_expr(yystack_[0].value.as < kl::rt::boolean > (), yystack_[0].location); }
-#line 3102 "parser/parser.cpp"
+#line 3500 "parser/parser.cpp"
     break;
 
-  case 197: // primary: TOK_CHAR_LITERAL
-#line 1125 "parser/parser_rules.y"
+  case 234: // primary: TOK_CHAR_LITERAL
+#line 1323 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = ast.mk_char_literal_expr(yystack_[0].value.as < kl::rt::character > (), yystack_[0].location); }
-#line 3108 "parser/parser.cpp"
+#line 3506 "parser/parser.cpp"
     break;
 
-  case 198: // primary: TOK_LPAR expr TOK_RPAR
-#line 1127 "parser/parser_rules.y"
+  case 235: // primary: TOK_LPAR expr TOK_RPAR
+#line 1325 "parser/parser_rules.y"
     { yylhs.value.as < ast::Expr* > () = yystack_[1].value.as < ast::Expr* > (); }
-#line 3114 "parser/parser.cpp"
+#line 3512 "parser/parser.cpp"
     break;
 
-  case 199: // field_inits_opt: %empty
-#line 1132 "parser/parser_rules.y"
+  case 236: // field_inits_opt: %empty
+#line 1330 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::FieldInitExpr*> > () = std::vector<ast::FieldInitExpr*>{}; }
-#line 3120 "parser/parser.cpp"
+#line 3518 "parser/parser.cpp"
     break;
 
-  case 200: // field_inits_opt: field_inits
-#line 1134 "parser/parser_rules.y"
+  case 237: // field_inits_opt: field_inits
+#line 1332 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::FieldInitExpr*> > () = std::move(yystack_[0].value.as < std::vector<ast::FieldInitExpr*> > ()); }
-#line 3126 "parser/parser.cpp"
+#line 3524 "parser/parser.cpp"
     break;
 
-  case 201: // field_inits: field_init
-#line 1139 "parser/parser_rules.y"
+  case 238: // field_inits: field_init
+#line 1337 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::FieldInitExpr*> > () = std::vector<ast::FieldInitExpr*>{ yystack_[0].value.as < ast::FieldInitExpr* > () }; }
-#line 3132 "parser/parser.cpp"
+#line 3530 "parser/parser.cpp"
     break;
 
-  case 202: // field_inits: field_inits TOK_COMMA field_init
-#line 1141 "parser/parser_rules.y"
+  case 239: // field_inits: field_inits TOK_COMMA field_init
+#line 1339 "parser/parser_rules.y"
     { yystack_[2].value.as < std::vector<ast::FieldInitExpr*> > ().push_back(yystack_[0].value.as < ast::FieldInitExpr* > ()); yylhs.value.as < std::vector<ast::FieldInitExpr*> > () = std::move(yystack_[2].value.as < std::vector<ast::FieldInitExpr*> > ()); }
-#line 3138 "parser/parser.cpp"
+#line 3536 "parser/parser.cpp"
     break;
 
-  case 203: // field_inits: field_inits TOK_COMMA
-#line 1143 "parser/parser_rules.y"
+  case 240: // field_inits: field_inits TOK_COMMA
+#line 1341 "parser/parser_rules.y"
     { yylhs.value.as < std::vector<ast::FieldInitExpr*> > () = std::move(yystack_[1].value.as < std::vector<ast::FieldInitExpr*> > ()); }
-#line 3144 "parser/parser.cpp"
+#line 3542 "parser/parser.cpp"
     break;
 
-  case 204: // field_init: ident TOK_COLON expr
-#line 1148 "parser/parser_rules.y"
+  case 241: // field_init: ident_no_self TOK_COLON expr
+#line 1346 "parser/parser_rules.y"
     { yylhs.value.as < ast::FieldInitExpr* > () = ast.mk_field_init_expr(yystack_[2].value.as < Str > (), yystack_[0].value.as < ast::Expr* > (), combine(yystack_[2].location, yystack_[0].location)); }
-#line 3150 "parser/parser.cpp"
+#line 3548 "parser/parser.cpp"
     break;
 
 
-#line 3154 "parser/parser.cpp"
+#line 3552 "parser/parser.cpp"
 
             default:
               break;
@@ -3639,298 +4037,348 @@ namespace yy {
   }
 
 
-  const short parser::yypact_ninf_ = -147;
+  const short parser::yypact_ninf_ = -304;
 
-  const signed char parser::yytable_ninf_ = -29;
+  const signed char parser::yytable_ninf_ = -71;
 
   const short
   parser::yypact_[] =
   {
-      -2,   -30,    12,  -147,  -147,   -11,    44,  -147,  -147,   -30,
-      83,  -147,   -30,    69,    83,  -147,   -14,  -147,    57,  -147,
-      93,  -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,   -30,
-    -147,   -30,   -30,  -147,    50,    -3,    -3,  -147,   -30,    60,
-      65,  -147,   -21,  -147,    -5,  -147,   -30,   -30,  -147,   -30,
-      89,    98,    -5,  -147,    97,    90,   113,  -147,  -147,   100,
-     332,  -147,  -147,   332,   112,   -30,   332,  -147,  -147,  -147,
-    -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,
-    -147,   332,   115,   114,   130,  -147,   136,  -147,  -147,  -147,
-    -147,   332,    86,  -147,   132,   139,  -147,  -147,   353,   332,
-    -147,  -147,    40,  -147,   289,  -147,  -147,  -147,  -147,   136,
-      38,  -147,   162,   164,  -147,  -147,  -147,    40,    40,    40,
-      40,    40,  -147,   141,  -147,  -147,   116,   118,    67,    47,
-      92,    81,  -147,    14,  -147,   156,   158,   157,    40,   -30,
-     -30,    13,   155,   159,   289,   160,  -147,   166,   289,  -147,
-    -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,
-    -147,  -147,  -147,  -147,  -147,  -147,   165,   332,  -147,    95,
-    -147,   131,  -147,   163,  -147,   102,  -147,  -147,  -147,  -147,
-      40,    40,    40,    40,    40,    40,    40,    40,    40,    40,
-      40,    40,    40,    40,   -30,  -147,  -147,    40,    40,    40,
-      40,    40,   -13,    40,    40,   289,   202,  -147,   167,   168,
-     169,   -30,   -30,   170,  -147,  -147,   175,   332,  -147,  -147,
-    -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,
-    -147,  -147,  -147,  -147,  -147,   118,    67,    47,    47,    92,
-      92,    92,    92,    81,    81,  -147,  -147,  -147,   172,  -147,
-    -147,  -147,  -147,  -147,  -147,    40,   -30,   180,   181,   178,
-     184,  -147,   332,   332,   177,   179,   332,  -147,   -41,  -147,
-    -147,   185,   161,   186,   183,   187,  -147,   188,   191,  -147,
-      40,   -35,   -32,   332,   332,   -29,  -147,    40,  -147,    40,
-      40,  -147,   -30,   289,  -147,   289,  -147,   195,  -147,    40,
-    -147,    40,   -26,    10,  -147,    40,   182,  -147,  -147,  -147,
-     192,   235,   194,   193,   198,   199,  -147,    40,  -147,    40,
-     200,  -147,  -147,    11,  -147,  -147,  -147,  -147,  -147,  -147,
-     201,   203,  -147,   209,   289,  -147,  -147,  -147,    40,   196,
-     225,  -147,   223,   289,  -147,   197,  -147
+      13,    90,   106,  -304,  -304,  -304,    64,    93,  -304,  -304,
+      90,   115,  -304,    90,   105,   115,  -304,     9,    79,  -304,
+     110,  -304,   112,  -304,  -304,  -304,  -304,  -304,  -304,  -304,
+    -304,  -304,   114,  -304,   114,    18,   114,   114,   114,   153,
+    -304,  -304,   121,  -304,    25,  -304,  -304,  -304,  -304,  -304,
+    -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,
+    -304,    18,    81,   129,    11,  -304,   131,  -304,  -304,  -304,
+      79,    79,    79,   114,  -304,   114,  -304,   145,  -304,  -304,
+     421,    18,  -304,    18,    14,   376,   -24,   161,   179,   183,
+    -304,  -304,   131,    38,  -304,   180,   223,  -304,   181,    16,
+    -304,   176,   213,   219,  -304,  -304,  -304,   376,   376,   376,
+     376,   376,   279,   376,   376,   184,  -304,  -304,   185,   198,
+    -304,  -304,   174,   173,   123,    55,   132,   111,   206,   178,
+    -304,    54,  -304,    17,    39,    39,    18,  -304,    14,   114,
+    -304,  -304,   140,  -304,   172,  -304,   205,   204,   203,  -304,
+    -304,  -304,  -304,   376,  -304,  -304,  -304,    90,    90,  -304,
+     376,   376,   376,   376,   376,   376,   376,   376,   376,   376,
+     376,   376,   376,   376,   376,   376,   376,   376,   376,   114,
+    -304,  -304,    26,   114,   202,   207,    54,  -304,   249,  -304,
+     209,    20,  -304,  -304,    47,   210,   214,   211,  -304,  -304,
+     218,  -304,   215,    79,  -304,  -304,  -304,  -304,  -304,  -304,
+    -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,   376,  -304,
+    -304,  -304,   173,  -304,   123,    55,    55,   132,   132,   132,
+     132,   111,   111,  -304,  -304,  -304,  -304,  -304,  -304,  -304,
+    -304,   221,  -304,   376,   114,   217,    18,  -304,  -304,   114,
+    -304,  -304,   233,  -304,    18,   220,    39,   220,  -304,   229,
+    -304,  -304,  -304,   231,   228,   227,   237,   238,  -304,    18,
+     240,    79,  -304,  -304,    18,   241,  -304,   242,    39,  -304,
+     376,   376,  -304,   114,   243,  -304,   248,  -304,   141,  -304,
+    -304,   250,  -304,  -304,  -304,  -304,    39,   252,   256,   253,
+     376,   114,   114,    24,   254,   255,   141,   257,  -304,   258,
+     141,  -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,
+    -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,   259,   220,
+     263,   376,   376,   141,   311,  -304,   261,   272,   274,   114,
+     114,   275,  -304,  -304,   266,    18,  -304,  -304,  -304,   241,
+     220,   283,   284,   281,   287,  -304,    18,    18,   282,   291,
+      18,  -304,   -18,  -304,    97,   285,   288,  -304,   376,    21,
+      29,    18,    18,    30,  -304,   376,  -304,  -304,   141,  -304,
+     141,  -304,   290,  -304,   376,  -304,   376,    31,    36,  -304,
+     376,   295,   298,   353,   307,   306,   310,   313,  -304,   376,
+    -304,   376,   314,  -304,  -304,    19,  -304,  -304,  -304,  -304,
+    -304,  -304,   315,   316,  -304,   318,   141,  -304,  -304,  -304,
+     376,   309,   323,  -304,   321,   141,  -304,   322,  -304
   };
 
   const unsigned char
   parser::yydefact_[] =
   {
-       0,     0,     0,     2,    13,    12,     0,    10,     1,     0,
-       4,    11,     0,    25,     5,     6,     0,    26,     0,     3,
-      25,    29,    31,    33,    34,    32,    37,    38,     7,     0,
-       8,     0,     0,    30,     0,    14,    14,     9,     0,     0,
-       0,    19,     0,    16,    41,    40,    48,    18,    15,     0,
-       0,     0,    42,    43,     0,     0,    49,    50,    17,     0,
-       0,    39,    44,     0,     0,    52,     0,    65,    66,    67,
-      68,    69,    70,    71,    72,    73,    74,    75,    76,    77,
-      78,     0,    57,    20,     0,    54,    55,    60,    62,    63,
-      53,     0,     0,    51,     0,     0,    59,    58,     0,     0,
-      79,    45,     0,    47,    87,    36,    35,    46,    64,    56,
-       0,    22,   178,   189,   195,   196,   197,     0,     0,     0,
-       0,     0,   192,     0,   132,   135,   141,   142,   144,   146,
-     149,   154,   157,   165,   166,     0,     0,     0,   133,     0,
-       0,     0,     0,     0,    87,    10,    98,     0,    88,    89,
-      91,    92,    94,    99,   100,   101,    95,    96,    97,    93,
-     114,   115,   116,   117,   118,   119,     0,    24,    21,     0,
-     193,     0,   194,     0,   162,   165,   163,   164,   161,    61,
+       0,     0,     0,     2,    17,    18,    12,     0,    10,     1,
+       0,     4,    11,     0,    30,     5,     6,     0,    19,    31,
+       0,     3,    30,    34,    36,    37,    38,    46,    47,    39,
+      40,     7,     0,     8,     0,     0,     0,     0,     0,     0,
+      35,    16,     0,    24,     0,    21,    96,    97,    98,    99,
+     100,   101,   102,   103,   104,   105,   106,   107,   108,   109,
+     110,     0,    88,    25,     0,    85,    86,    91,    93,    94,
+      19,    19,    19,     0,     9,    23,    20,     0,    90,    89,
+       0,     0,   111,     0,    30,     0,     0,     0,     0,     0,
+      22,    95,    87,     0,    27,     0,     0,    73,     0,    30,
+      71,    16,   214,   225,   232,   233,   234,     0,    49,     0,
+       0,     0,     0,     0,     0,    15,   229,   228,     0,     0,
+     164,   167,   173,   174,   176,   178,   181,   186,   189,   200,
+     201,    55,    54,    30,    75,    75,    29,    26,    30,     0,
+      68,    72,     0,   230,     0,   231,     0,     0,    50,    51,
+     194,   195,   196,     0,   198,   197,   193,     0,     0,    92,
        0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,   170,   171,     0,     0,     0,
-       0,     0,     0,     0,     0,    87,     0,   134,     0,     0,
-       0,     0,     0,     0,   111,   112,     0,     0,    81,    90,
-     113,    23,   179,   180,   181,   182,   183,   184,   185,   186,
-     187,   188,   190,   191,   198,   143,   145,   147,   148,   150,
-     151,   152,   153,   155,   156,   158,   159,   160,     0,   169,
-     136,   137,   138,   139,   140,   173,   199,     0,     0,     0,
-       0,   102,     0,     0,     0,     0,     0,    80,     0,   168,
-     175,     0,   174,     0,     0,   200,   201,     0,     0,    86,
-       0,     0,     0,     0,     0,     0,   120,     0,   167,   177,
-       0,   172,   203,    87,   104,    87,   109,     0,   124,     0,
-     122,     0,     0,     0,   126,     0,     0,   176,   204,   202,
-       0,   107,     0,     0,     0,     0,   130,     0,   128,     0,
-       0,   121,    82,     0,   105,   103,    85,   110,   125,   123,
-       0,     0,   127,     0,    87,   108,   131,   129,     0,     0,
-       0,    84,     0,    87,   106,     0,    83
+       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+     205,   206,     0,     0,     0,     0,    56,    57,     0,    66,
+       0,    30,    64,    82,     0,     0,     0,    76,    77,    80,
+       0,    28,     0,    19,   215,   216,   217,   218,   219,   220,
+     221,   222,   223,   224,   226,   227,   235,   208,    53,   199,
+      14,    13,   175,   189,   177,   179,   180,   182,   183,   184,
+     185,   187,   188,   190,   191,   192,   168,   169,   170,   171,
+     172,     0,   204,   209,   236,     0,     0,    48,    58,     0,
+      61,    65,     0,    83,     0,     0,    79,     0,    67,     0,
+      52,   203,   211,     0,   210,     0,     0,   237,   238,     0,
+       0,    19,    84,    81,     0,     0,    78,     0,    75,   202,
+     213,     0,   207,   240,     0,    59,     0,    74,   119,    41,
+      42,     0,   212,   241,   239,    60,    75,     0,     0,     0,
+     165,     0,     0,     0,     0,     0,   119,   228,   130,     0,
+     120,   121,   123,   124,   126,   131,   132,   133,   127,   128,
+     129,   125,   146,   147,   148,   149,   150,   151,     0,     0,
+       0,     0,     0,   119,     0,   166,     0,     0,     0,     0,
+       0,     0,   143,   144,     0,     0,   113,   122,   145,     0,
+       0,     0,     0,     0,     0,   134,     0,     0,     0,     0,
+       0,   112,     0,    43,     0,     0,     0,   118,     0,     0,
+       0,     0,     0,     0,   152,     0,    44,    45,   119,   136,
+     119,   141,     0,   156,     0,   154,     0,     0,     0,   158,
+       0,     0,     0,   139,     0,     0,     0,     0,   162,     0,
+     160,     0,     0,   153,   114,     0,   137,   135,   117,   142,
+     157,   155,     0,     0,   159,     0,   119,   140,   163,   161,
+       0,     0,     0,   116,     0,   119,   138,     0,   115
   };
 
   const short
   parser::yypgoto_[] =
   {
-    -147,  -147,  -147,  -147,  -147,   258,  -147,     5,    -9,   237,
-    -147,   227,   125,  -147,  -147,  -147,  -147,   255,  -147,  -147,
-    -147,  -147,  -147,  -147,  -147,  -147,   224,  -147,  -147,  -147,
-     212,   -50,  -147,  -147,   189,  -147,  -147,  -147,  -147,  -147,
-    -147,  -147,  -147,  -147,  -147,  -143,  -147,   133,  -147,  -147,
-    -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,  -147,
-    -147,  -147,  -147,  -147,  -147,  -147,  -147,   -92,  -147,  -146,
-    -147,  -147,    99,   101,    -4,   -10,   -20,  -116,    74,  -147,
-    -147,  -147,  -147,  -147,  -147,  -147,   -12
+    -304,  -304,  -304,  -304,  -304,   359,  -304,   120,  -304,  -304,
+     -32,     7,   -61,  -304,   301,   251,  -304,     4,  -304,  -304,
+     355,  -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,
+    -304,  -304,   195,  -304,  -304,  -304,   191,  -304,   245,  -304,
+     286,  -236,  -116,  -304,   130,  -304,   -54,  -304,  -304,   308,
+    -304,  -304,  -304,  -304,  -248,  -304,  -304,  -304,  -304,  -304,
+    -303,  -304,    77,  -304,  -304,  -304,  -304,  -304,  -304,  -304,
+    -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,  -304,
+    -304,  -304,   -84,  -304,  -161,  -304,  -304,   230,   234,    56,
+     -26,    53,   244,  -304,  -304,  -304,  -304,  -304,  -304,  -304,
+    -304,   108
   };
 
   const short
   parser::yydefgoto_[] =
   {
-       0,     2,     3,    13,    14,    15,     5,   122,     7,    39,
-      42,    43,   202,   110,    18,    19,    20,    21,    22,    23,
-      24,    25,    26,    27,    51,    52,    53,    92,    55,    56,
-      57,    84,    85,    98,    86,    87,    88,    89,   146,   106,
-     294,   344,   335,   296,   206,   147,   148,   149,   150,   151,
-     152,   153,   311,   324,   325,   154,   155,   156,   157,   158,
-     159,   160,   161,   162,   163,   164,   165,   166,   208,   124,
-     125,   126,   127,   128,   129,   130,   131,   132,   133,   271,
-     272,   170,   172,   134,   274,   275,   276
+       0,     2,     3,    14,    15,    16,     6,    63,   115,   116,
+     117,   118,    35,    44,    45,    82,    93,    96,    21,    22,
+      23,    24,    25,    97,   189,    26,    27,   147,   148,    28,
+     185,   186,   187,    29,   190,   191,   192,    30,    98,    99,
+     100,   275,   196,   197,   198,   199,    64,    65,    80,    66,
+      67,    68,    69,   308,   289,   379,   426,   417,   381,   334,
+     309,   310,   311,   312,   313,   314,   315,   393,   406,   407,
+     316,   317,   318,   319,   320,   321,   322,   323,   324,   325,
+     326,   327,   328,   336,   120,   121,   122,   123,   124,   125,
+     126,   127,   128,   129,   263,   264,   143,   145,   130,   266,
+     267,   268
   };
 
   const short
   parser::yytable_[] =
   {
-      11,   216,   174,   176,   177,   178,     6,     4,    29,   286,
-     123,    49,     8,    90,   333,   298,    94,    16,   300,     1,
-      34,   304,    35,    36,   316,   173,   211,   212,    47,    41,
-     255,    95,     4,   287,   256,    50,    30,    54,    41,   299,
-      59,   103,   301,    50,     9,   305,   207,    48,   317,   111,
-       4,   250,   251,   252,   253,   254,    54,   -20,   334,   193,
-     318,   -20,   259,    38,    31,    83,   194,    32,    83,   -27,
-      99,    83,   195,   196,   245,   246,   247,     4,   112,   113,
-     114,   115,   116,   117,   319,    17,    83,   167,   197,   198,
-     199,   200,   201,   -28,    10,   145,    83,   118,   119,   120,
-      37,   248,    12,    83,    83,   121,   168,    44,    46,    17,
-      45,   257,   258,   184,   185,   186,   187,   221,   222,   223,
-     224,   225,   226,   227,   228,   229,   230,   231,    96,    97,
-     209,   210,   213,   104,    64,   145,   105,   182,   183,   145,
-      60,   306,   190,   191,   192,   -20,    61,   193,    63,   -20,
-     310,    66,   312,   314,   194,   315,   188,   189,    99,   320,
-     195,   196,    65,   270,   232,   233,    91,   268,   243,   244,
-      99,   330,    83,   331,   239,   240,   241,   242,   237,   238,
-     101,   102,   107,   108,   169,   249,   171,   179,   297,   180,
-     181,   339,   175,   175,   175,   175,   145,   307,   308,   203,
-     345,   204,   264,   265,   205,   214,   260,   234,   100,   215,
-     289,   217,   281,   282,   218,   220,   285,   261,   269,   262,
-     263,   266,    83,   267,   277,   278,   279,   280,   283,   288,
-     284,   291,   321,   302,   303,   293,   292,   290,   295,   313,
-     322,   323,   326,   327,   341,   346,   340,   273,   328,   329,
-     332,   336,   338,   337,   175,   175,   175,   175,   175,   175,
-     175,   175,   175,   175,   175,   175,   175,    83,    83,   342,
-     343,    83,    28,    40,    58,    33,    62,    93,     0,   235,
-     309,   219,   236,   273,   145,     0,   145,   109,    83,    83,
-       0,     0,   135,   136,   137,     0,     0,     0,     0,     0,
-       0,   138,   139,   140,   141,     0,   142,   143,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,   145,     4,   112,   113,   114,
-     115,   116,   117,     0,   145,     0,   144,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,   118,   119,   120,     0,
-       0,     0,     0,     0,   121,    67,    68,    69,    70,    71,
-      72,    73,    74,    75,    76,    77,    78,    79,    80,     4,
-       0,     0,     0,     0,     0,    81,    67,    68,    69,    70,
-      71,    72,    73,    74,    75,    76,    77,    78,    79,    80,
-       4,     0,    82,     0,     0,     0,    81
+      42,   119,    43,   344,    70,    71,    72,    77,     8,    86,
+      87,    88,   236,   237,   238,   239,   240,    12,    20,   200,
+       8,   277,   415,   146,   149,    83,    20,    94,   131,    95,
+     353,   132,    19,    32,    19,    19,     1,   374,    19,   339,
+     340,    89,     8,    43,    46,    47,    48,    49,    50,    51,
+      52,    53,    54,    55,    56,    57,    58,    59,    60,     4,
+       5,   375,   252,    84,    33,    41,    61,   -69,     8,   -70,
+     -62,   416,   183,   -63,   243,   392,   383,   394,   244,    75,
+      41,   193,   201,    62,   385,   389,   398,     8,     8,   253,
+       8,   400,   136,   349,   241,    41,    78,    79,    76,   184,
+     384,   363,   195,   195,   194,   -32,     9,   203,   386,   390,
+     399,   137,   -33,   421,   364,   401,   377,    36,    18,    37,
+      38,     7,   427,    19,    10,    18,   164,   165,   166,   167,
+      19,     4,     5,    17,   260,    39,    13,   188,   227,   228,
+     229,   230,   259,     8,   297,   298,   299,   242,    11,   288,
+      34,   245,   376,   300,   184,    41,   301,   302,   303,   262,
+     304,   305,   291,    73,   220,   221,   204,   205,   206,   207,
+     208,   209,   210,   211,   212,   213,    74,   170,   171,   172,
+     330,    85,   101,     5,   102,   103,   104,   105,   106,   107,
+      81,   108,   270,   306,    91,   188,   292,   293,   162,   163,
+     273,   168,   169,   109,   110,   111,   112,   113,   214,   215,
+     286,   114,   265,   133,   391,   284,   335,   271,   225,   226,
+     287,   231,   232,   396,   195,   397,   -25,   134,   178,   402,
+     -25,   135,   138,   139,   140,   179,   -17,   142,   412,    81,
+     413,   180,   181,   144,   157,   158,   195,   351,   352,   159,
+     161,   265,   160,     8,   216,   217,   307,   218,   246,   249,
+     247,     8,   250,   255,   195,   256,   254,   257,   258,   337,
+     338,   341,   261,   269,   307,   272,     8,   278,   307,   274,
+     279,     8,   280,   281,   382,   173,   174,   175,   176,   177,
+     282,   362,   283,   288,   153,   285,   296,   290,   295,   329,
+     331,   307,   369,   370,   332,   333,   373,   358,   359,   342,
+     343,   346,   350,   345,   348,   354,   355,   387,   388,   361,
+     101,     5,   102,   103,   104,   105,   106,   107,   356,   108,
+     357,   360,   365,   366,   367,   368,   422,   378,   371,   395,
+     380,   109,   110,   111,   112,   113,   307,   372,   307,   114,
+     403,   404,     8,   150,   151,   152,   154,   155,   156,   405,
+     408,   409,   423,     8,     8,   410,   420,     8,   411,   414,
+     418,   419,   424,   425,    31,   428,    90,    40,     8,     8,
+     182,   248,   251,   202,   307,   141,   276,   347,    92,     0,
+     222,   294,     0,   307,     0,   224,     0,   219,     0,     0,
+       0,     0,     0,     0,   223,   223,   223,   223,   223,   223,
+     223,   223,   223,   223,   233,   234,   235,   101,     5,   102,
+     103,   104,   105,   106,   107,     0,   108,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,     0,     0,   109,   110,
+     111,   112,   113,     0,     0,     0,   114,    46,    47,    48,
+      49,    50,    51,    52,    53,    54,    55,    56,    57,    58,
+      59,    60,     4,     5,     0,     0,     0,     0,     0,    61
   };
 
   const short
   parser::yycheck_[] =
   {
-       9,   144,   118,   119,   120,   121,     1,    37,    22,    50,
-     102,    16,     0,    63,     3,    50,    66,    12,    50,    21,
-      29,    50,    31,    32,    50,   117,    13,    14,    49,    38,
-      43,    81,    37,    74,    47,    44,    50,    46,    47,    74,
-      49,    91,    74,    52,    55,    74,   138,    68,    74,    99,
-      37,   197,   198,   199,   200,   201,    65,    43,    47,    45,
-      50,    47,   205,    66,     7,    60,    52,    10,    63,     0,
-      56,    66,    58,    59,   190,   191,   192,    37,    38,    39,
-      40,    41,    42,    43,    74,    16,    81,    49,    74,    75,
-      76,    77,    78,     0,    50,   104,    91,    57,    58,    59,
-      50,   193,    19,    98,    99,    65,    68,    47,    43,    16,
-      50,   203,   204,    66,    67,    68,    69,   167,    23,    24,
-      25,    26,    27,    28,    29,    30,    31,    32,    13,    14,
-     139,   140,   141,    47,    44,   144,    50,    70,    71,   148,
-      51,   287,    61,    62,    63,    43,    48,    45,    51,    47,
-     293,    51,   295,   299,    52,   301,    64,    65,    56,   305,
-      58,    59,    49,   255,    33,    34,    54,   217,   188,   189,
-      56,   317,   167,   319,   184,   185,   186,   187,   182,   183,
-      50,    45,    50,    44,    22,   194,    22,    46,   280,    73,
-      72,   334,   118,   119,   120,   121,   205,   289,   290,    43,
-     343,    43,   211,   212,    47,    50,     4,    44,    83,    50,
-      49,    51,   262,   263,    48,    50,   266,    50,    46,    51,
-      51,    51,   217,    48,    44,    44,    48,    43,    51,    44,
-      51,    48,    50,   283,   284,    47,    49,    51,    47,    44,
-      48,     6,    48,    50,    48,    48,   338,   256,    50,    50,
-      50,    50,    43,    50,   180,   181,   182,   183,   184,   185,
-     186,   187,   188,   189,   190,   191,   192,   262,   263,    44,
-      47,   266,    14,    36,    47,    20,    52,    65,    -1,   180,
-     292,   148,   181,   292,   293,    -1,   295,    98,   283,   284,
-      -1,    -1,     3,     4,     5,    -1,    -1,    -1,    -1,    -1,
-      -1,    12,    13,    14,    15,    -1,    17,    18,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,   334,    37,    38,    39,    40,
-      41,    42,    43,    -1,   343,    -1,    47,    -1,    -1,    -1,
-      -1,    -1,    -1,    -1,    -1,    -1,    57,    58,    59,    -1,
-      -1,    -1,    -1,    -1,    65,    23,    24,    25,    26,    27,
-      28,    29,    30,    31,    32,    33,    34,    35,    36,    37,
-      -1,    -1,    -1,    -1,    -1,    43,    23,    24,    25,    26,
-      27,    28,    29,    30,    31,    32,    33,    34,    35,    36,
-      37,    -1,    60,    -1,    -1,    -1,    43
+      32,    85,    34,   306,    36,    37,    38,    61,     1,    70,
+      71,    72,   173,   174,   175,   176,   177,    10,    14,   135,
+      13,   257,     3,   107,   108,    14,    22,    81,    52,    83,
+     333,    55,    18,    24,    18,    18,    23,    55,    18,    15,
+      16,    73,    35,    75,    26,    27,    28,    29,    30,    31,
+      32,    33,    34,    35,    36,    37,    38,    39,    40,    41,
+      42,    79,    15,    52,    55,    41,    48,    53,    61,    53,
+      53,    52,    18,    53,    48,   378,    55,   380,    52,    54,
+      41,    42,   136,    65,    55,    55,    55,    80,    81,    42,
+      83,    55,    54,   329,   178,    41,    15,    16,    73,   131,
+      79,   349,   134,   135,    65,     0,     0,   139,    79,    79,
+      79,    73,     0,   416,   350,    79,   364,     7,    13,     9,
+      10,     1,   425,    18,    60,    13,    71,    72,    73,    74,
+      18,    41,    42,    13,   218,    25,    21,   133,   164,   165,
+     166,   167,   203,   136,     3,     4,     5,   179,    55,    52,
+      71,   183,    55,    12,   186,    41,    15,    16,    17,   243,
+      19,    20,   278,    10,   157,   158,    26,    27,    28,    29,
+      30,    31,    32,    33,    34,    35,    55,    66,    67,    68,
+     296,    50,    41,    42,    43,    44,    45,    46,    47,    48,
+      61,    50,   246,    52,    49,   191,   280,   281,    75,    76,
+     254,    69,    70,    62,    63,    64,    65,    66,    36,    37,
+     271,    70,   244,    52,   375,   269,   300,   249,   162,   163,
+     274,   168,   169,   384,   256,   386,    48,    48,    50,   390,
+      52,    48,    52,    10,    53,    57,    60,    24,   399,    61,
+     401,    63,    64,    24,    60,    60,   278,   331,   332,    51,
+      77,   283,    78,   246,    49,    51,   288,    54,    56,    10,
+      53,   254,    53,    49,   296,    54,    56,    49,    53,   301,
+     302,   303,    51,    56,   306,    42,   269,    48,   310,    59,
+      49,   274,    54,    56,   368,    79,    80,    81,    82,    83,
+      53,   345,    54,    52,    15,    55,    48,    55,    55,    49,
+      48,   333,   356,   357,    48,    52,   360,   339,   340,    55,
+      55,    53,    49,    56,    55,     4,    55,   371,   372,    53,
+      41,    42,    43,    44,    45,    46,    47,    48,    56,    50,
+      56,    56,    49,    49,    53,    48,   420,    52,    56,    49,
+      52,    62,    63,    64,    65,    66,   378,    56,   380,    70,
+      55,    53,   345,   109,   110,   111,   112,   113,   114,     6,
+      53,    55,    53,   356,   357,    55,    48,   360,    55,    55,
+      55,    55,    49,    52,    15,    53,    75,    22,   371,   372,
+     129,   186,   191,   138,   416,    99,   256,   310,    80,    -1,
+     160,   283,    -1,   425,    -1,   161,    -1,   153,    -1,    -1,
+      -1,    -1,    -1,    -1,   160,   161,   162,   163,   164,   165,
+     166,   167,   168,   169,   170,   171,   172,    41,    42,    43,
+      44,    45,    46,    47,    48,    -1,    50,    -1,    -1,    -1,
+      -1,    -1,    -1,    -1,    -1,    -1,    -1,    -1,    62,    63,
+      64,    65,    66,    -1,    -1,    -1,    70,    26,    27,    28,
+      29,    30,    31,    32,    33,    34,    35,    36,    37,    38,
+      39,    40,    41,    42,    -1,    -1,    -1,    -1,    -1,    48
   };
 
   const unsigned char
   parser::yystos_[] =
   {
-       0,    21,    83,    84,    37,    88,    89,    90,     0,    55,
-      50,    90,    19,    85,    86,    87,    89,    16,    96,    97,
-      98,    99,   100,   101,   102,   103,   104,   105,    87,    22,
-      50,     7,    10,    99,    90,    90,    90,    50,    66,    91,
-      91,    90,    92,    93,    47,    50,    43,    49,    68,    16,
-      90,   106,   107,   108,    90,   110,   111,   112,    93,    90,
-      51,    48,   108,    51,    44,    49,    51,    23,    24,    25,
-      26,    27,    28,    29,    30,    31,    32,    33,    34,    35,
-      36,    43,    60,    89,   113,   114,   116,   117,   118,   119,
-     113,    54,   109,   112,   113,   113,    13,    14,   115,    56,
-      94,    50,    45,   113,    47,    50,   121,    50,    44,   116,
-      95,   113,    38,    39,    40,    41,    42,    43,    57,    58,
-      59,    65,    89,   149,   151,   152,   153,   154,   155,   156,
-     157,   158,   159,   160,   165,     3,     4,     5,    12,    13,
-      14,    15,    17,    18,    47,    90,   120,   127,   128,   129,
-     130,   131,   132,   133,   137,   138,   139,   140,   141,   142,
-     143,   144,   145,   146,   147,   148,   149,    49,    68,    22,
-     163,    22,   164,   149,   159,   160,   159,   159,   159,    46,
-      73,    72,    70,    71,    66,    67,    68,    69,    64,    65,
-      61,    62,    63,    45,    52,    58,    59,    74,    75,    76,
-      77,    78,    94,    43,    43,    47,   126,   149,   150,    90,
-      90,    13,    14,    90,    50,    50,   127,    51,    48,   129,
-      50,   113,    23,    24,    25,    26,    27,    28,    29,    30,
-      31,    32,    33,    34,    44,   154,   155,   156,   156,   157,
-     157,   157,   157,   158,   158,   159,   159,   159,   149,    90,
-     151,   151,   151,   151,   151,    43,    47,   149,   149,   127,
-       4,    50,    51,    51,    90,    90,    51,    48,   113,    46,
-     149,   161,   162,    90,   166,   167,   168,    44,    44,    48,
-      43,   113,   113,    51,    51,   113,    50,    74,    44,    49,
-      51,    48,    49,    47,   122,    47,   125,   149,    50,    74,
-      50,    74,   113,   113,    50,    74,   151,   149,   149,   168,
-     127,   134,   127,    44,   151,   151,    50,    74,    50,    74,
-     151,    50,    48,     6,   135,   136,    48,    50,    50,    50,
-     151,   151,    50,     3,    47,   124,    50,    50,    43,   127,
-     149,    48,    44,    47,   123,   127,    48
+       0,    23,    89,    90,    41,    42,    94,    95,    99,     0,
+      60,    55,    99,    21,    91,    92,    93,    95,    13,    18,
+     105,   106,   107,   108,   109,   110,   113,   114,   117,   121,
+     125,    93,    24,    55,    71,   100,     7,     9,    10,    25,
+     108,    41,    98,    98,   101,   102,    26,    27,    28,    29,
+      30,    31,    32,    33,    34,    35,    36,    37,    38,    39,
+      40,    48,    65,    95,   134,   135,   137,   138,   139,   140,
+      98,    98,    98,    10,    55,    54,    73,   134,    15,    16,
+     136,    61,   103,    14,    52,    50,   100,   100,   100,    98,
+     102,    49,   137,   104,   134,   134,   105,   111,   126,   127,
+     128,    41,    43,    44,    45,    46,    47,    48,    50,    62,
+      63,    64,    65,    66,    70,    96,    97,    98,    99,   170,
+     172,   173,   174,   175,   176,   177,   178,   179,   180,   181,
+     186,    52,    55,    52,    48,    48,    54,    73,    52,    10,
+      53,   128,    24,   184,    24,   185,   170,   115,   116,   170,
+     180,   180,   180,    15,   180,   180,   180,    60,    60,    51,
+      78,    77,    75,    76,    71,    72,    73,    74,    69,    70,
+      66,    67,    68,    79,    80,    81,    82,    83,    50,    57,
+      63,    64,   103,    18,    98,   118,   119,   120,   105,   112,
+     122,   123,   124,    42,    65,    98,   130,   131,   132,   133,
+     130,   134,   126,    98,    26,    27,    28,    29,    30,    31,
+      32,    33,    34,    35,    36,    37,    49,    51,    54,   180,
+      99,    99,   175,   180,   176,   177,   177,   178,   178,   178,
+     178,   179,   179,   180,   180,   180,   172,   172,   172,   172,
+     172,   170,    98,    48,    52,    98,    56,    53,   120,    10,
+      53,   124,    15,    42,    56,    49,    54,    49,    53,   100,
+     170,    51,   170,   182,   183,    98,   187,   188,   189,    56,
+     134,    98,    42,   134,    59,   129,   132,   129,    48,    49,
+      54,    56,    53,    54,   134,    55,   100,   134,    52,   142,
+      55,   130,   170,   170,   189,    55,    48,     3,     4,     5,
+      12,    15,    16,    17,    19,    20,    52,    98,   141,   148,
+     149,   150,   151,   152,   153,   154,   158,   159,   160,   161,
+     162,   163,   164,   165,   166,   167,   168,   169,   170,    49,
+     130,    48,    48,    52,   147,   170,   171,    98,    98,    15,
+      16,    98,    55,    55,   148,    56,    53,   150,    55,   129,
+      49,   170,   170,   148,     4,    55,    56,    56,    98,    98,
+      56,    53,   134,   142,   129,    49,    49,    53,    48,   134,
+     134,    56,    56,   134,    55,    79,    55,   142,    52,   143,
+      52,   146,   170,    55,    79,    55,    79,   134,   134,    55,
+      79,   172,   148,   155,   148,    49,   172,   172,    55,    79,
+      55,    79,   172,    55,    53,     6,   156,   157,    53,    55,
+      55,    55,   172,   172,    55,     3,    52,   145,    55,    55,
+      48,   148,   170,    53,    49,    52,   144,   148,    53
   };
 
   const unsigned char
   parser::yyr1_[] =
   {
-       0,    82,    83,    84,    85,    85,    86,    86,    87,    87,
-      88,    88,    89,    90,    91,    91,    92,    92,    92,    93,
-      94,    94,    95,    95,    95,    96,    96,    97,    97,    98,
-      98,    99,    99,   100,   100,   101,   102,   103,   103,   104,
-     105,   106,   106,   107,   107,   108,   108,   109,   110,   110,
-     111,   111,   111,   112,   113,   113,   114,   115,   115,   115,
-     116,   116,   117,   117,   117,   118,   118,   118,   118,   118,
-     118,   118,   118,   118,   118,   118,   118,   118,   118,   119,
-     120,   121,   122,   123,   124,   125,   126,   127,   127,   128,
-     128,   129,   129,   130,   130,   130,   130,   130,   131,   131,
-     131,   131,   132,   133,   134,   134,   135,   136,   136,   137,
-     138,   139,   140,   141,   142,   142,   142,   142,   142,   142,
-     143,   143,   144,   144,   145,   145,   146,   146,   147,   147,
-     148,   148,   149,   150,   150,   151,   151,   151,   151,   151,
-     151,   152,   153,   153,   154,   154,   155,   155,   155,   156,
-     156,   156,   156,   156,   157,   157,   157,   158,   158,   158,
-     158,   159,   159,   159,   159,   159,   160,   160,   160,   160,
-     160,   160,   160,   161,   161,   162,   162,   162,   163,   163,
-     163,   163,   163,   163,   163,   163,   163,   163,   163,   164,
-     164,   164,   165,   165,   165,   165,   165,   165,   165,   166,
-     166,   167,   167,   167,   168
+       0,    88,    89,    90,    91,    91,    92,    92,    93,    93,
+      94,    94,    95,    96,    96,    97,    98,    99,    99,   100,
+     100,   101,   101,   101,   102,   103,   103,   104,   104,   104,
+     105,   105,   106,   106,   107,   107,   108,   108,   108,   108,
+     108,   109,   110,   111,   112,   112,   113,   113,   114,   115,
+     115,   116,   116,   116,   117,   118,   118,   119,   119,   120,
+     120,   121,   122,   122,   123,   123,   124,   125,   125,   126,
+     126,   127,   127,   128,   129,   130,   130,   131,   131,   131,
+     132,   132,   133,   133,   133,   134,   134,   135,   136,   136,
+     136,   137,   137,   138,   138,   138,   139,   139,   139,   139,
+     139,   139,   139,   139,   139,   139,   139,   139,   139,   139,
+     139,   140,   141,   142,   143,   144,   145,   146,   147,   148,
+     148,   149,   149,   150,   150,   151,   151,   151,   151,   151,
+     152,   152,   152,   152,   153,   154,   155,   155,   156,   157,
+     157,   158,   159,   160,   161,   162,   163,   163,   163,   163,
+     163,   163,   164,   164,   165,   165,   166,   166,   167,   167,
+     168,   168,   169,   169,   170,   171,   171,   172,   172,   172,
+     172,   172,   172,   173,   174,   174,   175,   175,   176,   176,
+     176,   177,   177,   177,   177,   177,   178,   178,   178,   179,
+     179,   179,   179,   180,   180,   180,   180,   180,   180,   180,
+     180,   181,   181,   181,   181,   181,   181,   181,   181,   182,
+     182,   183,   183,   183,   184,   184,   184,   184,   184,   184,
+     184,   184,   184,   184,   184,   185,   185,   185,   186,   186,
+     186,   186,   186,   186,   186,   186,   187,   187,   188,   188,
+     188,   189
   };
 
   const signed char
   parser::yyr2_[] =
   {
        0,     2,     1,     5,     0,     1,     1,     2,     3,     5,
-       1,     3,     1,     1,     0,     3,     1,     3,     2,     1,
-       0,     3,     1,     3,     2,     0,     1,     0,     1,     1,
-       2,     1,     1,     1,     1,     9,     9,     1,     1,     7,
-       5,     0,     1,     1,     2,     4,     5,     2,     0,     1,
-       1,     3,     2,     3,     1,     1,     3,     0,     1,     1,
-       1,     4,     1,     1,     3,     1,     1,     1,     1,     1,
-       1,     1,     1,     1,     1,     1,     1,     1,     1,     2,
-       3,     3,     3,     3,     3,     3,     3,     0,     1,     1,
-       2,     1,     1,     1,     1,     1,     1,     1,     1,     1,
-       1,     1,     3,     7,     0,     2,     6,     0,     2,     5,
-       7,     2,     2,     2,     1,     1,     1,     1,     1,     1,
-       4,     6,     5,     7,     5,     7,     5,     7,     6,     8,
-       6,     8,     1,     0,     1,     1,     3,     3,     3,     3,
-       3,     1,     1,     3,     1,     3,     1,     3,     3,     1,
-       3,     3,     3,     3,     1,     3,     3,     1,     3,     3,
-       3,     2,     2,     2,     2,     1,     1,     5,     4,     3,
-       2,     2,     5,     0,     1,     1,     3,     2,     0,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     0,
-       2,     2,     1,     2,     2,     1,     1,     1,     3,     0,
-       1,     1,     3,     2,     3
+       1,     3,     1,     3,     3,     1,     1,     1,     1,     0,
+       3,     1,     3,     2,     1,     0,     3,     1,     3,     2,
+       0,     1,     0,     1,     1,     2,     1,     1,     1,     1,
+       1,     9,     9,     9,     9,     9,     1,     1,     7,     0,
+       1,     1,     3,     2,     5,     0,     1,     1,     2,     4,
+       5,     7,     0,     1,     1,     2,     1,     8,     6,     0,
+       1,     1,     2,     1,     2,     0,     1,     1,     3,     2,
+       1,     3,     1,     2,     3,     1,     1,     3,     0,     1,
+       1,     1,     4,     1,     1,     3,     1,     1,     1,     1,
+       1,     1,     1,     1,     1,     1,     1,     1,     1,     1,
+       1,     2,     3,     3,     3,     3,     3,     3,     3,     0,
+       1,     1,     2,     1,     1,     1,     1,     1,     1,     1,
+       1,     1,     1,     1,     3,     7,     0,     2,     6,     0,
+       2,     5,     7,     2,     2,     2,     1,     1,     1,     1,
+       1,     1,     4,     6,     5,     7,     5,     7,     5,     7,
+       6,     8,     6,     8,     1,     0,     1,     1,     3,     3,
+       3,     3,     3,     1,     1,     3,     1,     3,     1,     3,
+       3,     1,     3,     3,     3,     3,     1,     3,     3,     1,
+       3,     3,     3,     2,     2,     2,     2,     2,     2,     3,
+       1,     1,     5,     4,     3,     2,     2,     5,     3,     0,
+       1,     1,     3,     2,     0,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     0,     2,     2,     1,     1,
+       2,     2,     1,     1,     1,     3,     0,     1,     1,     3,
+       2,     3
   };
 
 
@@ -3942,11 +4390,12 @@ namespace yy {
   {
   "\"end of file\"", "error", "\"invalid token\"", "TOK_IF", "TOK_WHILE",
   "TOK_DO", "TOK_ELSE", "TOK_STRUCT", "TOK_ENUM", "TOK_TRAIT", "TOK_FN",
-  "TOK_TYPE", "TOK_RETURN", "TOK_MUT", "TOK_IMM", "TOK_STATIC", "TOK_PUB",
-  "TOK_BREAK", "TOK_CONTINUE", "TOK_IMPORT", "TOK_EXPORT", "TOK_PACKAGE",
-  "TOK_AS", "TOK_I8", "TOK_U8", "TOK_I16", "TOK_U16", "TOK_I32", "TOK_U32",
-  "TOK_I64", "TOK_U64", "TOK_I128", "TOK_U128", "TOK_F32", "TOK_F64",
-  "TOK_BOOL", "TOK_CHAR", "TOK_IDENTIFIER", "TOK_INT_LITERAL",
+  "TOK_TYPE", "TOK_RETURN", "TOK_IMPL", "TOK_FOR", "TOK_MUT", "TOK_IMM",
+  "TOK_STATIC", "TOK_PUB", "TOK_BREAK", "TOK_CONTINUE", "TOK_IMPORT",
+  "TOK_EXPORT", "TOK_PACKAGE", "TOK_AS", "TOK_LOAD", "TOK_I8", "TOK_U8",
+  "TOK_I16", "TOK_U16", "TOK_I32", "TOK_U32", "TOK_I64", "TOK_U64",
+  "TOK_I128", "TOK_U128", "TOK_F32", "TOK_F64", "TOK_BOOL", "TOK_CHAR",
+  "TOK_VOID", "TOK_IDENTIFIER", "TOK_SELF", "TOK_INT_LITERAL",
   "TOK_FLOAT_LITERAL", "TOK_STRING_LITERAL", "TOK_BOOL_LITERAL",
   "TOK_CHAR_LITERAL", "TOK_LPAR", "TOK_RPAR", "TOK_LBRACK", "TOK_RBRACK",
   "TOK_LCBRA", "TOK_RCBRA", "TOK_COMMA", "TOK_SMCLN", "TOK_COLON",
@@ -3956,26 +4405,31 @@ namespace yy {
   "TOK_LESS", "TOK_LEQ", "TOK_GREATER", "TOK_GEQ", "TOK_EQUAL",
   "TOK_NEQUAL", "TOK_BOOL_AND", "TOK_BOOL_OR", "TOK_ASSIGN",
   "TOK_PLUS_ASSIGN", "TOK_MIN_ASSIGN", "TOK_MUL_ASSIGN", "TOK_DIV_ASSIGN",
-  "TERNARY", "UMINUS", "UPRE", "$accept", "translation_unit", "module",
-  "import_list_opt", "import_list", "import_decl", "path", "path_expr",
-  "ident", "type_params_opt", "type_param_list", "type_param", "type_args",
-  "type_arg_list", "pub_opt", "decl_list_opt", "decl_list", "decl",
-  "fn_decl", "fn_decl_def", "fn_decl_fwd", "struct_decl",
-  "struct_decl_def", "struct_decl_fwd", "field_decl_list_opt",
-  "field_decl_list", "field_decl", "ret_type_expr", "param_list_opt",
-  "param_list", "param", "type_expr", "ref_type_expr", "ref_mutability",
-  "type_postfix", "type_primary", "builtin_type_expr", "path_type_expr",
-  "anon_block", "fn_block", "if_block", "else_if_block", "else_block",
-  "while_block", "do_while_block", "stmt_list_opt", "stmt_list", "stmt",
-  "simple_stmt", "compound_stmt", "return_stmt", "if_stmt", "elseif_list",
-  "elseif", "else_part", "while_stmt", "do_while_stmt", "break_stmt",
-  "continue_stmt", "expr_stmt", "var_stmt", "var_stmt_default",
-  "var_stmt_imm", "var_stmt_mut", "var_stmt_static_default",
-  "var_stmt_static_imm", "var_stmt_static_mut", "expr", "expr_opt",
-  "assign", "cond", "logic_or", "logic_and", "equality", "relational",
-  "additive", "multiplicative", "unary", "postfix", "arg_list_opt",
-  "arg_list", "int_literal_type_opt", "float_literal_type_opt", "primary",
-  "field_inits_opt", "field_inits", "field_init", YY_NULLPTR
+  "TERNARY", "UMINUS", "UPRE", "LOWER_THAN_ASSIGN", "$accept",
+  "translation_unit", "module", "import_list_opt", "import_list",
+  "import_decl", "path", "path_expr", "qpath", "qpath_expr",
+  "ident_no_self", "ident_any", "type_params_opt", "type_param_list",
+  "type_param", "type_args", "type_arg_list", "pub_opt", "decl_list_opt",
+  "decl_list", "decl", "fn_decl", "load_fn_decl", "impl_fn_decl",
+  "trait_fn_decl", "struct_decl", "struct_decl_def", "array_elems_opt",
+  "array_elems", "struct_decl_fwd", "field_decl_list_opt",
+  "field_decl_list", "field_decl", "trait_decl", "trait_item_list_opt",
+  "trait_item_list", "trait_item", "impl_decl", "impl_item_list_opt",
+  "impl_item_list", "impl_item", "ret_type_expr", "param_list_opt",
+  "param_list", "param", "self_param", "type_expr", "ref_type_expr",
+  "ref_mutability", "type_postfix", "type_primary", "builtin_type_expr",
+  "path_type_expr", "anon_block", "fn_block", "if_block", "else_if_block",
+  "else_block", "while_block", "do_while_block", "stmt_list_opt",
+  "stmt_list", "stmt", "simple_stmt", "compound_stmt", "return_stmt",
+  "if_stmt", "elseif_list", "elseif", "else_part", "while_stmt",
+  "do_while_stmt", "break_stmt", "continue_stmt", "expr_stmt", "var_stmt",
+  "var_stmt_default", "var_stmt_imm", "var_stmt_mut",
+  "var_stmt_static_default", "var_stmt_static_imm", "var_stmt_static_mut",
+  "expr", "expr_opt", "assign", "cond", "logic_or", "logic_and",
+  "equality", "relational", "additive", "multiplicative", "unary",
+  "postfix", "arg_list_opt", "arg_list", "int_literal_type_opt",
+  "float_literal_type_opt", "primary", "field_inits_opt", "field_inits",
+  "field_init", YY_NULLPTR
   };
 #endif
 
@@ -3984,27 +4438,31 @@ namespace yy {
   const short
   parser::yyrline_[] =
   {
-       0,   324,   324,   329,   339,   340,   345,   347,   352,   354,
-     364,   366,   371,   376,   386,   387,   392,   394,   396,   401,
-     407,   408,   413,   415,   417,   427,   428,   433,   434,   439,
-     441,   446,   448,   453,   455,   460,   476,   493,   495,   500,
-     514,   530,   531,   536,   538,   543,   545,   550,   556,   557,
-     562,   564,   566,   571,   583,   585,   590,   595,   596,   597,
-     601,   603,   608,   610,   612,   617,   618,   619,   620,   621,
-     622,   623,   624,   625,   626,   627,   628,   629,   630,   634,
-     643,   648,   653,   658,   663,   668,   673,   679,   680,   685,
-     687,   692,   694,   699,   700,   701,   702,   703,   707,   708,
-     709,   710,   714,   719,   725,   726,   731,   737,   738,   743,
-     748,   753,   758,   763,   784,   785,   786,   787,   788,   789,
-     797,   808,   822,   833,   847,   858,   876,   887,   901,   912,
-     926,   937,   957,   962,   963,   967,   969,   970,   971,   972,
-     973,   977,   982,   984,   989,   991,   996,   998,  1000,  1005,
-    1007,  1009,  1011,  1013,  1018,  1020,  1022,  1027,  1029,  1031,
-    1033,  1038,  1040,  1042,  1044,  1046,  1051,  1053,  1057,  1059,
-    1061,  1063,  1065,  1071,  1072,  1077,  1079,  1081,  1090,  1091,
-    1092,  1093,  1094,  1095,  1096,  1097,  1098,  1099,  1100,  1104,
-    1105,  1106,  1114,  1116,  1118,  1120,  1122,  1124,  1126,  1132,
-    1133,  1138,  1140,  1142,  1147
+       0,   358,   358,   363,   371,   373,   378,   380,   385,   387,
+     397,   399,   404,   409,   411,   416,   421,   426,   428,   437,
+     439,   444,   446,   448,   453,   458,   460,   465,   467,   469,
+     479,   480,   484,   486,   491,   493,   498,   500,   502,   504,
+     506,   511,   519,   527,   536,   548,   565,   567,   572,   586,
+     588,   593,   595,   597,   602,   617,   619,   624,   626,   631,
+     633,   638,   651,   653,   658,   660,   665,   671,   683,   698,
+     700,   705,   707,   712,   718,   723,   725,   730,   732,   734,
+     739,   741,   747,   749,   751,   763,   765,   770,   775,   776,
+     777,   781,   783,   788,   790,   792,   797,   798,   799,   800,
+     801,   802,   803,   804,   805,   806,   807,   808,   809,   810,
+     811,   815,   824,   829,   834,   839,   844,   849,   854,   859,
+     861,   866,   868,   873,   875,   880,   881,   882,   883,   884,
+     888,   889,   890,   891,   895,   900,   905,   907,   912,   917,
+     919,   924,   929,   934,   939,   944,   965,   966,   967,   968,
+     969,   970,   978,   989,  1003,  1014,  1028,  1039,  1057,  1068,
+    1082,  1093,  1107,  1118,  1138,  1142,  1143,  1147,  1149,  1151,
+    1153,  1155,  1157,  1161,  1166,  1168,  1173,  1175,  1180,  1182,
+    1184,  1189,  1191,  1193,  1195,  1197,  1202,  1204,  1206,  1211,
+    1213,  1215,  1217,  1222,  1224,  1226,  1228,  1230,  1232,  1234,
+    1236,  1241,  1243,  1247,  1249,  1251,  1253,  1255,  1257,  1266,
+    1268,  1273,  1275,  1277,  1286,  1287,  1288,  1289,  1290,  1291,
+    1292,  1293,  1294,  1295,  1296,  1300,  1301,  1302,  1310,  1312,
+    1314,  1316,  1318,  1320,  1322,  1324,  1329,  1331,  1336,  1338,
+    1340,  1345
   };
 
   void
@@ -4037,7 +4495,7 @@ namespace yy {
 
 #line 8 "parser/parser_rules.y"
 } // yy
-#line 4041 "parser/parser.cpp"
+#line 4499 "parser/parser.cpp"
 
-#line 1151 "parser/parser_rules.y"
+#line 1349 "parser/parser_rules.y"
 

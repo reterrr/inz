@@ -7,7 +7,7 @@
 #include "project.hpp"
 
 // decls
-#include "decl/function_decl.hpp"
+#include "decl/fn_decl.hpp"
 #include "decl/param_decl.hpp"
 #include "decl/struct_decl.hpp"
 
@@ -44,7 +44,7 @@ namespace ast::visitor
         if (p.type_) p.type_->accept(*this);
     }
 
-    void OverallVisitor::visit(FunctionDecl& f)
+    void OverallVisitor::visit(FnDecl& f)
     {
         // Convention: signature first, then body
         if (f.ret_) f.ret_->accept(*this);
@@ -200,6 +200,34 @@ namespace ast::visitor
     }
 
     void OverallVisitor::visit(TypeParamDecl&)
+    {
+    }
+
+    void OverallVisitor::visit(SelfParamDecl&)
+    {
+    }
+
+    void OverallVisitor::visit(LoadFnDecl&)
+    {
+    }
+
+    void OverallVisitor::visit(TraitFnDecl&)
+    {
+    }
+
+    void OverallVisitor::visit(ImplFnDecl&)
+    {
+    }
+
+    void OverallVisitor::visit(TraitDecl&)
+    {
+    }
+
+    void OverallVisitor::visit(ImplDecl&)
+    {
+    }
+
+    void OverallVisitor::visit(SelfExpr&)
     {
     }
 
