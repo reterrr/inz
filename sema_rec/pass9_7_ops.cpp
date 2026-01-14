@@ -1,32 +1,86 @@
 #include "pass9_7_ops.hpp"
 
-#include <cassert>
+#include <sstream>
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 
+#include "module/module.hpp" // ast::Module (for pathExpr_->path_)
+
 namespace sema
 {
-    static void push_diag(Pass9_7Result& out,
-                          Pass9_7Diagnostic::Code c,
-                          const lex::Loc& loc,
-                          std::string msg)
+    // ------------------------------------------------------------
+    // Logging helpers (module-path-first cluster head)
+    // ------------------------------------------------------------
+    static const std::vector<lex::SymId>& pass9_mod_path(const Pass9_1Result& st)
     {
-        out.diagnostics.push_back(Pass9_7Diagnostic{
-            .code = c,
-            .loc = loc,
-            .message = std::move(msg),
-        });
+        static const std::vector<lex::SymId> kEmpty{};
+        if (st.log_mod && st.log_mod->pathExpr_)
+            return st.log_mod->pathExpr_->path_;
+        return kEmpty;
     }
 
-    static llvm::Function* get_or_declare(llvm::Module& M,
-                                          llvm::FunctionType* FT,
-                                          llvm::StringRef name)
+    static void log_begin(LogSequence& seq, const Pass9_1Result& st, const lex::Loc& loc)
     {
+        seq.emplace_back(LogPath{SymKind::Ident, pass9_mod_path(st), loc});
+    }
+
+    static void log_err(LogSequence& seq, const Pass9_1Result& st, const lex::Loc& loc, std::string msg)
+    {
+        log_begin(seq, st, loc);
+        log_msg(seq, std::move(msg));
+        // Anchor node for internal/runtime symbol errors (no SymId)
+        seq.emplace_back(LogPath{SymKind::Ident, {}, loc});
+    }
+
+    // ------------------------------------------------------------
+    // LLVM helpers (type-checked get-or-declare)
+    // ------------------------------------------------------------
+    static bool same_fty(const llvm::FunctionType* a, const llvm::FunctionType* b)
+    {
+        if (a == b) return true;
+        if (!a || !b) return false;
+
+        if (a->getReturnType() != b->getReturnType()) return false;
+        if (a->isVarArg() != b->isVarArg()) return false;
+        if (a->getNumParams() != b->getNumParams()) return false;
+
+        for (unsigned i = 0; i < a->getNumParams(); ++i)
+            if (a->getParamType(i) != b->getParamType(i))
+                return false;
+
+        return true;
+    }
+
+    static llvm::Function* get_or_declare_checked(Pass9_7Result& out,
+                                                  Pass9_1Result& st,
+                                                  llvm::FunctionType* FT,
+                                                  llvm::StringRef name,
+                                                  const lex::Loc& loc = {})
+    {
+        if (!st.module)
+        {
+            log_err(out.errors, st, loc, "pass9.7: internal: st.module is null");
+            return nullptr;
+        }
+
+        llvm::Module& M = *st.module;
+
         if (auto* F = M.getFunction(name))
+        {
+            if (!same_fty(F->getFunctionType(), FT))
+            {
+                std::ostringstream oss;
+                oss << "pass9.7: RuntimeOpTypeMismatch: symbol '" << name.str()
+                    << "' already declared with different LLVM function type";
+                log_err(out.errors, st, loc, oss.str());
+                return nullptr;
+            }
             return F;
+        }
+
         return llvm::Function::Create(FT, llvm::Function::ExternalLinkage, name, M);
     }
 
@@ -38,124 +92,118 @@ namespace sema
         return llvm::Constant::getNullValue(st.obj_ptr_ty);
     }
 
-    // Declare once, reuse thereafter (Module::getFunction prevents duplicates).
-    static Pass9_7RtOps ensure_rt_ops(Pass9_1Result& st)
-    {
-        llvm::Module& M = *st.module;
-
-        Pass9_7RtOps rt{};
-
-        auto* obj = st.obj_ptr_ty;
-        auto* i1  = st.i1_ty;
-
-        // Obj* (Obj*, Obj*) -> Obj*
-        auto* bin_obj = llvm::FunctionType::get(obj, {obj, obj}, false);
-        rt.add = get_or_declare(M, bin_obj, "rt_add");
-        rt.sub = get_or_declare(M, bin_obj, "rt_sub");
-        rt.mul = get_or_declare(M, bin_obj, "rt_mul");
-        rt.div = get_or_declare(M, bin_obj, "rt_div");
-        rt.mod = get_or_declare(M, bin_obj, "rt_mod");
-
-        // Obj* (Obj*) -> Obj*
-        auto* un_obj = llvm::FunctionType::get(obj, {obj}, false);
-        rt.neg = get_or_declare(M, un_obj, "rt_neg");
-
-        // i1 (Obj*, Obj*)
-        auto* bin_i1 = llvm::FunctionType::get(i1, {obj, obj}, false);
-        rt.eq = get_or_declare(M, bin_i1, "rt_eq");
-        rt.ne = get_or_declare(M, bin_i1, "rt_ne");
-        rt.lt = get_or_declare(M, bin_i1, "rt_lt");
-        rt.gt = get_or_declare(M, bin_i1, "rt_gt");
-        rt.le = get_or_declare(M, bin_i1, "rt_le");
-        rt.ge = get_or_declare(M, bin_i1, "rt_ge");
-
-        return rt;
-    }
-
+    // ------------------------------------------------------------
+    // Pass 9.7: declare/check runtime ops
+    // ------------------------------------------------------------
     Pass9_7Result run_pass9_7_rt_ops(Pass9_1Result& st)
     {
         Pass9_7Result out{};
 
         if (!st.llctx)
         {
-            push_diag(out, Pass9_7Diagnostic::Code::MissingLlvmContext, lex::Loc{},
-                      "Pass9.7 requires Pass9.1 to provide llctx");
+            log_err(out.errors, st, lex::Loc{}, "pass9.7: MissingLLVMState: st.llctx is null");
             return out;
         }
-
         if (!st.module)
         {
-            push_diag(out, Pass9_7Diagnostic::Code::MissingLlvmModule, lex::Loc{},
-                      "Pass9.7 requires Pass9.1 to provide module");
+            log_err(out.errors, st, lex::Loc{}, "pass9.7: MissingLLVMState: st.module is null");
             return out;
         }
-
         if (!st.obj_ptr_ty)
         {
-            push_diag(out, Pass9_7Diagnostic::Code::MissingObjPtrType, lex::Loc{},
-                      "Pass9.7 requires Pass9.1 to provide obj_ptr_ty");
+            log_err(out.errors, st, lex::Loc{}, "pass9.7: MissingLLVMState: st.obj_ptr_ty is null");
             return out;
         }
-
         if (!st.i1_ty)
         {
-            push_diag(out, Pass9_7Diagnostic::Code::MissingBoolType, lex::Loc{},
-                      "Pass9.7 requires Pass9.1 to provide i1_ty");
+            log_err(out.errors, st, lex::Loc{}, "pass9.7: MissingLLVMState: st.i1_ty (bool) is null");
             return out;
         }
 
-        out.ops = ensure_rt_ops(st);
+        llvm::Type* Obj = st.obj_ptr_ty;
+        llvm::IntegerType* I1 = st.i1_ty;
+
+        auto* bin_obj = llvm::FunctionType::get(Obj, {Obj, Obj}, false);
+        auto* un_obj  = llvm::FunctionType::get(Obj, {Obj}, false);
+        auto* bin_i1  = llvm::FunctionType::get(I1,  {Obj, Obj}, false);
+
+        // Prefer already-wired pointers from pass9.2, but still verify/declare by name.
+        auto take_or_declare = [&](llvm::Function*& slot, llvm::FunctionType* FT, const char* name)
+        {
+            if (slot)
+            {
+                if (!same_fty(slot->getFunctionType(), FT))
+                {
+                    std::ostringstream oss;
+                    oss << "pass9.7: RuntimeOpTypeMismatch: st.runtime." << name
+                        << " has unexpected LLVM function type";
+                    log_err(out.errors, st, lex::Loc{}, oss.str());
+                    slot = nullptr;
+                    return;
+                }
+                return;
+            }
+
+            slot = get_or_declare_checked(out, st, FT, name);
+        };
+
+        // NOTE: these names must match your runtime C ABI.
+        take_or_declare(out.ops.add, bin_obj, "rt_add");
+        take_or_declare(out.ops.sub, bin_obj, "rt_sub");
+        take_or_declare(out.ops.mul, bin_obj, "rt_mul");
+        take_or_declare(out.ops.div, bin_obj, "rt_div");
+        take_or_declare(out.ops.mod, bin_obj, "rt_mod");
+        take_or_declare(out.ops.neg, un_obj,  "rt_neg");
+
+        take_or_declare(out.ops.eq, bin_i1, "rt_eq");
+        take_or_declare(out.ops.ne, bin_i1, "rt_ne");
+        take_or_declare(out.ops.lt, bin_i1, "rt_lt");
+        take_or_declare(out.ops.gt, bin_i1, "rt_gt");
+        take_or_declare(out.ops.le, bin_i1, "rt_le");
+        take_or_declare(out.ops.ge, bin_i1, "rt_ge");
+
         return out;
     }
 
-    // -------------------------------
-    // Helpers (used by Pass9.5)
-    // -------------------------------
-
-    llvm::Value* emit_unary_expr(Pass9_1Result& st,
-                                 llvm::IRBuilder<>& B,
-                                 ast::UnaryExpr& u,
-                                 EmitExprFn emit_expr,
-                                 void* emit_user)
+    // ------------------------------------------------------------
+    // ABI coercion helpers (Obj* <-> i1)
+    // ------------------------------------------------------------
+    static llvm::Value* coerce_to_obj(Pass9_1Result& st, llvm::IRBuilder<>& B, llvm::Value* v)
     {
-        // No diagnostics here; Pass9.7 already validated state.
-        if (!st.module || !st.i1_ty || !st.obj_ptr_ty || !st.llctx)
-            return null_obj(st);
+        if (!v) return null_obj(st);
+        if (v->getType() == st.obj_ptr_ty) return v;
 
-        const Pass9_7RtOps rt = ensure_rt_ops(st);
-
-        switch (u.op)
+        if (v->getType() == st.i1_ty)
         {
-        case ast::UnaryOp::negation:
-        {
-            llvm::Value* x = emit_expr(emit_user, u.expr_);
-            if (!x) return null_obj(st);
-            return B.CreateCall(rt.neg, {x}, "neg");
-        }
-
-        case ast::UnaryOp::logical_not:
-        {
-            llvm::Value* x = emit_expr(emit_user, u.expr_);
-
-            // strict mode: if not i1, treat as false
-            llvm::Value* b = (x && x->getType() == st.i1_ty)
-                                 ? x
-                                 : llvm::ConstantInt::getFalse(*st.llctx);
-
-            return B.CreateNot(b, "not");
-        }
-
-        // Not implemented yet:
-        case ast::UnaryOp::preincrement:
-        case ast::UnaryOp::predecrement:
-        case ast::UnaryOp::postincrement:
-        case ast::UnaryOp::postdecrement:
-        case ast::UnaryOp::deref:
-        default:
+            if (st.runtime.rt_box_bool)
+                return B.CreateCall(st.runtime.rt_box_bool, {v}, "box.bool");
             return null_obj(st);
         }
+
+        // Unknown -> null
+        return null_obj(st);
     }
 
+    static llvm::Value* coerce_to_i1(Pass9_1Result& st, llvm::IRBuilder<>& B, llvm::Value* v)
+    {
+        if (!st.llctx) return nullptr;
+        if (!v) return llvm::ConstantInt::getFalse(*st.llctx);
+
+        if (v->getType() == st.i1_ty) return v;
+
+        if (v->getType() == st.obj_ptr_ty)
+        {
+            if (st.runtime.rt_unbox_bool)
+                return B.CreateCall(st.runtime.rt_unbox_bool, {v}, "unbox.bool");
+            return llvm::ConstantInt::getFalse(*st.llctx);
+        }
+
+        return llvm::ConstantInt::getFalse(*st.llctx);
+    }
+
+    // ------------------------------------------------------------
+    // Short-circuit lowering (robust i1 coercion)
+    // ------------------------------------------------------------
     static llvm::Value* emit_short_circuit_and(Pass9_1Result& st,
                                                llvm::IRBuilder<>& B,
                                                llvm::Function* cur_fn,
@@ -163,29 +211,30 @@ namespace sema
                                                EmitExprFn emit_expr,
                                                void* emit_user)
     {
-        if (!st.llctx) return nullptr;
-        if (!cur_fn)   return llvm::ConstantInt::getFalse(*st.llctx);
-
-        llvm::Value* lhs = emit_expr(emit_user, b.lhs_);
-        if (!lhs || lhs->getType() != st.i1_ty)
-            lhs = llvm::ConstantInt::getFalse(*st.llctx);
+        if (!st.llctx || !cur_fn)
+            return st.llctx ? llvm::ConstantInt::getFalse(*st.llctx) : nullptr;
 
         llvm::BasicBlock* curBB = B.GetInsertBlock();
+        if (!curBB)
+            return llvm::ConstantInt::getFalse(*st.llctx);
+
+        llvm::Value* lhsV = emit_expr(emit_user, b.lhs_);
+        llvm::Value* lhsB = coerce_to_i1(st, B, lhsV);
+
         llvm::BasicBlock* rhsBB = llvm::BasicBlock::Create(*st.llctx, "and.rhs", cur_fn);
         llvm::BasicBlock* endBB = llvm::BasicBlock::Create(*st.llctx, "and.end", cur_fn);
 
-        B.CreateCondBr(lhs, rhsBB, endBB);
+        B.CreateCondBr(lhsB, rhsBB, endBB);
 
         B.SetInsertPoint(rhsBB);
-        llvm::Value* rhs = emit_expr(emit_user, b.rhs_);
-        if (!rhs || rhs->getType() != st.i1_ty)
-            rhs = llvm::ConstantInt::getFalse(*st.llctx);
+        llvm::Value* rhsV = emit_expr(emit_user, b.rhs_);
+        llvm::Value* rhsB = coerce_to_i1(st, B, rhsV);
         B.CreateBr(endBB);
 
         B.SetInsertPoint(endBB);
-        auto* phi = B.CreatePHI(st.i1_ty, 2, "and.phi");
+        auto* phi = B.CreatePHI(st.i1_ty, 2, "and");
         phi->addIncoming(llvm::ConstantInt::getFalse(*st.llctx), curBB);
-        phi->addIncoming(rhs, rhsBB);
+        phi->addIncoming(rhsB, rhsBB);
         return phi;
     }
 
@@ -196,81 +245,106 @@ namespace sema
                                               EmitExprFn emit_expr,
                                               void* emit_user)
     {
-        if (!st.llctx) return nullptr;
-        if (!cur_fn)   return llvm::ConstantInt::getFalse(*st.llctx);
-
-        llvm::Value* lhs = emit_expr(emit_user, b.lhs_);
-        if (!lhs || lhs->getType() != st.i1_ty)
-            lhs = llvm::ConstantInt::getFalse(*st.llctx);
+        if (!st.llctx || !cur_fn)
+            return st.llctx ? llvm::ConstantInt::getFalse(*st.llctx) : nullptr;
 
         llvm::BasicBlock* curBB = B.GetInsertBlock();
+        if (!curBB)
+            return llvm::ConstantInt::getFalse(*st.llctx);
+
+        llvm::Value* lhsV = emit_expr(emit_user, b.lhs_);
+        llvm::Value* lhsB = coerce_to_i1(st, B, lhsV);
+
         llvm::BasicBlock* rhsBB = llvm::BasicBlock::Create(*st.llctx, "or.rhs", cur_fn);
         llvm::BasicBlock* endBB = llvm::BasicBlock::Create(*st.llctx, "or.end", cur_fn);
 
-        B.CreateCondBr(lhs, endBB, rhsBB);
+        B.CreateCondBr(lhsB, endBB, rhsBB);
 
         B.SetInsertPoint(rhsBB);
-        llvm::Value* rhs = emit_expr(emit_user, b.rhs_);
-        if (!rhs || rhs->getType() != st.i1_ty)
-            rhs = llvm::ConstantInt::getFalse(*st.llctx);
+        llvm::Value* rhsV = emit_expr(emit_user, b.rhs_);
+        llvm::Value* rhsB = coerce_to_i1(st, B, rhsV);
         B.CreateBr(endBB);
 
         B.SetInsertPoint(endBB);
-        auto* phi = B.CreatePHI(st.i1_ty, 2, "or.phi");
+        auto* phi = B.CreatePHI(st.i1_ty, 2, "or");
         phi->addIncoming(llvm::ConstantInt::getTrue(*st.llctx), curBB);
-        phi->addIncoming(rhs, rhsBB);
+        phi->addIncoming(rhsB, rhsBB);
         return phi;
+    }
+
+    // ------------------------------------------------------------
+    // Helpers used by Pass9.5 (now take prepared ops)
+    // ------------------------------------------------------------
+    llvm::Value* emit_unary_expr(Pass9_1Result& st,
+                                 llvm::IRBuilder<>& B,
+                                 const Pass9_7RtOps& rt,
+                                 ast::UnaryExpr& u,
+                                 EmitExprFn emit_expr,
+                                 void* emit_user)
+    {
+        if (!st.llctx || !st.obj_ptr_ty || !st.i1_ty)
+            return null_obj(st);
+
+        switch (u.op)
+        {
+        case ast::UnaryOp::negation:
+        {
+            llvm::Value* x = emit_expr(emit_user, u.expr_);
+            llvm::Value* xObj = coerce_to_obj(st, B, x);
+            if (!rt.neg) return null_obj(st);
+            return B.CreateCall(rt.neg, {xObj}, "neg");
+        }
+
+        case ast::UnaryOp::logical_not:
+        {
+            llvm::Value* x = emit_expr(emit_user, u.expr_);
+            llvm::Value* b = coerce_to_i1(st, B, x);
+            return B.CreateNot(b, "not");
+        }
+
+        default:
+            return null_obj(st);
+        }
     }
 
     llvm::Value* emit_binary_expr(Pass9_1Result& st,
                                   llvm::IRBuilder<>& B,
+                                  const Pass9_7RtOps& rt,
                                   llvm::Function* cur_fn,
                                   ast::BinaryExpr& b,
                                   EmitExprFn emit_expr,
                                   void* emit_user)
     {
-        if (!st.module || !st.i1_ty || !st.obj_ptr_ty || !st.llctx)
+        if (!st.llctx || !st.obj_ptr_ty || !st.i1_ty)
             return null_obj(st);
-
-        const Pass9_7RtOps rt = ensure_rt_ops(st);
 
         switch (b.op)
         {
-        // arithmetic: Obj* -> Obj*
+        // arithmetic: Obj* (Obj*,Obj*) -> Obj*
         case ast::BinaryOp::add:
-        {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return null_obj(st);
-            return B.CreateCall(rt.add, {L, R}, "add");
-        }
         case ast::BinaryOp::subtract:
-        {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return null_obj(st);
-            return B.CreateCall(rt.sub, {L, R}, "sub");
-        }
         case ast::BinaryOp::multiply:
-        {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return null_obj(st);
-            return B.CreateCall(rt.mul, {L, R}, "mul");
-        }
         case ast::BinaryOp::divide:
-        {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return null_obj(st);
-            return B.CreateCall(rt.div, {L, R}, "div");
-        }
         case ast::BinaryOp::modulo:
         {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return null_obj(st);
-            return B.CreateCall(rt.mod, {L, R}, "mod");
+            llvm::Function* callee = nullptr;
+            const char* nm = "";
+
+            switch (b.op)
+            {
+            case ast::BinaryOp::add:      callee = rt.add; nm = "add"; break;
+            case ast::BinaryOp::subtract: callee = rt.sub; nm = "sub"; break;
+            case ast::BinaryOp::multiply: callee = rt.mul; nm = "mul"; break;
+            case ast::BinaryOp::divide:   callee = rt.div; nm = "div"; break;
+            case ast::BinaryOp::modulo:   callee = rt.mod; nm = "mod"; break;
+            default: break;
+            }
+
+            if (!callee) return null_obj(st);
+
+            llvm::Value* L = coerce_to_obj(st, B, emit_expr(emit_user, b.lhs_));
+            llvm::Value* R = coerce_to_obj(st, B, emit_expr(emit_user, b.rhs_));
+            return B.CreateCall(callee, {L, R}, nm);
         }
 
         // logical short-circuit: i1
@@ -280,53 +354,37 @@ namespace sema
         case ast::BinaryOp::logical_or:
             return emit_short_circuit_or(st, B, cur_fn, b, emit_expr, emit_user);
 
-        // comparisons: Obj* -> i1
+        // comparisons: i1 (Obj*,Obj*)
         case ast::BinaryOp::equal:
-        {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return llvm::ConstantInt::getFalse(*st.llctx);
-            return B.CreateCall(rt.eq, {L, R}, "eq");
-        }
         case ast::BinaryOp::not_equal:
-        {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return llvm::ConstantInt::getFalse(*st.llctx);
-            return B.CreateCall(rt.ne, {L, R}, "ne");
-        }
         case ast::BinaryOp::less:
-        {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return llvm::ConstantInt::getFalse(*st.llctx);
-            return B.CreateCall(rt.lt, {L, R}, "lt");
-        }
         case ast::BinaryOp::greater:
-        {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return llvm::ConstantInt::getFalse(*st.llctx);
-            return B.CreateCall(rt.gt, {L, R}, "gt");
-        }
         case ast::BinaryOp::less_equal:
-        {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return llvm::ConstantInt::getFalse(*st.llctx);
-            return B.CreateCall(rt.le, {L, R}, "le");
-        }
         case ast::BinaryOp::greater_equal:
         {
-            llvm::Value* L = emit_expr(emit_user, b.lhs_);
-            llvm::Value* R = emit_expr(emit_user, b.rhs_);
-            if (!L || !R) return llvm::ConstantInt::getFalse(*st.llctx);
-            return B.CreateCall(rt.ge, {L, R}, "ge");
+            llvm::Function* callee = nullptr;
+            const char* nm = "";
+
+            switch (b.op)
+            {
+            case ast::BinaryOp::equal:          callee = rt.eq; nm = "eq"; break;
+            case ast::BinaryOp::not_equal:      callee = rt.ne; nm = "ne"; break;
+            case ast::BinaryOp::less:           callee = rt.lt; nm = "lt"; break;
+            case ast::BinaryOp::greater:        callee = rt.gt; nm = "gt"; break;
+            case ast::BinaryOp::less_equal:     callee = rt.le; nm = "le"; break;
+            case ast::BinaryOp::greater_equal:  callee = rt.ge; nm = "ge"; break;
+            default: break;
+            }
+
+            if (!callee) return llvm::ConstantInt::getFalse(*st.llctx);
+
+            llvm::Value* L = coerce_to_obj(st, B, emit_expr(emit_user, b.lhs_));
+            llvm::Value* R = coerce_to_obj(st, B, emit_expr(emit_user, b.rhs_));
+            return B.CreateCall(callee, {L, R}, nm);
         }
 
         default:
             return null_obj(st);
         }
     }
-
 } // namespace sema

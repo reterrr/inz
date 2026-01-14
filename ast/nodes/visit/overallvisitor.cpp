@@ -4,8 +4,6 @@
 
 #include "overallvisitor.hpp"
 
-#include "project.hpp"
-
 // decls
 #include "decl/fn_decl.hpp"
 #include "decl/param_decl.hpp"
@@ -57,13 +55,6 @@ namespace ast::visitor
         if (f.body_) f.body_->accept(*this);
     }
 
-    void OverallVisitor::visit(TypeAliasDecl& t)
-    {
-        // If you store aliased type expr, traverse it here.
-        // if (t.type_alias) t.type_alias->accept(*this);
-        (void)t;
-    }
-
     void OverallVisitor::visit(ImportDecl& i)
     {
         (void)i;
@@ -108,11 +99,6 @@ namespace ast::visitor
     {
         if (b.lhs_) b.lhs_->accept(*this);
         if (b.rhs_) b.rhs_->accept(*this);
-    }
-
-    void OverallVisitor::visit(StringLiteralExpr& s)
-    {
-        (void)s;
     }
 
     void OverallVisitor::visit(StructLiteralExpr& o)
@@ -203,33 +189,10 @@ namespace ast::visitor
     {
     }
 
-    void OverallVisitor::visit(SelfParamDecl&)
-    {
-    }
-
     void OverallVisitor::visit(LoadFnDecl&)
     {
     }
-
-    void OverallVisitor::visit(TraitFnDecl&)
-    {
-    }
-
-    void OverallVisitor::visit(ImplFnDecl&)
-    {
-    }
-
-    void OverallVisitor::visit(TraitDecl&)
-    {
-    }
-
-    void OverallVisitor::visit(ImplDecl&)
-    {
-    }
-
-    void OverallVisitor::visit(SelfExpr&)
-    {
-    }
+    void OverallVisitor::visit(StringLiteralExpr &) {}
 
     void OverallVisitor::visit(BlockStatement& b)
     {
@@ -286,15 +249,8 @@ namespace ast::visitor
         }
     }
 
-    void OverallVisitor::visit(Project& p)
-    {
-        for (auto* m : p.modules)
-        {
-            if (m) m->accept(*this);
-        }
-    }
-
-    // ---- Types / misc nodes: keep as leaves unless you want deeper traversal ----
+    // ---- Types / misc nodes: keep as leaves unless you want deeper traversal
+    // ----
 
     void OverallVisitor::visit(CastExpr& c)
     {

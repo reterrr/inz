@@ -1,75 +1,88 @@
-// sema/pass2.cpp
 #include "pass2.hpp"
 
+#include <limits>
 #include <sstream>
+#include <string>
+#include <utility>
 
 #include "expr/path_expr.hpp"
 
 namespace sema
 {
-    static Pass2Diagnostic mkdiag(Pass2Diagnostic::Code c,
-                                  ModuleId module,
-                                  const lex::Loc& loc,
-                                  std::string msg)
+    static inline void log_module_path_first(LogSequence& logs,
+                                             const std::vector<lex::SymId>& segs,
+                                             const lex::Loc& loc,
+                                             bool also_log_idents = false)
     {
-        return Pass2Diagnostic{
-            .code = c,
-            .module = module,
-            .loc = loc,
-            .message = std::move(msg),
-        };
+        logs.emplace_back(LogPath{SymKind::Ident, segs, loc});
+
+
+        if (also_log_idents)
+        {
+            for (lex::SymId s : segs)
+                logs.emplace_back(Log{SymKind::Ident, s, loc});
+        }
     }
 
-    std::string Pass2ModuleIndexVisitor::join_sym_path(const std::vector<lex::SymId>& segs)
+    std::string Pass2ModuleIndexVisitor::join_sym_path_numeric(
+        const std::vector<lex::SymId>& segs)
     {
         std::ostringstream oss;
         for (std::size_t i = 0; i < segs.size(); ++i)
         {
-            if (i) oss << "::";
-            // ADAPT: replace with interner view(sym) when you have access to it.
+            if (i)
+                oss << "::";
             oss << static_cast<std::uint32_t>(segs[i]);
         }
         return oss.str();
     }
 
-    std::string Pass2ModuleIndexVisitor::make_module_key(const ast::Module& m)
+    std::string Pass2ModuleIndexVisitor::make_module_key_from_path(
+        const std::vector<lex::SymId>& segs)
     {
-        if (!m.pathExpr_)
-            return "<root>";
-
-        const auto& segs = m.pathExpr_->path_;
         if (segs.empty())
             return "<root>";
-
-        return join_sym_path(segs);
+        return join_sym_path_numeric(segs);
     }
 
     void Pass2ModuleIndexVisitor::visit(ast::Module& m)
     {
-        const std::string key = make_module_key(m);
+        std::vector<lex::SymId> segs;
+        if (m.pathExpr_)
+            segs = m.pathExpr_->path_;
 
-        // Ensure vector is present and initialized (in case caller didn't size it).
+        const std::string key = make_module_key_from_path(segs);
+
+
         if (unit_index_ >= out_.unit_to_module.size())
             out_.unit_to_module.resize(unit_index_ + 1, kInvalidModuleId);
 
-        // Duplicate module name across units
+
         if (const auto it = out_.by_key.find(key); it != out_.by_key.end())
         {
             const ModuleId first_seen = it->second;
 
-            out_.diagnostics.push_back(mkdiag(
-                Pass2Diagnostic::Code::DuplicateModuleName,
-                first_seen,
-                m.location_,
-                "duplicate module/package name across files/units: " + key));
 
-            // Bind this unit to the first-seen module id to keep compilation deterministic.
+            log_module_path_first(out_.errors, segs, m.location_,
+                                  /*also_log_idents=*/true);
+
+            out_.errors.emplace_back(std::string(
+                "pass2: DuplicateModuleName: duplicate module/package name across files/units"));
+
+            {
+                std::ostringstream tail;
+                tail << " (key='" << key << "', first_seen_module_id=" << first_seen.value
+                    << ", this_unit_index=" << unit_index_ << ")";
+                out_.errors.emplace_back(tail.str());
+            }
+
+
             out_.unit_to_module[unit_index_] = first_seen;
             return;
         }
 
-        // New module
-        const ModuleId id{ static_cast<std::uint32_t>(out_.modules.size()) };
+
+        const ModuleId id{static_cast<std::uint32_t>(out_.modules.size())};
         out_.by_key.emplace(key, id);
 
         out_.modules.push_back(ModuleEntry{
@@ -80,32 +93,38 @@ namespace sema
         });
 
         out_.unit_to_module[unit_index_] = id;
-
-        // Pass2 does not need to recurse.
-        // ast::visitor::OverallVisitor::visit(m);
     }
 
     Pass2Result run_pass2_module_index(const Translation& tr)
     {
         Pass2Result out{};
-
         out.unit_to_module.assign(tr.units.size(), kInvalidModuleId);
 
-        for (std::uint32_t i = 0; i < static_cast<std::uint32_t>(tr.units.size()); ++i)
+        for (std::uint32_t i = 0; i < static_cast<std::uint32_t>(tr.units.size());
+             ++i)
         {
             ast::Module* mod = tr.units[i].module_;
             if (!mod)
+            {
+                log_module_path_first(out.errors,
+                                      /*segs=*/{},
+                                      /*loc=*/lex::Loc{},
+                                      /*also_log_idents=*/false);
+
+                std::ostringstream oss;
+                oss << "pass2: internal error: unit " << i
+                    << " has no module AST node";
+                out.errors.emplace_back(oss.str());
                 continue;
+            }
 
             Pass2ModuleIndexVisitor vis(out, i);
             mod->accept(vis);
-
-            // If a unit had a module node, it should have been assigned.
-            // If not, keep it invalid (safe default).
         }
 
-        // module_to_unit must be sized after we know module count
-        out.module_to_unit.assign(out.modules.size(), std::numeric_limits<std::uint32_t>::max());
+
+        out.module_to_unit.assign(out.modules.size(),
+                                  std::numeric_limits<std::uint32_t>::max());
         for (const auto& e : out.modules)
         {
             if (e.id.value < out.module_to_unit.size())
@@ -114,5 +133,4 @@ namespace sema
 
         return out;
     }
-
-} // namespace sema
+}

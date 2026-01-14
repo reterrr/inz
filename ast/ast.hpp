@@ -15,13 +15,9 @@
 #include "nodes/expr/expr.hpp"
 #include "nodes/stmt/statement.hpp"
 #include "nodes/decl/decl.hpp"
-#include "self_param_kind.hpp"
-// Include concrete nodes used by factory
-#include "impl_decl.hpp"
-#include "self_param_kind.hpp"
+
 #include "expr/builtin_type_expr.hpp"
 #include "expr/ref_type_expr.hpp"
-#include "nodes/project.hpp"
 #include "nodes/expr/int_literal_expr.hpp"
 #include "nodes/expr/bool_literal_expr.hpp"
 #include "nodes/expr/string_literal_expr.hpp"
@@ -57,15 +53,11 @@
 
 
 #include "nodes/decl/param_decl.hpp"
-#include "nodes/decl/self_param_decl.hpp"
 #include "nodes/decl/fn_decl.hpp"
 #include "nodes/decl/load_fn_decl.hpp"
-#include "nodes/decl/trait_fn_decl.hpp"
-#include "nodes/decl/impl_fn_decl.hpp"
-#include "nodes/decl/type_alias_decl.hpp"
+
 #include "nodes/decl/struct_decl.hpp"
 #include "nodes/decl/field_decl.hpp"
-#include "nodes/decl/trait_decl.hpp"
 
 #include "nodes/module/import_decl.hpp"
 #include "nodes/module/module.hpp"
@@ -282,7 +274,6 @@ namespace ast
         BreakStatement* mk_break_stmt(const lex::Loc& loc);
 
         ParamDecl* mk_param_decl(lex::SymId name, TypeExpr* typeExpr, const lex::Loc& loc);
-        ast::SelfParamDecl* mk_self_param_decl(lex::SymId self_sym, ast::SelfParamKind kind, const lex::Loc& loc);
 
         // ========= Declarations =========
         FnDecl* mk_fn_decl(lex::SymId name,
@@ -294,25 +285,12 @@ namespace ast
                                  const lex::Loc& loc);
         LoadFnDecl* mk_load_fn_decl(lex::SymId name, std::vector<ParamDecl*>&& params, TypeExpr* ret, bool isExported,
                                     const lex::Loc& loc);
-        ImplFnDecl* mk_impl_fn_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecls,
-                                    std::vector<ParamDecl*>&& params, TypeExpr* ret, BlockStatement* body,
-                                    bool isExported,
-                                    const lex::Loc& loc);
-
-        TraitFnDecl* mk_trait_fn_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecls,
-                                      std::vector<ParamDecl*>&& params, TypeExpr* ret, BlockStatement* body,
-                                      bool exported, const lex::Loc& loc);
         FieldDecl* mk_field_decl(lex::SymId name, TypeExpr* type, Visibility visibility,
                                  const lex::Loc& loc);
         TypeParamDecl* mk_type_param_decl(lex::SymId name, const lex::Loc& loc);
 
         StructDecl* mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecls,
                                    std::vector<FieldDecl*>&& fields, bool isExported, const lex::Loc& loc);
-        ast::TraitDecl* mk_trait_decl(lex::SymId name, std::vector<TypeParamDecl*>&& tparams,
-                                      std::vector<TraitFnDecl*>&& methods, bool is_exported, const lex::Loc& loc);
-        ast::ImplDecl* mk_impl_decl(std::vector<TypeParamDecl*>&& tparams, TypeExpr* traitType,
-                                    TypeExpr* selfType, std::vector<ImplFnDecl*>&& methods, const lex::Loc& loc);
-        ast::SelfExpr* mk_self_expr(const lex::Loc& loc);
 
         void mk_module(
             PathExpr* pathExpr,

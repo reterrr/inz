@@ -1,40 +1,33 @@
+// sema/pass5.cpp
 #include "pass5.hpp"
 
-#include <sstream>
+#include <string_view>
+
 #include "compiler_context.hpp"
+
+// If you want LogPath{SymKind::Ident, path, loc} style, ensure logging_entities.hpp
+// defines LogPath with a SymKind field. This implementation assumes:
+//
+// struct LogPath { SymKind kind; std::vector<lex::SymId> path; lex::Loc location; };
+//
+// If your LogPath currently does not include `kind`, either:
+//   (a) add it (recommended), or
+//   (b) remove the `.kind = SymKind::Ident` initializers below.
 
 namespace sema
 {
-    Pass5TypeResolveVisitor::Pass5TypeResolveVisitor(const CompilerContext& ctx,
-                                                     const Pass4_5Result& p45,
-                                                     const Pass5ReservedResult& p5r,
-                                                     uint32_t unit_index,
-                                                     lex::SymId box_sym,
-                                                     lex::SymId str_sym,
-                                                     Pass5Result& out)
-        : ctx_(ctx)
-        , p45_(p45)
-        , p5r_(p5r)
-        , unit_index_(unit_index)
-        , box_sym_(box_sym)
-        , str_sym_(str_sym)
-        , out_(out)
+    static std::string_view p5_err_name(Pass5Error e)
     {
-        // Initialize module_ early if env is already available.
-        if (unit_index_ < p45_.envs.size())
-            module_ = p45_.envs[unit_index_].module_id;
-    }
-
-    void Pass5TypeResolveVisitor::diag(Pass5Diagnostic::Code c,
-                                       const lex::Loc& loc,
-                                       std::string msg) const
-    {
-        out_.diagnostics.push_back(Pass5Diagnostic{
-            .code = c,
-            .module = module_, // NEW
-            .loc = loc,
-            .message = std::move(msg),
-        });
+        switch (e)
+        {
+        case Pass5Error::UnknownTypeName: return "UnknownTypeName";
+        case Pass5Error::UnknownImportAlias: return "UnknownImportAlias";
+        case Pass5Error::IllegalBoxArity: return "IllegalBoxArity";
+        case Pass5Error::IllegalFixedArrayLength: return "IllegalFixedArrayLength";
+        case Pass5Error::UnsupportedTypePathDepth: return "UnsupportedTypePathDepth";
+        case Pass5Error::UnsupportedTypeForm: return "UnsupportedTypeForm";
+        default: return "Pass5Error";
+        }
     }
 
     static std::string strip_underscores(std::string_view s)
@@ -85,7 +78,7 @@ namespace sema
         std::uint64_t v = 0;
         for (char c : digits)
         {
-            int d = val_of(c);
+            const int d = val_of(c);
             if (d < 0 || d >= base) return false;
 
             if (v > (UINT64_MAX - static_cast<std::uint64_t>(d)) / static_cast<std::uint64_t>(base))
@@ -98,7 +91,34 @@ namespace sema
         return true;
     }
 
-    std::optional<std::uint64_t> Pass5TypeResolveVisitor::const_eval_u64(ast::Expr* e)
+    // ------------------------------------------------------------
+    // ctor
+    // ------------------------------------------------------------
+
+    Pass5TypeResolveVisitor::Pass5TypeResolveVisitor(const CompilerContext& ctx,
+                                                     const Pass4_5Result& p45,
+                                                     const Pass5ReservedResult& p5r,
+                                                     std::uint32_t unit_index,
+                                                     lex::SymId box_sym,
+                                                     lex::SymId str_sym,
+                                                     Pass5Result& out)
+        : ctx_(ctx)
+          , p45_(p45)
+          , p5r_(p5r)
+          , unit_index_(unit_index)
+          , box_sym_(box_sym)
+          , str_sym_(str_sym)
+          , out_(out)
+    {
+        if (unit_index_ < p45_.envs.size())
+            module_ = p45_.envs[unit_index_].module_id;
+    }
+
+    // ------------------------------------------------------------
+    // const-eval MVP
+    // ------------------------------------------------------------
+
+    std::optional<std::uint64_t> Pass5TypeResolveVisitor::const_eval_u64(ast::Expr* e) const
     {
         if (!e) return std::nullopt;
 
@@ -111,7 +131,7 @@ namespace sema
             const std::string cleaned = strip_underscores(raw);
 
             std::string_view digits{};
-            int base = detect_base(std::string_view{cleaned}, digits);
+            const int base = detect_base(std::string_view{cleaned}, digits);
 
             std::uint64_t v = 0;
             if (!parse_u64(digits, base, v))
@@ -122,6 +142,10 @@ namespace sema
 
         return std::nullopt;
     }
+
+    // ------------------------------------------------------------
+    // type interning helpers
+    // ------------------------------------------------------------
 
     TypeId Pass5TypeResolveVisitor::ty_builtin(BuiltinType b)
     {
@@ -157,6 +181,10 @@ namespace sema
         return out_.types.get_or_intern(k);
     }
 
+    // ------------------------------------------------------------
+    // generic type param scope
+    // ------------------------------------------------------------
+
     bool Pass5TypeResolveVisitor::is_type_param(lex::SymId s) const
     {
         for (auto it = type_param_stack_.rbegin(); it != type_param_stack_.rend(); ++it)
@@ -179,8 +207,11 @@ namespace sema
             type_param_stack_.pop_back();
     }
 
-    BuiltinType Pass5TypeResolveVisitor::map_builtin(kl::rt::BuiltinTypeExprKind k,
-                                                     const lex::Loc& loc) const
+    // ------------------------------------------------------------
+    // builtin mapping
+    // ------------------------------------------------------------
+
+    BuiltinType Pass5TypeResolveVisitor::map_builtin(kl::rt::BuiltinTypeExprKind k, const lex::Loc& loc)
     {
         using K = kl::rt::BuiltinTypeExprKind;
         switch (k)
@@ -205,10 +236,15 @@ namespace sema
         case K::Void: return BuiltinType::Void;
 
         default:
-            diag(Pass5Diagnostic::Code::UnsupportedTypeForm, loc, "unknown builtin type kind");
+            out_.errors.emplace_back(std::string("pass5: UnsupportedTypeForm: unknown builtin type kind"));
+            out_.errors.emplace_back(Log{SymKind::Ident, /*id=*/lex::SymId{}, /*loc=*/loc});
             return BuiltinType::Void;
         }
     }
+
+    // ------------------------------------------------------------
+    // resolve dispatch
+    // ------------------------------------------------------------
 
     TypeId Pass5TypeResolveVisitor::resolve(ast::TypeExpr* t)
     {
@@ -218,7 +254,6 @@ namespace sema
             return it->second;
 
         t->accept(*this);
-
         out_.type_of.emplace(t, last_);
         return last_;
     }
@@ -234,6 +269,10 @@ namespace sema
         return it->second;
     }
 
+    // ------------------------------------------------------------
+    // module-level visit
+    // ------------------------------------------------------------
+
     void Pass5TypeResolveVisitor::visit(ast::Module& m)
     {
         env_ = nullptr;
@@ -241,7 +280,7 @@ namespace sema
         if (unit_index_ < p45_.envs.size())
         {
             env_ = &p45_.envs[unit_index_];
-            module_ = env_->module_id; // NEW: refresh from env
+            module_ = env_->module_id;
         }
         else
         {
@@ -252,6 +291,10 @@ namespace sema
 
         env_ = nullptr;
     }
+
+    // ------------------------------------------------------------
+    // decl/stmts
+    // ------------------------------------------------------------
 
     void Pass5TypeResolveVisitor::visit(ast::CallExpr& c)
     {
@@ -281,7 +324,7 @@ namespace sema
             lay.fields_in_order.reserve(s.fields_.size());
             lay.field_types_in_order.reserve(s.fields_.size());
 
-            uint32_t idx = 0;
+            std::uint32_t idx = 0;
             for (auto* fd : s.fields_)
             {
                 if (!fd) continue;
@@ -291,10 +334,11 @@ namespace sema
                 auto [it, inserted] = lay.name_to_index.emplace(fname, idx);
                 if (!inserted)
                 {
-                    diag(Pass5Diagnostic::Code::UnsupportedTypeForm,
-                         fd->location_,
-                         "duplicate field name in struct");
-                    continue;
+                    out_.errors.emplace_back(
+                        std::string("pass5: UnsupportedTypeForm: duplicate field name in struct: "));
+                    out_.errors.emplace_back(Log{SymKind::Ident, fname, fd->location_});
+                    pop_to_size(before);
+                    return;
                 }
 
                 TypeId fty = fd->type_ ? resolve(fd->type_) : ty_void();
@@ -347,6 +391,10 @@ namespace sema
         ast::visitor::OverallVisitor::visit(lf);
     }
 
+    // ------------------------------------------------------------
+    // type expr nodes
+    // ------------------------------------------------------------
+
     void Pass5TypeResolveVisitor::visit(ast::BuiltinTypeExpr& t)
     {
         last_ = ty_builtin(map_builtin(t.kind_, t.location_));
@@ -368,15 +416,19 @@ namespace sema
     {
         TypeId elem = resolve(t.type_);
 
-        // ADAPT: your field name
+        // ADAPT: your actual field name
         ast::Expr* len_expr = t.sizeExpr_; // <-- CHANGE if needed
 
-        auto lenOpt = const_eval_u64(len_expr);
+        const auto lenOpt = const_eval_u64(len_expr);
         if (!lenOpt.has_value())
         {
-            diag(Pass5Diagnostic::Code::IllegalFixedArrayLength,
-                 t.location_,
-                 "fixed array length must be a compile-time integer literal (Pass5 const-eval MVP)");
+            out_.errors.emplace_back(std::string(
+                "pass5: IllegalFixedArrayLength: fixed array length must be a compile-time integer literal"));
+            // If the length expression is an int literal, record it as Numeric
+            if (auto* il = dynamic_cast<ast::IntLiteralExpr*>(len_expr))
+            {
+                out_.errors.emplace_back(Log{SymKind::Numeric, il->v_, il->location_});
+            }
             last_ = ty_void();
             return;
         }
@@ -393,16 +445,14 @@ namespace sema
     {
         if (!env_)
         {
-            diag(Pass5Diagnostic::Code::UnsupportedTypeForm,
-                 t.location_,
-                 "internal error: missing module env");
+            out_.errors.emplace_back(std::string("pass5: UnsupportedTypeForm: internal error: missing module env"));
             last_ = ty_void();
             return;
         }
 
         if (!t.pathExpr_)
         {
-            diag(Pass5Diagnostic::Code::UnknownTypeName, t.location_, "missing type path");
+            out_.errors.emplace_back(std::string("pass5: UnknownTypeName: missing type path"));
             last_ = ty_void();
             return;
         }
@@ -410,16 +460,20 @@ namespace sema
         const auto& segs = t.pathExpr_->path_;
         if (segs.empty())
         {
-            diag(Pass5Diagnostic::Code::UnknownTypeName, t.location_, "empty type path");
+            out_.errors.emplace_back(std::string("pass5: UnknownTypeName: empty type path"));
             last_ = ty_void();
             return;
         }
 
+        // Log the whole path as structured entity:
+        // {"message", LogPath{Ident, [a,b,c], loc}, "message2"}
+        // out_.errors.emplace_back(std::string("pass5: type path: "));
+        // out_.errors.emplace_back(LogPath{ .kind = SymKind::Ident, .path = segs, .location = t.location_ });
+
         if (!t.typeArgs_.empty() && !(segs.size() == 1 && segs[0] == box_sym_))
         {
-            diag(Pass5Diagnostic::Code::UnsupportedTypeForm,
-                 t.location_,
-                 "type arguments are only supported for Box<T>");
+            out_.errors.emplace_back(
+                std::string("pass5: UnsupportedTypeForm: type arguments are only supported for Box<T>"));
             last_ = ty_void();
             return;
         }
@@ -432,9 +486,9 @@ namespace sema
             {
                 if (t.typeArgs_.size() != 1 || !t.typeArgs_[0])
                 {
-                    diag(Pass5Diagnostic::Code::IllegalBoxArity,
-                         t.location_,
-                         "Box<T> requires exactly one type argument");
+                    out_.errors.emplace_back(
+                        std::string("pass5: IllegalBoxArity: Box<T> requires exactly one type argument"));
+                    out_.errors.emplace_back(Log{SymKind::Ident, box_sym_, t.location_});
                     last_ = ty_void();
                     return;
                 }
@@ -469,9 +523,8 @@ namespace sema
                 return;
             }
 
-            std::ostringstream oss;
-            oss << "unknown type name: " << static_cast<uint32_t>(name);
-            diag(Pass5Diagnostic::Code::UnknownTypeName, t.location_, oss.str());
+            out_.errors.emplace_back(std::string("pass5: UnknownTypeName: unknown type name: "));
+            out_.errors.emplace_back(Log{SymKind::Ident, name, t.location_});
             last_ = ty_void();
             return;
         }
@@ -481,12 +534,11 @@ namespace sema
             const lex::SymId alias = segs[0];
             const lex::SymId name = segs[1];
 
-            auto it_alias = env_->imports_by_alias.find(alias);
+            const auto it_alias = env_->imports_by_alias.find(alias);
             if (it_alias == env_->imports_by_alias.end())
             {
-                std::ostringstream oss;
-                oss << "unknown import alias in type path: " << static_cast<uint32_t>(alias);
-                diag(Pass5Diagnostic::Code::UnknownImportAlias, t.location_, oss.str());
+                out_.errors.emplace_back(std::string("pass5: UnknownImportAlias: unknown import alias in type path: "));
+                out_.errors.emplace_back(Log{SymKind::Ident, alias, t.location_});
                 last_ = ty_void();
                 return;
             }
@@ -494,9 +546,8 @@ namespace sema
             const ResolvedImport& ri = it_alias->second;
             if (!ri.target_globals)
             {
-                diag(Pass5Diagnostic::Code::UnsupportedTypeForm,
-                     t.location_,
-                     "internal error: resolved import missing target module globals");
+                out_.errors.emplace_back(std::string(
+                    "pass5: UnsupportedTypeForm: internal error: resolved import missing target module globals"));
                 last_ = ty_void();
                 return;
             }
@@ -506,10 +557,10 @@ namespace sema
             auto it_ty = imported.struct_by_name.find(name);
             if (it_ty == imported.struct_by_name.end())
             {
-                std::ostringstream oss;
-                oss << "unknown imported public type: "
-                    << static_cast<uint32_t>(alias) << "::" << static_cast<uint32_t>(name);
-                diag(Pass5Diagnostic::Code::UnknownTypeName, t.location_, oss.str());
+                out_.errors.emplace_back(std::string("pass5: UnknownTypeName: unknown imported public type: "));
+                out_.errors.emplace_back(Log{SymKind::Ident, alias, t.location_});
+                out_.errors.emplace_back(std::string("::"));
+                out_.errors.emplace_back(Log{SymKind::Ident, name, t.location_});
                 last_ = ty_void();
                 return;
             }
@@ -518,9 +569,9 @@ namespace sema
             return;
         }
 
-        diag(Pass5Diagnostic::Code::UnsupportedTypePathDepth,
-             t.location_,
-             "type paths deeper than alias::Name are not supported");
+        out_.errors.emplace_back(
+            std::string("pass5: UnsupportedTypePathDepth: type paths deeper than alias::Name are not supported"));
+        out_.errors.emplace_back(LogPath{.kind = SymKind::Ident, .path = segs, .location = t.location_});
         last_ = ty_void();
     }
 
@@ -540,9 +591,9 @@ namespace sema
         out.types = p5r.types;
         out.type_of.insert(p5r.type_of.begin(), p5r.type_of.end());
 
-        const uint32_t n_units = static_cast<uint32_t>(tr.units.size());
+        const std::uint32_t n_units = static_cast<std::uint32_t>(tr.units.size());
 
-        for (uint32_t unit_i = 0; unit_i < n_units; ++unit_i)
+        for (std::uint32_t unit_i = 0; unit_i < n_units; ++unit_i)
         {
             ast::Module* m = tr.units[unit_i].module_;
             if (!m) continue;

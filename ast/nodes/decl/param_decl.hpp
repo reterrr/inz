@@ -24,13 +24,6 @@ namespace ast
             type_->parent = this;
         }
 
-        ParamDecl(const lex::SymId name, const lex::Loc& L)
-            : Decl(NodeKind::Decl_SelfParam, L),
-              type_(nullptr), name_(name)
-        {
-            if (type_) type_->parent = this;
-        }
-
         void accept(visitor::DeclVisitor&) override;
     };
 

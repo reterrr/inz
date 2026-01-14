@@ -2,12 +2,13 @@
  * parser_reserved_rules.y
  *
  * Signature-only grammar for reserved/builtin declarations.
- * - Supports: package/imports, struct forward/type-ctor declarations, fn signatures,
+ * - Supports: package/imports, struct forward declarations, fn signatures,
  *   load fn signatures.
  * - No function bodies, no statements, no expressions (except const int in array types).
  *
- * This file reuses your existing Scanner, ast::Ast builders, Translation integration,
- * and token set.
+ * Notes:
+ * - self / &self / &mut self are supported WITHOUT mk_self_param_decl:
+ *   they are lowered to ParamDecl with synthesized type (self, &self, &mut self).
  * ============================================================================= */
 
 %define api.token.constructor
@@ -50,14 +51,12 @@
   }
 }
 
-
 /* ============================ IMPLEMENTATION PROLOGUE ======================= */
 %code {
   #include "lexer/lexer.hpp"
   #include "ast/ast.hpp"
   #include "translation.hpp"
   #include <iostream>
-  #include <utility>
 
   void yy::reserved::parser::error(const location_type& loc, const std::string& msg) {
     std::cerr << filePath << ':' << loc.begin.line << ':' << loc.begin.column
@@ -79,19 +78,16 @@
       case T::TOK_STRING_LITERAL: return yy::reserved::parser::make_TOK_STRING_LITERAL(t.u_.sym, L);
       case T::TOK_BOOL_LITERAL:   return yy::reserved::parser::make_TOK_BOOL_LITERAL(t.u_.boolean, L);
       case T::TOK_CHAR_LITERAL:   return yy::reserved::parser::make_TOK_CHAR_LITERAL(t.u_.ch, L);
-      case T::TOK_SELF:           return yy::reserved::parser::make_TOK_SELF(t.u_.sym, L);
 
       /* keywords */
       case T::TOK_FN:       return yy::reserved::parser::make_TOK_FN(L);
       case T::TOK_STRUCT:   return yy::reserved::parser::make_TOK_STRUCT(L);
       case T::TOK_IMPORT:   return yy::reserved::parser::make_TOK_IMPORT(L);
-      case T::TOK_EXPORT:   return yy::reserved::parser::make_TOK_EXPORT(L);
       case T::TOK_PACKAGE:  return yy::reserved::parser::make_TOK_PACKAGE(L);
       case T::TOK_AS:       return yy::reserved::parser::make_TOK_AS(L);
       case T::TOK_PUB:      return yy::reserved::parser::make_TOK_PUB(L);
       case T::TOK_MUT:      return yy::reserved::parser::make_TOK_MUT(L);
       case T::TOK_IMM:      return yy::reserved::parser::make_TOK_IMM(L);
-      case T::TOK_STATIC:   return yy::reserved::parser::make_TOK_STATIC(L);
       case T::TOK_LOAD:     return yy::reserved::parser::make_TOK_LOAD(L);
 
       /* builtin type keywords */
@@ -124,8 +120,8 @@
       case T::TOK_COLONCOLON:  return yy::reserved::parser::make_TOK_COLONCOLON(L);
       case T::TOK_ARROW:       return yy::reserved::parser::make_TOK_ARROW(L);
       case T::TOK_TURBOFISH_S: return yy::reserved::parser::make_TOK_TURBOFISH_S(L);
-      case T::TOK_LESS: return yy::reserved::parser::make_TOK_LESS(L);
-      case T::TOK_GREATER: return yy::reserved::parser::make_TOK_GREATER(L);
+      case T::TOK_LESS:        return yy::reserved::parser::make_TOK_LESS(L);
+      case T::TOK_GREATER:     return yy::reserved::parser::make_TOK_GREATER(L);
 
       /* operators used in type refs */
       case T::TOK_AMP:         return yy::reserved::parser::make_TOK_AMP(L);
@@ -148,14 +144,13 @@
 %start translation_unit
 
 /* ================================ TOKENS ==================================== */
-%token TOK_STRUCT TOK_FN TOK_IMPORT TOK_EXPORT TOK_PACKAGE TOK_AS TOK_LOAD
-%token TOK_MUT TOK_IMM TOK_STATIC TOK_PUB
+%token TOK_STRUCT TOK_FN TOK_IMPORT TOK_PACKAGE TOK_AS TOK_LOAD
+%token TOK_MUT TOK_IMM TOK_PUB
 
 %token TOK_I8 TOK_U8 TOK_I16 TOK_U16 TOK_I32 TOK_U32 TOK_I64 TOK_U64 TOK_I128 TOK_U128
 %token TOK_F32 TOK_F64 TOK_BOOL TOK_CHAR TOK_VOID
 
 %token <Str>               TOK_IDENTIFIER
-%token <Str>               TOK_SELF
 %token <Str>               TOK_INT_LITERAL
 %token <Str>               TOK_FLOAT_LITERAL
 %token <Str>               TOK_STRING_LITERAL
@@ -212,7 +207,6 @@
 %type <std::vector<ast::ParamDecl*>>         param_list_opt
 %type <std::vector<ast::ParamDecl*>>         param_list
 %type <ast::ParamDecl*>                      param
-%type <ast::ParamDecl*>                      self_param
 
 /* const int expr for array sizes (signature-only) */
 %type <ast::Expr*>                           const_int_expr
@@ -284,8 +278,6 @@ ident_no_self
 
 ident_any
   : TOK_IDENTIFIER
-    { $$ = $1; }
-  | TOK_SELF
     { $$ = $1; }
   ;
 
@@ -362,30 +354,33 @@ sig_decl
     { $$ = static_cast<ast::Decl*>($1); }
   ;
 
-/* function signature: must end with semicolon, body is forbidden */
+/* function signature: must end with semicolon, body is forbidden.
+ * mk_fn_decl currently requires a BlockStatement* body, so we synthesize an empty block. */
 sig_fn_decl
   : pub_opt TOK_FN ident_no_self type_params_opt TOK_LPAR param_list_opt TOK_RPAR ret_type_expr TOK_SMCLN
     {
       auto start = $1 ? @1 : @2; /* TOK_PUB if present else TOK_FN */
+      auto sigLoc = combine(start, @9);
 
-      /* IMPORTANT:
-       * Your ast.mk_fn_decl() in the full grammar takes a body (BlockStatement*).
-       * For signature-only declarations, you must allow body==nullptr.
-       * If your mk_fn_decl cannot accept nullptr, add mk_fn_sig_decl() and call it here.
-       */
+      auto emptyBody = ast.mk_block_stmt(
+        std::vector<ast::Statement*>{},
+        ast::BlockKind::Fn,
+        sigLoc
+      );
+
       $$ = ast.mk_fn_decl(
             $3,                 /* name */
             std::move($4),      /* type params */
             std::move($6),      /* params */
             $8,                 /* ret */
-            /*body*/ ast.mk_block_stmt(std::vector<ast::Statement*>{}, ast::BlockKind::Fn, {}),   /* signature-only */
-            $1,                 /* is_pub */
-            combine(start, @9)
+            emptyBody,          /* synthesized empty body */
+            $1,                 /* isExported */
+            sigLoc
           );
     }
   ;
 
-/* load fn signature: already semicolon-terminated in your main grammar */
+/* load fn signature: semicolon-terminated */
 sig_load_fn_decl
   : pub_opt TOK_LOAD TOK_FN ident_no_self TOK_LPAR param_list_opt TOK_RPAR ret_type_expr TOK_SMCLN
     {
@@ -402,7 +397,7 @@ sig_struct_decl
       $$ = ast.mk_struct_decl(
             $3,
             std::move($4),
-            std::vector<ast::FieldDecl*>{}, /* no fields in reserved signatures */
+            std::vector<ast::FieldDecl*>{},
             $1,
             combine(start, @5)
           );
@@ -430,26 +425,10 @@ param_list
   ;
 
 param
-  : self_param
-    { $$ = $1; }
-  | ident_no_self TOK_COLON type_expr
+  : ident_no_self TOK_COLON type_expr
     { $$ = ast.mk_param_decl($1, $3, combine(@1, @3)); }
   ;
 
-/* Keep receiver forms for compatibility; reserved signatures can ignore self */
-self_param
-  : TOK_SELF
-    { $$ = ast.mk_self_param_decl($1, ast::SelfParamKind::Value, @1); }
-  | TOK_AMP TOK_SELF
-    { $$ = ast.mk_self_param_decl($2, ast::SelfParamKind::Ref, combine(@1, @2)); }
-  | TOK_AMP TOK_MUT TOK_SELF
-    { $$ = ast.mk_self_param_decl($3, ast::SelfParamKind::RefMut, combine(@1, @3)); }
-  ;
-
-/* =============================================================================
- * Types (signature-only)
- * - Supports refs and array suffix with const integer length.
- * ============================================================================= */
 
 ret_type_expr
   : TOK_ARROW type_expr
@@ -474,7 +453,6 @@ ref_mutability
   | TOK_MUT  { $$ = ast::Mutability::Mut; }
   ;
 
-/* array suffix uses const_int_expr to avoid full expression grammar */
 type_postfix
   : type_primary
     { $$ = $1; }
@@ -516,18 +494,11 @@ path_type_expr
 
 /* =============================================================================
  * Const int expr for array lengths (signature-only)
- * - Accepts only an int literal, no arithmetic.
- * - You can later extend this to allow simple constant folding if needed.
  * ============================================================================= */
 
 const_int_expr
   : TOK_INT_LITERAL
-    {
-      /* If your mk_int_literal_expr requires a suffix, pass std::nullopt. */
-      $$ = ast.mk_int_literal_expr($1, std::nullopt, @1);
-    }
+    { $$ = ast.mk_int_literal_expr($1, std::nullopt, @1); }
   ;
 
 %%
-
-/* End of parser_reserved_rules.y */

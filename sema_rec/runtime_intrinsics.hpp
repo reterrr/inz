@@ -12,5 +12,7 @@ namespace sema
         box_get,
         box_set,
         print,
+        put,
+        nl
     };
 } // namespace sema

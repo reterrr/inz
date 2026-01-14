@@ -1,24 +1,44 @@
-// sema/pass5_reserved.cpp
 #include "pass5_reserved.hpp"
 
-#include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "expr/path_expr.hpp"
 
 namespace sema
 {
-    // ------------------------------------------------------------
-    // diagnostics + intern
-    // ------------------------------------------------------------
-
-    void Pass5ReservedVisitor::diag(Pass5ReservedDiagnostic::Code c,
-                                    const lex::Loc& loc,
-                                    std::string msg) const
+    static inline void log_module_path_first(LogSequence& logs,
+                                             const std::vector<lex::SymId>& segs,
+                                             const lex::Loc& loc)
     {
-        out_.diagnostics.push_back(Pass5ReservedDiagnostic{
-            .code = c,
-            .loc = loc,
-            .message = std::move(msg),
-        });
+        logs.emplace_back(LogPath{SymKind::Ident, segs, loc});
     }
+
+    void Pass5ReservedVisitor::log_error_prefix(const lex::Loc& loc, std::string msg) const
+    {
+        log_module_path_first(out_.errors, cur_module_path_, loc);
+        out_.errors.emplace_back(std::move(msg));
+    }
+
+    void Pass5ReservedVisitor::log_error_with_ident(const lex::Loc& loc,
+                                                    std::string msg,
+                                                    lex::SymId id) const
+    {
+        log_module_path_first(out_.errors, cur_module_path_, loc);
+        out_.errors.emplace_back(std::move(msg));
+        out_.errors.emplace_back(Log{SymKind::Ident, id, loc});
+    }
+
+    void Pass5ReservedVisitor::log_error_with_path(const lex::Loc& loc,
+                                                   std::string msg,
+                                                   const std::vector<lex::SymId>& path) const
+    {
+        log_module_path_first(out_.errors, cur_module_path_, loc);
+        out_.errors.emplace_back(std::move(msg));
+        out_.errors.emplace_back(LogPath{SymKind::Ident, path, loc});
+    }
+
 
     TypeId Pass5ReservedVisitor::ty_builtin(BuiltinType b) const
     {
@@ -42,48 +62,43 @@ namespace sema
     }
 
     BuiltinType Pass5ReservedVisitor::map_builtin(kl::rt::BuiltinTypeExprKind k,
-                                                  const lex::Loc& loc) const
+                                                  const lex::Loc& loc)
     {
         using K = kl::rt::BuiltinTypeExprKind;
         switch (k)
         {
-            case K::I8:   return BuiltinType::I8;
-            case K::I16:  return BuiltinType::I16;
-            case K::I32:  return BuiltinType::I32;
-            case K::I64:  return BuiltinType::I64;
-            case K::I128: return BuiltinType::I128;
+        case K::I8: return BuiltinType::I8;
+        case K::I16: return BuiltinType::I16;
+        case K::I32: return BuiltinType::I32;
+        case K::I64: return BuiltinType::I64;
+        case K::I128: return BuiltinType::I128;
 
-            case K::U8:   return BuiltinType::U8;
-            case K::U16:  return BuiltinType::U16;
-            case K::U32:  return BuiltinType::U32;
-            case K::U64:  return BuiltinType::U64;
-            case K::U128: return BuiltinType::U128;
+        case K::U8: return BuiltinType::U8;
+        case K::U16: return BuiltinType::U16;
+        case K::U32: return BuiltinType::U32;
+        case K::U64: return BuiltinType::U64;
+        case K::U128: return BuiltinType::U128;
 
-            case K::F32:  return BuiltinType::F32;
-            case K::F64:  return BuiltinType::F64;
+        case K::F32: return BuiltinType::F32;
+        case K::F64: return BuiltinType::F64;
 
-            case K::Bool: return BuiltinType::Bool;
-            case K::Char: return BuiltinType::Char;
-            case K::Void: return BuiltinType::Void;
+        case K::Bool: return BuiltinType::Bool;
+        case K::Char: return BuiltinType::Char;
+        case K::Void: return BuiltinType::Void;
 
-            default:
-                diag(Pass5ReservedDiagnostic::Code::UnsupportedTypeForm,
-                     loc,
-                     "unknown builtin type kind");
-                return BuiltinType::Void;
+        default:
+            log_error_prefix(loc, "pass5.reserved: UnsupportedTypeForm: unknown builtin type kind");
+            return BuiltinType::Void;
         }
     }
 
-    // ------------------------------------------------------------
-    // type param scope
-    // ------------------------------------------------------------
 
     void Pass5ReservedVisitor::push_type_params(const std::vector<ast::TypeParamDecl*>& tps)
     {
         for (auto* tp : tps)
         {
             if (!tp) continue;
-            // ADAPT if your TypeParamDecl stores name differently
+
             type_param_stack_.push_back(tp->name_);
         }
     }
@@ -101,9 +116,6 @@ namespace sema
         return false;
     }
 
-    // ------------------------------------------------------------
-    // helpers
-    // ------------------------------------------------------------
 
     bool Pass5ReservedVisitor::is_box(const ast::PathTypeExpr& t) const
     {
@@ -133,48 +145,48 @@ namespace sema
         if (auto it = out_.type_of.find(t); it != out_.type_of.end())
             return it->second;
 
-        // accept-based dispatch (no casts)
+
         t->accept(*this);
 
         out_.type_of.emplace(t, last_);
         return last_;
     }
 
-    // ------------------------------------------------------------
-    // visitor overrides
-    // ------------------------------------------------------------
 
     void Pass5ReservedVisitor::visit(ast::Module& m)
     {
-        // Phase 1: collect ALL struct ids first (do NOT resolve fn types yet)
+        cur_module_loc_ = m.location_;
+        cur_module_path_.clear();
+        if (m.pathExpr_)
+            cur_module_path_ = m.pathExpr_->path_;
+
+
         for (auto* d : m.decls)
         {
             if (!d) continue;
 
-            // Prefer NodeKind check; ADAPT enum constant to your codebase.
+
             if (d->nodeType_ == NodeKind::Decl_Struct)
-                d->accept(*this); // visit(StructDecl&)
+                d->accept(*this);
         }
 
-        // Phase 2: traverse module, resolving types
+
         ast::visitor::OverallVisitor::visit(m);
     }
 
     void Pass5ReservedVisitor::visit(ast::StructDecl& s)
     {
-        // reserve struct id (always)
         if (!out_.reserved_struct_by_name.contains(s.name_))
         {
-            ReservedStructId id{ static_cast<uint32_t>(out_.reserved_struct_decls.size()) };
+            ReservedStructId id{static_cast<uint32_t>(out_.reserved_struct_decls.size())};
             out_.reserved_struct_by_name.emplace(s.name_, id);
             out_.reserved_struct_decls.push_back(&s);
         }
 
-        // push struct type params if present (Box<T> declares T here)
+
         const size_t before = type_param_stack_.size();
 
-        // ADAPT if your StructDecl stores type params differently.
-        // If it has no type params, just remove this line.
+
         push_type_params(s.typeParamsDecls_);
 
         ast::visitor::OverallVisitor::visit(s);
@@ -186,11 +198,10 @@ namespace sema
     {
         const size_t before = type_param_stack_.size();
 
-        // ADAPT if your FnDecl stores type params differently.
-        // If it has no type params vector, remove this line.
+
         push_type_params(f.typeParamsDecls_);
 
-        // resolve signature types
+
         if (f.ret_) (void)resolve(f.ret_);
         for (auto* p : f.params_)
             if (p && p->type_) (void)resolve(p->type_);
@@ -206,7 +217,6 @@ namespace sema
         ast::visitor::OverallVisitor::visit(p);
     }
 
-    // ---- type expr nodes ----
 
     void Pass5ReservedVisitor::visit(ast::BuiltinTypeExpr& t)
     {
@@ -227,14 +237,11 @@ namespace sema
 
     void Pass5ReservedVisitor::visit(ast::ArrayTypeExpr& t)
     {
-        // Without SymId->text (or parsed integer stored in AST),
-        // you cannot compute N from sizeExpr_.
         (void)resolve(t.type_);
 
-        diag(Pass5ReservedDiagnostic::Code::IllegalFixedArrayLength,
-             t.location_,
-             "fixed array types are not supported in reserved signatures (no const-eval)");
 
+        log_error_prefix(t.location_,
+                         "pass5.reserved: IllegalFixedArrayLength: fixed array types are not supported in reserved signatures (no const-eval)");
         last_ = ty_void();
     }
 
@@ -242,43 +249,42 @@ namespace sema
     {
         if (!t.pathExpr_)
         {
-            diag(Pass5ReservedDiagnostic::Code::UnknownTypeName,
-                 t.location_,
-                 "missing type path");
+            log_error_prefix(t.location_, "pass5.reserved: UnknownTypeName: missing type path");
             last_ = ty_void();
             return;
         }
 
         const auto& segs = t.pathExpr_->path_;
 
-        // reserved world: only single-segment type paths
+
         if (segs.size() != 1)
         {
-            diag(Pass5ReservedDiagnostic::Code::UnsupportedTypePathDepth,
-                 t.location_,
-                 "reserved type paths must be single-segment");
+            log_error_with_path(t.location_,
+                                "pass5.reserved: UnsupportedTypePathDepth: reserved type paths must be single-segment: ",
+                                segs);
             last_ = ty_void();
             return;
         }
 
         const lex::SymId name = segs[0];
 
-        // Str (builtin-like)
+
         if (name == str_sym_)
         {
             last_ = ty_builtin(BuiltinType::Str);
             return;
         }
 
-        // Box<T>
+
         if (name == box_sym_)
         {
             const auto& args = type_args_of(t);
             if (args.size() != 1 || !args[0])
             {
-                diag(Pass5ReservedDiagnostic::Code::IllegalBoxArity,
-                     t.location_,
-                     "Box<T> requires exactly one type argument");
+                log_error_with_ident(t.location_,
+                                     "pass5.reserved: IllegalBoxArity: Box<T> requires exactly one type argument (for type name: ",
+                                     name);
+                out_.errors.emplace_back(std::string(")"));
                 last_ = ty_void();
                 return;
             }
@@ -293,22 +299,20 @@ namespace sema
             return;
         }
 
-        // TypeParam (T)
+
         if (is_type_param(name))
         {
             last_ = ty_type_param(name);
             return;
         }
 
-        // Reserved struct
+
         const auto sid = resolve_reserved_struct(name);
         if (!sid.has_value())
         {
-            std::ostringstream oss;
-            oss << "unknown reserved type name: " << name;
-            diag(Pass5ReservedDiagnostic::Code::UnknownTypeName,
-                 t.location_,
-                 oss.str());
+            log_error_with_ident(t.location_,
+                                 "pass5.reserved: UnknownTypeName: unknown reserved type name: ",
+                                 name);
             last_ = ty_void();
             return;
         }
@@ -320,9 +324,6 @@ namespace sema
         last_ = out_.types.get_or_intern(k);
     }
 
-    // ------------------------------------------------------------
-    // driver
-    // ------------------------------------------------------------
 
     Pass5ReservedResult run_pass5_reserved_type_resolve(const Translation& reserved_tr,
                                                         const Pass3_5Result& p35,
@@ -334,7 +335,12 @@ namespace sema
         for (const auto& unit : reserved_tr.units)
         {
             ast::Module* m = unit.module_;
-            if (!m) continue;
+            if (!m)
+            {
+                out.errors.emplace_back(
+                    std::string("pass5.reserved: InternalError: reserved unit has no module AST node"));
+                continue;
+            }
 
             Pass5ReservedVisitor vis(p35, box_sym, str_sym, out);
             m->accept(vis);
@@ -342,5 +348,4 @@ namespace sema
 
         return out;
     }
-
-} // namespace sema
+}

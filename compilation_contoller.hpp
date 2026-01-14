@@ -4,11 +4,49 @@
 #define TOML_EXCEPTIONS 0
 
 #include "tomlplusplus/toml.hpp"
+#include <cstdint>
 #include <filesystem>
-#include <string>
-#include <vector>
 #include <optional>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
+//
+// Driver/controller flags (uint16_t bitmask)
+//
+enum class DriverFlag : std::uint16_t
+{
+    None = 0,
+    DumpAst = (1u << 0),
+    DumpIr = (1u << 1),
+};
+
+constexpr std::uint16_t to_u16(DriverFlag f) noexcept
+{
+    return static_cast<std::uint16_t>(f);
+}
+
+constexpr DriverFlag operator|(DriverFlag a, DriverFlag b) noexcept
+{
+    return static_cast<DriverFlag>(to_u16(a) | to_u16(b));
+}
+
+constexpr DriverFlag operator&(DriverFlag a, DriverFlag b) noexcept
+{
+    return static_cast<DriverFlag>(to_u16(a) & to_u16(b));
+}
+
+constexpr DriverFlag& operator|=(DriverFlag& a, DriverFlag b) noexcept
+{
+    a = (a | b);
+    return a;
+}
+
+constexpr bool has_flag(DriverFlag mask, DriverFlag bit) noexcept
+{
+    return (to_u16(mask) & to_u16(bit)) != 0;
+}
 
 struct CompilerConfig
 {
@@ -17,72 +55,58 @@ struct CompilerConfig
     struct Files
     {
         std::filesystem::path filesDir;
-        std::vector<std::string> sources;
-        std::vector<std::filesystem::path> includeDirs;
-        std::vector<std::string> exclude;
-        bool recursive = false;
     } files;
 
-    struct Libs
+    struct Link
     {
-        std::vector<std::string> link;
-        std::vector<std::filesystem::path> libDirs;
-        std::vector<std::filesystem::path> includeDirs;
-    } libs;
+        std::vector<std::string> libs;
+    } link;
 
-    struct Toolchain
+    struct Flags
     {
-        std::string cxx; // e.g. "clang++"
-        std::string cppStd; // e.g. "c++20" (avoid member name "std")
-        std::vector<std::string> flags;
-        std::vector<std::string> defines;
-    } compiler;
+        std::unordered_map<std::string, DriverFlag> presets;
+        std::unordered_map<std::string, std::vector<std::string>> extra_tokens;
+    } flags;
 };
 
 namespace cfg
 {
-    inline std::optional<std::string> get_string(const toml::table& t, std::string_view key)
+    // ---------- small TOML helpers ----------
+
+    inline std::optional<std::string> get_string(const toml::table& t,
+                                                 std::string_view key)
     {
         if (auto v = t[key].value<std::string>())
             return *v;
         return std::nullopt;
     }
 
-    inline std::optional<bool> get_bool(const toml::table& t, std::string_view key)
+    inline std::optional<bool> get_bool(const toml::table& t,
+                                        std::string_view key)
     {
         if (auto v = t[key].value<bool>())
             return *v;
         return std::nullopt;
     }
 
-    inline std::vector<std::string> get_string_array(const toml::table& t, std::string_view key)
+    inline std::vector<std::string> get_string_array(const toml::table& t,
+                                                     std::string_view key)
     {
         std::vector<std::string> out;
         if (auto arr = t[key].as_array())
         {
+            out.reserve(arr->size());
             for (auto&& node : *arr)
+            {
                 if (auto s = node.value<std::string>())
                     out.push_back(*s);
+            }
         }
         return out;
     }
 
-    inline std::vector<std::filesystem::path> get_path_array(const toml::table& t, std::string_view key)
-    {
-        std::vector<std::filesystem::path> out;
-        if (auto arr = t[key].as_array())
-        {
-            for (auto&& node : *arr)
-                if (auto s = node.value<std::string>())
-                    out.emplace_back(*s);
-        }
-        return out;
-    }
-
-    inline bool require_table(const toml::table& root,
-                              std::string_view key,
-                              const toml::table*& outTable,
-                              std::string& err)
+    inline bool require_table(const toml::table& root, std::string_view key,
+                              const toml::table*& outTable, std::string& err)
     {
         if (auto t = root[key].as_table())
         {
@@ -94,10 +118,8 @@ namespace cfg
         return false;
     }
 
-    inline bool require_string(const toml::table& t,
-                               std::string_view key,
-                               std::string& outValue,
-                               std::string& err)
+    inline bool require_string(const toml::table& t, std::string_view key,
+                               std::string& outValue, std::string& err)
     {
         if (auto s = t[key].value<std::string>())
         {
@@ -108,28 +130,110 @@ namespace cfg
         return false;
     }
 
-    // Returns true on success, false on failure (with err filled).
+    // ---------- flags parsing (relaxed) ----------
+
+    inline std::optional<DriverFlag> flag_from_token(std::string_view tok)
+    {
+        if (tok == "--dump-ast") return DriverFlag::DumpAst;
+        if (tok == "--dump-ir") return DriverFlag::DumpIr;
+
+        // Add more mappings here.
+        return std::nullopt;
+    }
+
+    inline std::vector<std::string> split_ws(const std::string& s)
+    {
+        std::vector<std::string> out;
+        std::istringstream iss(s);
+        std::string tok;
+        while (iss >> tok) out.push_back(tok);
+        return out;
+    }
+
+    // Relaxed policy:
+    // - Known tokens set bits.
+    // - Unknown tokens are kept in outExtra.
+    // - No error on unknown tokens.
+    inline void parse_flag_list_relaxed(const std::vector<std::string>& tokens,
+                                        DriverFlag& outMask,
+                                        std::vector<std::string>& outExtra)
+    {
+        outMask = DriverFlag::None;
+        outExtra.clear();
+
+        for (const auto& t : tokens)
+        {
+            if (auto bit = flag_from_token(t)) outMask |= *bit;
+            else outExtra.push_back(t);
+        }
+    }
+
+    inline bool parse_flags_table(const toml::table& root,
+                                  CompilerConfig& outCfg,
+                                  std::string& err)
+    {
+        auto flagsTbl = root["flags"].as_table();
+        if (!flagsTbl) return true; // optional
+
+        for (auto&& [k, v] : *flagsTbl)
+        {
+            const std::string presetName = std::string(k.str());
+            std::vector<std::string> tokens;
+
+            if (auto s = v.value<std::string>())
+            {
+                tokens = split_ws(*s);
+            }
+            else if (auto arr = v.as_array())
+            {
+                tokens.reserve(arr->size());
+                for (auto&& node : *arr)
+                {
+                    if (auto sv = node.value<std::string>()) tokens.push_back(*sv);
+                    else
+                    {
+                        err = "Invalid non-string value in [flags]. Key: " + presetName;
+                        return false;
+                    }
+                }
+            }
+            else
+            {
+                err = "Invalid value type in [flags]. Key: " + presetName +
+                    " (expected string or array of strings)";
+                return false;
+            }
+
+            DriverFlag mask = DriverFlag::None;
+            std::vector<std::string> extra;
+            parse_flag_list_relaxed(tokens, mask, extra);
+
+            outCfg.flags.presets[presetName] = mask;
+            if (!extra.empty()) outCfg.flags.extra_tokens[presetName] = std::move(extra);
+            else outCfg.flags.extra_tokens.erase(presetName);
+        }
+
+        return true;
+    }
+
+    // ---------- main parse ----------
+
     inline bool parseCompilerConfig(const std::filesystem::path& path,
                                     CompilerConfig& outCfg,
                                     std::string& err)
     {
         err.clear();
 
-        // With TOML_EXCEPTIONS=0 this returns toml::noex::parse_result
         auto result = toml::parse_file(path.string());
-
-        if (!result) // parse failed
+        if (!result)
         {
-            // toml++ exposes an error object in noex mode
-            // description() is commonly available; keep formatting simple.
-            err = std::string("TOML parse error: ") + std::string(result.error().description());
+            err = std::string("TOML parse error: ") +
+                std::string(result.error().description());
             return false;
         }
 
-        // Avoid ambiguous conversion by binding to const-ref:
         const toml::table& root = result;
 
-        // top-level (optional)
         if (auto name = get_string(root, "project_name"))
             outCfg.projectName = *name;
 
@@ -144,31 +248,17 @@ namespace cfg
                 return false;
 
             outCfg.files.filesDir = dir;
-            outCfg.files.sources = get_string_array(*filesTbl, "sources");
-            outCfg.files.includeDirs = get_path_array(*filesTbl, "include_dirs");
-            outCfg.files.exclude = get_string_array(*filesTbl, "exclude");
-
-            if (auto r = get_bool(*filesTbl, "recursive"))
-                outCfg.files.recursive = *r;
         }
 
-        // [libs] (optional)
-        if (auto libs = root["libs"].as_table())
+        // [link] (optional)
+        if (auto linkTbl = root["link"].as_table())
         {
-            outCfg.libs.link = get_string_array(*libs, "link");
-            outCfg.libs.libDirs = get_path_array(*libs, "lib_dirs");
-            outCfg.libs.includeDirs = get_path_array(*libs, "include_dirs");
+            outCfg.link.libs = get_string_array(*linkTbl, "libs");
         }
 
-        // [compiler] (optional)
-        if (auto comp = root["compiler"].as_table())
-        {
-            if (auto cxx = get_string(*comp, "cxx")) outCfg.compiler.cxx = *cxx;
-            if (auto st = get_string(*comp, "std")) outCfg.compiler.cppStd = *st;
-
-            outCfg.compiler.flags = get_string_array(*comp, "flags");
-            outCfg.compiler.defines = get_string_array(*comp, "defines");
-        }
+        // [flags] (optional, relaxed)
+        if (!parse_flags_table(root, outCfg, err))
+            return false;
 
         return true;
     }
@@ -181,7 +271,6 @@ struct CompilationController
     CompilerConfig config;
     std::filesystem::path filesDirectory;
 
-    // Return status instead of throwing
     bool loadConfiguration(const std::filesystem::path& path, std::string& err)
     {
         CompilerConfig tmp{};
@@ -193,4 +282,5 @@ struct CompilationController
         return true;
     }
 };
-#endif
+
+#endif // INZ_COMPILER_CONTROLLER_HPP

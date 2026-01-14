@@ -116,13 +116,6 @@ ParamDecl* Ast::mk_param_decl(lex::SymId name, TypeExpr* typeExpr, const lex::Lo
     return make<ParamDecl>(name, typeExpr, loc);
 }
 
-ast::SelfParamDecl* ast::Ast::mk_self_param_decl(lex::SymId self_sym,
-                                                 ast::SelfParamKind kind,
-                                                 const lex::Loc& loc)
-{
-    return make<ast::SelfParamDecl>(self_sym, kind, loc);
-}
-
 VarStmt* Ast::mk_var_stmt(lex::SymId name, TypeExpr* tyExpr,
                           Mutability mutability, Storage storage,
                           Expr* init, const lex::Loc& loc)
@@ -171,26 +164,6 @@ LoadFnDecl* Ast::mk_load_fn_decl(lex::SymId name,
     return make<LoadFnDecl>(name, std::move(params), ret, isExported, loc);
 }
 
-ImplFnDecl* Ast::mk_impl_fn_decl(lex::SymId name,
-                                 std::vector<TypeParamDecl*>&& typeParamDecls,
-                                 std::vector<ParamDecl*>&& params,
-                                 TypeExpr* ret, BlockStatement* body,
-                                 bool isExported,
-                                 const lex::Loc& loc)
-{
-    return make<ImplFnDecl>(name, std::move(typeParamDecls), std::move(params), ret, body, isExported, loc);
-}
-
-TraitFnDecl* Ast::mk_trait_fn_decl(lex::SymId name,
-                                   std::vector<TypeParamDecl*>&& typeParamDecls,
-                                   std::vector<ParamDecl*>&& params,
-                                   TypeExpr* ret, BlockStatement* body,
-                                   bool exported,
-                                   const lex::Loc& loc)
-{
-    return make<TraitFnDecl>(name, std::move(typeParamDecls), std::move(params), ret, body, exported, loc);
-}
-
 FieldDecl* Ast::mk_field_decl(lex::SymId name, TypeExpr* type, Visibility visibility, const lex::Loc& loc)
 {
     return make<FieldDecl>(name, type, visibility, loc);
@@ -205,26 +178,6 @@ StructDecl* Ast::mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& t
                                 std::vector<FieldDecl*>&& fields, bool isExported, const lex::Loc& loc)
 {
     return make<StructDecl>(name, std::move(typeParamDecls), std::move(fields), isExported, loc);
-}
-
-TraitDecl* Ast::mk_trait_decl(lex::SymId name,
-                              std::vector<TypeParamDecl*>&& tparams,
-                              std::vector<TraitFnDecl*>&& methods,
-                              bool is_exported,
-                              const lex::Loc& loc)
-{
-    return make<TraitDecl>(name, std::move(tparams), std::move(methods), is_exported, loc);
-}
-
-// --- impl ---
-ImplDecl* Ast::mk_impl_decl(std::vector<TypeParamDecl*>&& tparams,
-                            TypeExpr* traitType, // nullable (inherent impl)
-                            TypeExpr* selfType, // required
-                            std::vector<ImplFnDecl*>&& methods,
-                            const lex::Loc& loc)
-{
-    assert(selfType && "mk_impl_decl: selfType is required");
-    return make<ImplDecl>(std::move(tparams), traitType, selfType, std::move(methods), loc);
 }
 
 void Ast::mk_module(PathExpr* pathExpr, std::vector<ImportDecl*>&& imports,

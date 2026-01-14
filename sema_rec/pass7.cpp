@@ -1,4 +1,6 @@
-// sema/pass7.cpp
+// ============================================================================
+// pass7.cpp
+// ============================================================================
 
 #include "pass7.hpp"
 #include "compiler_context.hpp"
@@ -16,39 +18,95 @@
 #include <variant>
 #include <vector>
 
-// Expr/stmt nodes used by Pass7 typing
-#include "stmt/var_statement.hpp"
+#include "expr/array_literal_expr.hpp"
 #include "expr/assign_expr.hpp"
-#include "expr/call_expr.hpp"
-#include "expr/unary_op_expr.hpp"
 #include "expr/binary_op_expr.hpp"
-#include "expr/index_expr.hpp"
+#include "expr/call_expr.hpp"
 #include "expr/field_expr.hpp"
+#include "expr/index_expr.hpp"
 #include "expr/path_expr.hpp"
 #include "expr/struct_literal_expr.hpp"
-#include "expr/array_literal_expr.hpp"
+#include "expr/unary_op_expr.hpp"
+#include "stmt/var_statement.hpp"
 
 namespace sema
 {
-    // ============================================================
-    // Diagnostics helper
-    // ============================================================
+    static thread_local ModuleId g_pass7_unit_module = kInvalidModuleId;
 
-    static void push_diag(Pass7Result& out,
-                          Pass7Diagnostic::Code c,
-                          const lex::Loc& loc,
-                          std::string msg)
+    static constexpr std::vector<lex::SymId> kPass7EmptyPath{};
+    static thread_local const std::vector<lex::SymId>* g_pass7_unit_path = &kPass7EmptyPath;
+
+    struct Pass7UnitModuleScope final
     {
-        out.diagnostics.push_back(Pass7Diagnostic{
-            .code = c,
-            .loc = loc,
-            .message = std::move(msg),
-        });
+        ModuleId prev_mid{};
+        const std::vector<lex::SymId>* prev_path = &kPass7EmptyPath;
+
+        Pass7UnitModuleScope(ModuleId m, const std::vector<lex::SymId>* path)
+            : prev_mid(g_pass7_unit_module), prev_path(g_pass7_unit_path)
+        {
+            g_pass7_unit_module = m;
+            g_pass7_unit_path = (path ? path : &kPass7EmptyPath);
+        }
+
+        ~Pass7UnitModuleScope()
+        {
+            g_pass7_unit_module = prev_mid;
+            g_pass7_unit_path = prev_path;
+        }
+    };
+
+    static std::string pass7_module_prefix()
+    {
+        std::ostringstream oss;
+        oss << "pass7[m=" << g_pass7_unit_module.value << "]: ";
+        return oss.str();
     }
 
-    // ============================================================
-    // Pass7 (A): literal lowering
-    // ============================================================
+    static inline void pass7_log_begin(LogSequence& logs, const lex::Loc& loc)
+    {
+        log_path(logs, *g_pass7_unit_path, loc, /*also_log_idents=*/false);
+    }
+
+    static inline void pass7_log_text(LogSequence& logs, const lex::Loc& loc, std::string msg)
+    {
+        pass7_log_begin(logs, loc);
+        log_msg(logs, std::move(msg));
+    }
+
+    static inline void pass7_log_ident_err(LogSequence& logs,
+                                           const lex::Loc& loc,
+                                           std::string msg,
+                                           lex::SymId id)
+    {
+        pass7_log_begin(logs, loc);
+        log_msg(logs, std::move(msg));
+        log_ident(logs, id, loc);
+    }
+
+    static inline void pass7_log_numeric_err(LogSequence& logs,
+                                             const lex::Loc& loc,
+                                             std::string msg,
+                                             lex::SymId id)
+    {
+        pass7_log_begin(logs, loc);
+        log_msg(logs, std::move(msg));
+        log_numeric(logs, id, loc);
+    }
+
+    static inline void pass7_log_path_err(LogSequence& logs,
+                                          const lex::Loc& loc,
+                                          std::string msg,
+                                          const std::vector<lex::SymId>& path)
+    {
+        pass7_log_begin(logs, loc);
+        log_msg(logs, std::move(msg));
+        log_path(logs, path, loc, /*also_log_idents=*/false);
+    }
+
+
+    // =========================================================================
+    // Pass7 literal lowering
+    // =========================================================================
 
     class Pass7LiteralLoweringVisitor final : public ast::visitor::OverallVisitor
     {
@@ -61,6 +119,7 @@ namespace sema
         void visit(ast::IntLiteralExpr&) override;
         void visit(ast::FloatLiteralExpr&) override;
         void visit(ast::ArrayLiteralExpr& a) override;
+        void visit(ast::CharLiteralExpr&) override;
 
     private:
         const CompilerContext& ctx_;
@@ -72,10 +131,18 @@ namespace sema
             out.reserve(s.size());
             for (char c : s)
             {
-                if (c == '_') continue;
+                if (c == '_')
+                    continue;
                 out.push_back(c);
             }
             return out;
+        }
+
+        void record_char(ast::CharLiteralExpr& node, CharLitValue v)
+        {
+            const auto id = static_cast<std::uint32_t>(out_.chars.size());
+            out_.chars.push_back(v);
+            out_.char_id.emplace(&node, id);
         }
 
         static int detect_base(std::string_view s, std::string_view& digits)
@@ -108,9 +175,12 @@ namespace sema
 
             auto val_of = [&](char c) -> int
             {
-                if (c >= '0' && c <= '9') return (c - '0');
-                if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
-                if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
+                if (c >= '0' && c <= '9')
+                    return (c - '0');
+                if (c >= 'a' && c <= 'f')
+                    return 10 + (c - 'a');
+                if (c >= 'A' && c <= 'F')
+                    return 10 + (c - 'A');
                 return -1;
             };
 
@@ -122,7 +192,8 @@ namespace sema
             for (char c : digits)
             {
                 const int d = val_of(c);
-                if (d < 0 || d >= base) return false;
+                if (d < 0 || d >= base)
+                    return false;
 
                 const U128 before = out;
                 const U128 b = static_cast<U128>(base);
@@ -138,14 +209,17 @@ namespace sema
 
         static U128 max_unsigned_bits(std::uint32_t bits)
         {
-            if (bits >= 128) return ~static_cast<U128>(0);
+            if (bits >= 128)
+                return ~static_cast<U128>(0);
             return (static_cast<U128>(1) << bits) - static_cast<U128>(1);
         }
 
         static U128 max_signed_bits(std::uint32_t bits)
         {
-            if (bits <= 1) return 0;
-            if (bits >= 128) return (static_cast<U128>(1) << 127) - static_cast<U128>(1);
+            if (bits <= 1)
+                return 0;
+            if (bits >= 128)
+                return (static_cast<U128>(1) << 127) - static_cast<U128>(1);
             return (static_cast<U128>(1) << (bits - 1)) - static_cast<U128>(1);
         }
 
@@ -154,39 +228,20 @@ namespace sema
             using K = kl::rt::IntKind;
             switch (k)
             {
-            case K::I8: bits = 8;
-                is_signed = true;
-                return true;
-            case K::I16: bits = 16;
-                is_signed = true;
-                return true;
-            case K::I32: bits = 32;
-                is_signed = true;
-                return true;
-            case K::I64: bits = 64;
-                is_signed = true;
-                return true;
-            case K::I128: bits = 128;
-                is_signed = true;
-                return true;
+            case K::I8: bits = 8; is_signed = true; return true;
+            case K::I16: bits = 16; is_signed = true; return true;
+            case K::I32: bits = 32; is_signed = true; return true;
+            case K::I64: bits = 64; is_signed = true; return true;
+            case K::I128: bits = 128; is_signed = true; return true;
 
-            case K::U8: bits = 8;
-                is_signed = false;
-                return true;
-            case K::U16: bits = 16;
-                is_signed = false;
-                return true;
-            case K::U32: bits = 32;
-                is_signed = false;
-                return true;
-            case K::U64: bits = 64;
-                is_signed = false;
-                return true;
-            case K::U128: bits = 128;
-                is_signed = false;
-                return true;
+            case K::U8: bits = 8; is_signed = false; return true;
+            case K::U16: bits = 16; is_signed = false; return true;
+            case K::U32: bits = 32; is_signed = false; return true;
+            case K::U64: bits = 64; is_signed = false; return true;
+            case K::U128: bits = 128; is_signed = false; return true;
 
-            default: return false;
+            default:
+                return false;
             }
         }
 
@@ -195,10 +250,8 @@ namespace sema
             using K = kl::rt::FloatKind;
             switch (k)
             {
-            case K::F32: is_f32 = true;
-                return true;
-            case K::F64: is_f32 = false;
-                return true;
+            case K::F32: is_f32 = true; return true;
+            case K::F64: is_f32 = false; return true;
             default: return false;
             }
         }
@@ -220,13 +273,21 @@ namespace sema
 
     void Pass7LiteralLoweringVisitor::visit(ast::ArrayLiteralExpr& a)
     {
-        // IMPORTANT: traverse elements, otherwise IntLiteralExpr never gets lowered
         for (auto& ep : a.v_)
         {
-            if (ep) ep->accept(*this);
+            if (ep)
+                ep->accept(*this);
         }
     }
 
+    void Pass7LiteralLoweringVisitor::visit(ast::CharLiteralExpr& ch)
+    {
+        if (out_.char_id.contains(&ch))
+            return;
+
+        const CharLitValue v = ch.v_;
+        record_char(ch, v);
+    }
 
     void Pass7LiteralLoweringVisitor::visit(ast::IntLiteralExpr& i)
     {
@@ -242,9 +303,10 @@ namespace sema
         U128 value = 0;
         if (!parse_u128(digits_only, base, value))
         {
-            std::ostringstream oss;
-            oss << "invalid integer literal: '" << raw << "'";
-            push_diag(out_, Pass7Diagnostic::Code::InvalidIntLiteral, i.location_, oss.str());
+            pass7_log_numeric_err(out_.errors,
+                                  i.location_,
+                                  pass7_module_prefix() + "InvalidIntLiteral: invalid integer literal",
+                                  i.v_);
             return;
         }
 
@@ -275,16 +337,21 @@ namespace sema
 
             if (!map_int_kind(*i.suffix_, bits, is_signed))
             {
-                push_diag(out_, Pass7Diagnostic::Code::UnsupportedIntSuffix, i.location_,
-                          "unsupported integer suffix");
+                pass7_log_numeric_err(out_.errors,
+                                      i.location_,
+                                      pass7_module_prefix() + "UnsupportedIntSuffix: unsupported integer suffix",
+                                      i.v_);
                 return;
             }
 
             const U128 maxv = is_signed ? max_signed_bits(bits) : max_unsigned_bits(bits);
             if (value > maxv)
             {
-                push_diag(out_, Pass7Diagnostic::Code::IntOverflow, i.location_,
-                          "integer literal overflows requested suffix type");
+                pass7_log_numeric_err(out_.errors,
+                                      i.location_,
+                                      pass7_module_prefix()
+                                      + "IntOverflow: integer literal overflows requested suffix type",
+                                      i.v_);
                 return;
             }
 
@@ -292,26 +359,11 @@ namespace sema
             return;
         }
 
-        if (value <= max_unsigned_bits(8))
-        {
-            record_int(i, static_cast<U8>(value));
-            return;
-        }
-        if (value <= max_unsigned_bits(16))
-        {
-            record_int(i, static_cast<U16>(value));
-            return;
-        }
-        if (value <= max_unsigned_bits(32))
-        {
-            record_int(i, static_cast<U32>(value));
-            return;
-        }
-        if (value <= max_unsigned_bits(64))
-        {
-            record_int(i, static_cast<U64>(value));
-            return;
-        }
+        if (value <= max_unsigned_bits(8))  { record_int(i, static_cast<U8>(value));  return; }
+        if (value <= max_unsigned_bits(16)) { record_int(i, static_cast<U16>(value)); return; }
+        if (value <= max_unsigned_bits(32)) { record_int(i, static_cast<U32>(value)); return; }
+        if (value <= max_unsigned_bits(64)) { record_int(i, static_cast<U64>(value)); return; }
+
         record_int(i, static_cast<U128>(value));
     }
 
@@ -330,9 +382,10 @@ namespace sema
             dv = std::strtod(tmp.c_str(), &end);
             if (!end || *end != '\0' || !std::isfinite(dv))
             {
-                std::ostringstream oss;
-                oss << "invalid float literal: '" << raw << "'";
-                push_diag(out_, Pass7Diagnostic::Code::InvalidFloatLiteral, f.location_, oss.str());
+                pass7_log_numeric_err(out_.errors,
+                                      f.location_,
+                                      pass7_module_prefix() + "InvalidFloatLiteral: invalid float literal",
+                                      f.v_);
                 return;
             }
         }
@@ -342,14 +395,16 @@ namespace sema
         {
             if (!map_float_kind(*f.suffix_, want_f32))
             {
-                push_diag(out_, Pass7Diagnostic::Code::UnsupportedFloatSuffix, f.location_,
-                          "unsupported float suffix");
+                pass7_log_numeric_err(out_.errors,
+                                      f.location_,
+                                      pass7_module_prefix() + "UnsupportedFloatSuffix: unsupported float suffix",
+                                      f.v_);
                 return;
             }
         }
         else
         {
-            want_f32 = false; // default f64
+            want_f32 = false;
         }
 
         if (want_f32)
@@ -357,25 +412,24 @@ namespace sema
             const auto fv = static_cast<float>(dv);
             if (!std::isfinite(fv))
             {
-                push_diag(out_, Pass7Diagnostic::Code::FloatOverflow, f.location_,
-                          "float literal overflows f32");
+                pass7_log_numeric_err(out_.errors,
+                                      f.location_,
+                                      pass7_module_prefix() + "FloatOverflow: float literal overflows f32",
+                                      f.v_);
                 return;
             }
-            const auto id = static_cast<std::uint32_t>(out_.floats.size());
-            out_.floats.emplace_back(fv);
-            out_.float_id.emplace(&f, id);
+            record_float(f, static_cast<F32>(fv));
         }
         else
         {
-            const auto id = static_cast<std::uint32_t>(out_.floats.size());
-            out_.floats.emplace_back(dv);
-            out_.float_id.emplace(&f, id);
+            record_float(f, static_cast<F64>(dv));
         }
     }
 
-    // ============================================================
-    // Pass7 (B): type checking + assignment legality
-    // ============================================================
+
+    // =========================================================================
+    // Pass7 type checking
+    // =========================================================================
 
     static bool is_valid_typeid(const Pass5Result& p5, TypeId t)
     {
@@ -423,6 +477,8 @@ namespace sema
 
         void visit(ast::Module& m) override;
         void visit(ast::FnDecl& f) override;
+        void visit(ast::ReturnStatement& r) override;
+        void visit(ast::BoolLiteralExpr& b) override;
 
         void visit(ast::VarStmt& v) override;
         void visit(ast::AssignExpr& a) override;
@@ -436,6 +492,7 @@ namespace sema
         void visit(ast::IndexExpr& i) override;
         void visit(ast::FieldExpr& f) override;
         void visit(ast::ArrayLiteralExpr& a) override;
+        void visit(ast::CharLiteralExpr& c) override;
 
     private:
         const Pass4Result& p4_;
@@ -444,95 +501,25 @@ namespace sema
         const Pass3_5Result* p3_5_;
         Pass7Result& out_;
         std::uint32_t unit_i_ = 0;
+        TypeId cur_fn_ret_{UINT32_MAX};
+        lex::Loc cur_fn_loc_{};
 
         const ModuleBindings* mb_ = nullptr;
         const FnBindings* fb_ = nullptr;
 
         BuiltinTidCache builtin_cache_;
 
-        // ------------------------------------------------------------
-        // helpers
-        // ------------------------------------------------------------
-
-        bool coerce_array_literal_to(TypeId expected, ast::Expr* e)
-        {
-            auto* al = dynamic_cast<ast::ArrayLiteralExpr*>(e);
-            if (!al) return false;
-
-            ArrayInfo ai = as_array_type(expected);
-            if (!ai.ok) return false;
-
-            // Assign the array literal the expected type immediately
-            set_expr_type(al, expected);
-
-            const auto got = static_cast<std::uint64_t>(al->v_.size());
-            const std::uint64_t want = ai.len;
-
-            if (got != want)
-            {
-                std::ostringstream oss;
-                oss << "array literal length mismatch (expected " << want << ", got " << got << ")";
-                push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, al->location_, oss.str());
-                // keep going to type-check what we can
-            }
-
-            const std::uint64_t n = std::min(got, want);
-
-            for (std::uint64_t i = 0; i < n; ++i)
-            {
-                ast::Expr* el = al->v_[static_cast<size_t>(i)]; // ExprPtr -> raw
-                if (!el) continue;
-
-                // Provide element context
-                (void)coerce_int_literal_to(ai.elem, el);
-                (void)coerce_struct_literal_to(ai.elem, el);
-                (void)coerce_array_literal_to(ai.elem, el); // nested arrays
-
-                TypeId et = get_expr_type(el);
-
-                if (!is_valid_typeid(p5_, et) || !is_valid_typeid(p5_, ai.elem))
-                {
-                    push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, el->location_,
-                              "cannot type-check array literal element (unknown type)");
-                    continue;
-                }
-
-                if (!assignable(ai.elem, et))
-                {
-                    std::ostringstream oss;
-                    oss << "type mismatch in array literal element #" << i
-                        << " (expected=" << ai.elem.value << ", got=" << et.value << ")";
-                    push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, el->location_, oss.str());
-                }
-            }
-
-            return true;
-        }
-
-        TypeId type_of_typeexpr(ast::TypeExpr* t) const
-        {
-            if (!t) return TypeId{UINT32_MAX};
-            auto it = p5_.type_of.find(t);
-            if (it == p5_.type_of.end()) return TypeId{UINT32_MAX};
-            return it->second;
-        }
-
-        bool is_array_like(TypeId t) const
-        {
-            if (!is_valid_typeid(p5_, t)) return false;
-            const TypeNode& n = p5_.types.nodes[t.value];
-            return n.kind == TypeKind::ArrayFixed;
-        }
-
         void set_expr_type(const ast::Expr* e, TypeId t) const
         {
-            if (!e) return;
+            if (!e)
+                return;
             out_.expr_type.try_emplace(e, t);
         }
 
         TypeId get_expr_type(ast::Expr* e)
         {
-            if (!e) return TypeId{UINT32_MAX};
+            if (!e)
+                return TypeId{UINT32_MAX};
 
             if (auto it = out_.expr_type.find(e); it != out_.expr_type.end())
                 return it->second;
@@ -553,7 +540,6 @@ namespace sema
             if (dst.value == src.value)
                 return true;
 
-            // Allow &mut T -> &T (read-only borrow from mutable borrow)
             const TypeNode& d = p5_.types.nodes[dst.value];
             const TypeNode& s = p5_.types.nodes[src.value];
 
@@ -563,8 +549,6 @@ namespace sema
                 {
                     const bool dst_mut = d.ref_mut;
                     const bool src_mut = s.ref_mut;
-
-                    // destination is immutable ref, source may be mutable ref
                     if (!dst_mut && src_mut)
                         return true;
                 }
@@ -573,9 +557,88 @@ namespace sema
             return false;
         }
 
+        TypeId type_of_typeexpr(ast::TypeExpr* t) const
+        {
+            if (!t)
+                return TypeId{UINT32_MAX};
+            auto it = p5_.type_of.find(t);
+            if (it == p5_.type_of.end())
+                return TypeId{UINT32_MAX};
+            return it->second;
+        }
+
+        struct RefInfo
+        {
+            bool ok = false;
+            ast::Mutability mut = ast::Mutability::Imm;
+            TypeId pointee{UINT32_MAX};
+        };
+
+        struct ArrayInfo
+        {
+            bool ok = false;
+            TypeId elem{UINT32_MAX};
+            std::uint64_t len = 0;
+        };
+
+        // NEW: Box<T> treated as runtime array of T
+        struct DynArrayInfo
+        {
+            bool ok = false;
+            TypeId elem{UINT32_MAX}; // T in Box<T>
+        };
+
+        RefInfo as_ref_type(TypeId t) const
+        {
+            RefInfo ri{};
+            if (!is_valid_typeid(p5_, t))
+                return ri;
+
+            const TypeNode& n = p5_.types.nodes[t.value];
+            if (n.kind != TypeKind::Ref)
+                return ri;
+
+            ri.ok = true;
+            ri.mut = n.ref_mut ? ast::Mutability::Mut : ast::Mutability::Imm;
+            ri.pointee = n.inner;
+            return ri;
+        }
+
+        ArrayInfo as_array_type(TypeId t) const
+        {
+            ArrayInfo ai{};
+            if (!is_valid_typeid(p5_, t))
+                return ai;
+
+            const TypeNode& n = p5_.types.nodes[t.value];
+            if (n.kind != TypeKind::ArrayFixed)
+                return ai;
+
+            ai.ok = true;
+            ai.elem = n.elem;
+            ai.len = n.array_len;
+            return ai;
+        }
+
+        DynArrayInfo as_dyn_array_type(TypeId t) const
+        {
+            DynArrayInfo di{};
+            if (!is_valid_typeid(p5_, t))
+                return di;
+
+            const TypeNode& n = p5_.types.nodes[t.value];
+            if (n.kind != TypeKind::Box)
+                return di;
+
+            di.ok = true;
+            di.elem = n.inner;
+            return di;
+        }
+
         bool is_struct_like(TypeId t) const
         {
-            if (!is_valid_typeid(p5_, t)) return false;
+            if (!is_valid_typeid(p5_, t))
+                return false;
             const TypeNode& n = p5_.types.nodes[t.value];
             return n.kind == TypeKind::Struct || n.kind == TypeKind::ReservedStruct;
         }
@@ -583,19 +646,251 @@ namespace sema
         bool coerce_struct_literal_to(TypeId expected, ast::Expr* e) const
         {
             auto* sl = dynamic_cast<ast::StructLiteralExpr*>(e);
-            if (!sl) return false;
-            if (!is_struct_like(expected)) return false;
+            if (!sl)
+                return false;
+            if (!is_struct_like(expected))
+                return false;
             set_expr_type(sl, expected);
             return true;
         }
 
-        // ------------------------------------------------------------
-        // find existing interned type ids (Pass5 table)
-        // ------------------------------------------------------------
+        bool coerce_bool_literal_to(TypeId expected, ast::Expr* e)
+        {
+            auto* bl = dynamic_cast<ast::BoolLiteralExpr*>(e);
+            if (!bl)
+                return false;
+
+            TypeId bool_tid = builtin_tid(p5_, builtin_cache_, BuiltinType::Bool);
+            if (!is_valid_typeid(p5_, bool_tid) || !is_valid_typeid(p5_, expected))
+                return false;
+
+            if (expected.value != bool_tid.value)
+                return false;
+
+            set_expr_type(bl, bool_tid);
+            return true;
+        }
+
+        std::optional<BuiltinType> builtin_of(TypeId t) const
+        {
+            if (!is_valid_typeid(p5_, t))
+                return std::nullopt;
+            const TypeNode& n = p5_.types.nodes[t.value];
+            if (n.kind != TypeKind::Builtin)
+                return std::nullopt;
+            return n.builtin;
+        }
+
+        static bool builtin_int_info(BuiltinType b, std::uint32_t& bits, bool& is_signed)
+        {
+            switch (b)
+            {
+            case BuiltinType::I8: bits = 8; is_signed = true; return true;
+            case BuiltinType::I16: bits = 16; is_signed = true; return true;
+            case BuiltinType::I32: bits = 32; is_signed = true; return true;
+            case BuiltinType::I64: bits = 64; is_signed = true; return true;
+            case BuiltinType::I128: bits = 128; is_signed = true; return true;
+
+            case BuiltinType::U8: bits = 8; is_signed = false; return true;
+            case BuiltinType::U16: bits = 16; is_signed = false; return true;
+            case BuiltinType::U32: bits = 32; is_signed = false; return true;
+            case BuiltinType::U64: bits = 64; is_signed = false; return true;
+            case BuiltinType::U128: bits = 128; is_signed = false; return true;
+
+            default:
+                return false;
+            }
+        }
+
+        static U128 lit_magnitude_u128(const IntLitValue& v)
+        {
+            return std::visit([](auto x) -> U128 { return static_cast<U128>(x); }, v);
+        }
+
+        static U128 max_unsigned_bits(std::uint32_t bits)
+        {
+            if (bits >= 128)
+                return ~static_cast<U128>(0);
+            return (static_cast<U128>(1) << bits) - static_cast<U128>(1);
+        }
+
+        static U128 max_signed_bits(std::uint32_t bits)
+        {
+            if (bits <= 1)
+                return 0;
+            if (bits >= 128)
+                return (static_cast<U128>(1) << 127) - static_cast<U128>(1);
+            return (static_cast<U128>(1) << (bits - 1)) - static_cast<U128>(1);
+        }
+
+        bool coerce_int_literal_to(TypeId expected, ast::Expr* e) const
+        {
+            auto* il = dynamic_cast<ast::IntLiteralExpr*>(e);
+            if (!il)
+                return false;
+
+            auto it = out_.int_id.find(il);
+            if (it == out_.int_id.end())
+                return false;
+
+            const auto b = builtin_of(expected);
+            if (!b.has_value())
+                return false;
+
+            std::uint32_t bits = 0;
+            bool is_signed = false;
+            if (!builtin_int_info(*b, bits, is_signed))
+                return false;
+
+            const IntLitValue& cur = out_.ints[it->second];
+            const U128 mag = lit_magnitude_u128(cur);
+
+            const U128 maxv = is_signed ? max_signed_bits(bits) : max_unsigned_bits(bits);
+            if (mag > maxv)
+            {
+                pass7_log_numeric_err(out_.errors,
+                                      il->location_,
+                                      pass7_module_prefix() + "IntOverflow: integer literal does not fit expected type",
+                                      il->v_);
+                return false;
+            }
+
+            if (is_signed)
+            {
+                if (bits <= 8) out_.ints[it->second] = static_cast<I8>(mag);
+                else if (bits <= 16) out_.ints[it->second] = static_cast<I16>(mag);
+                else if (bits <= 32) out_.ints[it->second] = static_cast<I32>(mag);
+                else if (bits <= 64) out_.ints[it->second] = static_cast<I64>(mag);
+                else out_.ints[it->second] = static_cast<I128>(mag);
+            }
+            else
+            {
+                if (bits <= 8) out_.ints[it->second] = static_cast<U8>(mag);
+                else if (bits <= 16) out_.ints[it->second] = static_cast<U16>(mag);
+                else if (bits <= 32) out_.ints[it->second] = static_cast<U32>(mag);
+                else if (bits <= 64) out_.ints[it->second] = static_cast<U64>(mag);
+                else out_.ints[it->second] = static_cast<U128>(mag);
+            }
+
+            set_expr_type(il, expected);
+            return true;
+        }
+
+        // NEW: coerce array literal to Box<T> (runtime array)
+        bool coerce_dyn_array_literal_to(TypeId expected, ast::Expr* e)
+        {
+            auto* al = dynamic_cast<ast::ArrayLiteralExpr*>(e);
+            if (!al)
+                return false;
+
+            DynArrayInfo di = as_dyn_array_type(expected);
+            if (!di.ok)
+                return false;
+
+            set_expr_type(al, expected);
+
+            for (std::uint64_t i = 0; i < static_cast<std::uint64_t>(al->v_.size()); ++i)
+            {
+                ast::Expr* el = al->v_[static_cast<size_t>(i)];
+                if (!el)
+                    continue;
+
+                (void)coerce_int_literal_to(di.elem, el);
+                (void)coerce_bool_literal_to(di.elem, el);
+                (void)coerce_struct_literal_to(di.elem, el);
+                (void)coerce_array_literal_to(di.elem, el);       // if T is fixed array
+                (void)coerce_dyn_array_literal_to(di.elem, el);   // if T is Box<...>
+
+                TypeId et = get_expr_type(el);
+
+                if (!is_valid_typeid(p5_, et) || !is_valid_typeid(p5_, di.elem))
+                {
+                    pass7_log_text(out_.errors,
+                                   el->location_,
+                                   pass7_module_prefix()
+                                   + "UnknownExprType: cannot type-check dyn array literal element (unknown type)");
+                    continue;
+                }
+
+                if (!assignable(di.elem, et))
+                {
+                    std::ostringstream oss;
+                    oss << pass7_module_prefix()
+                        << "UnknownExprType: type mismatch in dyn array literal element #" << i
+                        << " (expected=" << di.elem.value << ", got=" << et.value << ")";
+                    pass7_log_text(out_.errors, el->location_, oss.str());
+                }
+            }
+
+            return true;
+        }
+
+        bool coerce_array_literal_to(TypeId expected, ast::Expr* e)
+        {
+            auto* al = dynamic_cast<ast::ArrayLiteralExpr*>(e);
+            if (!al)
+                return false;
+
+            ArrayInfo ai = as_array_type(expected);
+            if (!ai.ok)
+                return false;
+
+            set_expr_type(al, expected);
+
+            const auto got = static_cast<std::uint64_t>(al->v_.size());
+            const std::uint64_t want = ai.len;
+
+            if (got != want)
+            {
+                std::ostringstream oss;
+                oss << pass7_module_prefix()
+                    << "UnknownExprType: array literal length mismatch (expected " << want
+                    << ", got " << got << ")";
+                pass7_log_text(out_.errors, al->location_, oss.str());
+            }
+
+            const std::uint64_t n = std::min(got, want);
+
+            for (std::uint64_t i = 0; i < n; ++i)
+            {
+                ast::Expr* el = al->v_[static_cast<size_t>(i)];
+                if (!el)
+                    continue;
+
+                (void)coerce_int_literal_to(ai.elem, el);
+                (void)coerce_bool_literal_to(ai.elem, el);
+                (void)coerce_struct_literal_to(ai.elem, el);
+                (void)coerce_array_literal_to(ai.elem, el);
+                (void)coerce_dyn_array_literal_to(ai.elem, el); // NEW: element could be Box<...>
+
+                TypeId et = get_expr_type(el);
+
+                if (!is_valid_typeid(p5_, et) || !is_valid_typeid(p5_, ai.elem))
+                {
+                    pass7_log_text(out_.errors,
+                                   el->location_,
+                                   pass7_module_prefix()
+                                   + "UnknownExprType: cannot type-check array literal element (unknown type)");
+                    continue;
+                }
+
+                if (!assignable(ai.elem, et))
+                {
+                    std::ostringstream oss;
+                    oss << pass7_module_prefix()
+                        << "UnknownExprType: type mismatch in array literal element #" << i
+                        << " (expected=" << ai.elem.value << ", got=" << et.value << ")";
+                    pass7_log_text(out_.errors, el->location_, oss.str());
+                }
+            }
+
+            return true;
+        }
 
         TypeId intern_ref_tid(TypeId inner, bool mut) const
         {
-            if (!is_valid_typeid(p5_, inner)) return TypeId{UINT32_MAX};
+            if (!is_valid_typeid(p5_, inner))
+                return TypeId{UINT32_MAX};
 
             TypeKey k{};
             k.kind = TypeKind::Ref;
@@ -607,7 +902,8 @@ namespace sema
 
         TypeId intern_box_tid(TypeId inner) const
         {
-            if (!is_valid_typeid(p5_, inner)) return TypeId{UINT32_MAX};
+            if (!is_valid_typeid(p5_, inner))
+                return TypeId{UINT32_MAX};
 
             TypeKey k{};
             k.kind = TypeKind::Box;
@@ -616,16 +912,25 @@ namespace sema
             return p5_.types.get_or_intern(k);
         }
 
-        TypeId intern_array_fixed_tid(TypeId elem, std::uint64_t len) const;
+        TypeId intern_array_fixed_tid(TypeId elem, std::uint64_t len) const
+        {
+            if (!is_valid_typeid(p5_, elem))
+                return TypeId{UINT32_MAX};
 
-        // ------------------------------------------------------------
-        // Type substitution for generic instantiation (interning via find_*)
-        // ------------------------------------------------------------
+            TypeKey k{};
+            k.kind = TypeKind::ArrayFixed;
+            k.elem = elem;
+            k.array_len = len;
+
+            return p5_.types.get_or_intern(k);
+        }
+
         using SubstMap = std::unordered_map<lex::SymId, TypeId>;
 
         TypeId instantiate_type(TypeId t, const SubstMap& subst) const
         {
-            if (!is_valid_typeid(p5_, t)) return TypeId{UINT32_MAX};
+            if (!is_valid_typeid(p5_, t))
+                return TypeId{UINT32_MAX};
 
             const TypeNode& n = p5_.types.nodes[t.value];
             switch (n.kind)
@@ -651,7 +956,9 @@ namespace sema
             case TypeKind::ArrayFixed:
                 {
                     TypeId elem2 = instantiate_type(n.elem, subst);
-                    return is_valid_typeid(p5_, elem2) ? intern_array_fixed_tid(elem2, n.array_len) : TypeId{UINT32_MAX};
+                    return is_valid_typeid(p5_, elem2)
+                               ? intern_array_fixed_tid(elem2, n.array_len)
+                               : TypeId{UINT32_MAX};
                 }
 
             default:
@@ -659,14 +966,16 @@ namespace sema
             }
         }
 
-        bool instantiate_sig_for_call(FnSig& sig, const ast::CallExpr& c)
+        bool instantiate_sig_for_call(FnSig& sig, const ast::CallExpr& c) const
         {
             if (sig.type_params.empty())
             {
                 if (!c.typeArgs_.empty())
                 {
-                    push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, c.location_,
-                              "type arguments were provided but callee is not generic");
+                    pass7_log_text(out_.errors,
+                                   c.location_,
+                                   pass7_module_prefix()
+                                   + "UnknownExprType: type arguments provided but callee is not generic");
                     return false;
                 }
                 return true;
@@ -678,8 +987,10 @@ namespace sema
             if (want != got)
             {
                 std::ostringstream oss;
-                oss << "wrong number of type arguments (expected " << want << ", got " << got << ")";
-                push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, c.location_, oss.str());
+                oss << pass7_module_prefix()
+                    << "UnknownExprType: wrong number of type arguments (expected " << want
+                    << ", got " << got << ")";
+                pass7_log_text(out_.errors, c.location_, oss.str());
                 return false;
             }
 
@@ -692,8 +1003,9 @@ namespace sema
                 if (!is_valid_typeid(p5_, tid))
                 {
                     std::ostringstream oss;
-                    oss << "cannot resolve type argument #" << i;
-                    push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, c.location_, oss.str());
+                    oss << pass7_module_prefix()
+                        << "UnknownExprType: cannot resolve type argument #" << i;
+                    pass7_log_text(out_.errors, c.location_, oss.str());
                     return false;
                 }
                 subst.emplace(sig.type_params[i], tid);
@@ -704,8 +1016,10 @@ namespace sema
                 p = instantiate_type(p, subst);
                 if (!is_valid_typeid(p5_, p))
                 {
-                    push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, c.location_,
-                              "failed to instantiate generic parameter type");
+                    pass7_log_text(out_.errors,
+                                   c.location_,
+                                   pass7_module_prefix()
+                                   + "UnknownExprType: failed to instantiate generic parameter type");
                     return false;
                 }
             }
@@ -713,108 +1027,63 @@ namespace sema
             sig.ret = instantiate_type(sig.ret, subst);
             if (!is_valid_typeid(p5_, sig.ret))
             {
-                push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, c.location_,
-                          "failed to instantiate generic return type");
+                pass7_log_text(out_.errors,
+                               c.location_,
+                               pass7_module_prefix()
+                               + "UnknownExprType: failed to instantiate generic return type");
                 return false;
             }
 
             return true;
         }
 
-        // ------------------------------------------------------------
-        // Ref/Array inspection from Pass5 TypeNode
-        // ------------------------------------------------------------
-        struct RefInfo
-        {
-            bool ok = false;
-            ast::Mutability mut = ast::Mutability::Imm;
-            TypeId pointee{UINT32_MAX};
-        };
-
-        struct ArrayInfo
-        {
-            bool ok = false;
-            TypeId elem{UINT32_MAX};
-            std::uint64_t len = 0;
-        };
-
-        RefInfo as_ref_type(TypeId t) const
-        {
-            RefInfo ri{};
-            if (!is_valid_typeid(p5_, t)) return ri;
-
-            const TypeNode& n = p5_.types.nodes[t.value];
-            if (n.kind != TypeKind::Ref)
-                return ri;
-
-            ri.ok = true;
-            ri.mut = n.ref_mut ? ast::Mutability::Mut : ast::Mutability::Imm;
-            ri.pointee = n.inner;
-            return ri;
-        }
-
-        ArrayInfo as_array_type(TypeId t) const
-        {
-            ArrayInfo ai{};
-            if (!is_valid_typeid(p5_, t)) return ai;
-
-            const TypeNode& n = p5_.types.nodes[t.value];
-            if (n.kind != TypeKind::ArrayFixed)
-                return ai;
-
-            ai.ok = true;
-            ai.elem = n.elem;
-            ai.len = n.array_len;
-            return ai;
-        }
-
-        // ADAPT later if you want field typing in Pass7:
         std::optional<TypeId> struct_field_type(TypeId structTy, lex::SymId fieldName) const
         {
-            if (!is_valid_typeid(p5_, structTy)) return std::nullopt;
+            if (!is_valid_typeid(p5_, structTy))
+                return std::nullopt;
 
             const TypeNode& tn = p5_.types.nodes[structTy.value];
 
             if (tn.kind == TypeKind::Struct)
             {
                 auto itLay = p5_.struct_layout.find(tn.struct_id);
-                if (itLay == p5_.struct_layout.end()) return std::nullopt;
+                if (itLay == p5_.struct_layout.end())
+                    return std::nullopt;
 
                 const StructLayout& lay = itLay->second;
 
                 auto itIdx = lay.name_to_index.find(fieldName);
-                if (itIdx == lay.name_to_index.end()) return std::nullopt;
+                if (itIdx == lay.name_to_index.end())
+                    return std::nullopt;
 
                 const uint32_t idx = itIdx->second;
-                if (idx >= lay.field_types_in_order.size()) return std::nullopt;
+                if (idx >= lay.field_types_in_order.size())
+                    return std::nullopt;
 
                 TypeId ft = lay.field_types_in_order[idx];
                 return is_valid_typeid(p5_, ft) ? std::optional<TypeId>{ft} : std::nullopt;
             }
 
-            // If you have ReservedStruct fields (e.g. Str), handle them here later.
             return std::nullopt;
         }
 
-        // ------------------------------------------------------------
-        // binding lookup helpers
-        // ------------------------------------------------------------
         const LocalSlotInfo* local_slot_info_of_ref(const ast::RefExpr& r) const
         {
-            if (!fb_) return nullptr;
+            if (!fb_)
+                return nullptr;
             auto itb = fb_->ref_binding.find(&r);
-            if (itb == fb_->ref_binding.end()) return nullptr;
+            if (itb == fb_->ref_binding.end())
+                return nullptr;
 
             const Binding& b = itb->second;
-            if (b.kind != BindingKind::LocalSlot) return nullptr;
+            if (b.kind != BindingKind::LocalSlot)
+                return nullptr;
 
-            if (b.slot.index >= fb_->slots.size()) return nullptr;
+            if (b.slot.index >= fb_->slots.size())
+                return nullptr;
             return &fb_->slots[b.slot.index];
         }
 
-        // ------------------------------------------------------------
-        // lvalue/place analysis for assignment lhs
-        // ------------------------------------------------------------
         struct PlaceResult
         {
             bool is_place = false;
@@ -826,7 +1095,8 @@ namespace sema
         PlaceResult analyze_place(ast::Expr* e)
         {
             PlaceResult pr{};
-            if (!e) return pr;
+            if (!e)
+                return pr;
             pr.loc = e->location_;
             pr.type = get_expr_type(e);
 
@@ -863,11 +1133,28 @@ namespace sema
                     return pr;
 
                 TypeId bt = get_expr_type(ix->base_);
-                ArrayInfo ai = as_array_type(bt);
+
+                // fixed array element place
+                if (ArrayInfo ai = as_array_type(bt); ai.ok)
+                {
+                    pr.is_place = true;
+                    pr.is_mutable = base.is_mutable;
+                    pr.type = ai.elem;
+                    return pr;
+                }
+
+                // NEW: Box<T> element place
+                if (DynArrayInfo di = as_dyn_array_type(bt); di.ok)
+                {
+                    pr.is_place = true;
+                    pr.is_mutable = base.is_mutable;
+                    pr.type = di.elem;
+                    return pr;
+                }
 
                 pr.is_place = true;
                 pr.is_mutable = base.is_mutable;
-                pr.type = ai.ok ? ai.elem : TypeId{UINT32_MAX};
+                pr.type = TypeId{UINT32_MAX};
                 return pr;
             }
 
@@ -878,6 +1165,9 @@ namespace sema
                     return pr;
 
                 TypeId bt = get_expr_type(fe->base_);
+                if (RefInfo ri = as_ref_type(bt); ri.ok)
+                    bt = ri.pointee;
+
                 if (auto ft = struct_field_type(bt, fe->field); ft.has_value())
                     pr.type = *ft;
                 else
@@ -891,14 +1181,12 @@ namespace sema
             return pr;
         }
 
-        // ------------------------------------------------------------
-        // call signature helper
-        // ------------------------------------------------------------
         ast::FnDecl* find_user_fn_decl(FnId id) const
         {
             for (const ModuleGlobals& mg : p4_.modules)
                 for (const FnSym& fs : mg.fns)
-                    if (fs.id == id) return fs.decl;
+                    if (fs.id == id)
+                        return fs.decl;
             return nullptr;
         }
 
@@ -906,7 +1194,8 @@ namespace sema
         {
             for (const ModuleGlobals& mg : p4_.modules)
                 for (const LoadFnSym& ls : mg.load_fns)
-                    if (ls.id == id) return ls.decl;
+                    if (ls.id == id)
+                        return ls.decl;
             return nullptr;
         }
 
@@ -954,7 +1243,6 @@ namespace sema
             const Binding& b = *pb;
             const auto leafNameOpt = callee_leaf_name(callee);
 
-            // Treat RuntimeIntrinsic as callable *only* if we have a reserved prototype in p3_5_.
             auto try_reserved_sig_by_name = [&]() -> bool
             {
                 if (!p3_5_ || !leafNameOpt.has_value())
@@ -965,12 +1253,14 @@ namespace sema
                     return false;
 
                 ast::FnDecl* fd = it->second;
-                if (!fd) return false;
+                if (!fd)
+                    return false;
 
                 sig.type_params.clear();
                 sig.type_params.reserve(fd->typeParamsDecls_.size());
                 for (auto* tp : fd->typeParamsDecls_)
-                    if (tp) sig.type_params.push_back(tp->name_);
+                    if (tp)
+                        sig.type_params.push_back(tp->name_);
 
                 sig.params.clear();
                 sig.params.reserve(fd->params_.size());
@@ -984,18 +1274,18 @@ namespace sema
 
             if (b.kind == BindingKind::GlobalFn)
             {
-                // Reserved/builtin fast-path by name (important because reserved fns may not exist in Pass4 modules)
                 if (try_reserved_sig_by_name())
                     return sig;
 
-                // Fallback: locate user decl by FnId
                 ast::FnDecl* fd = find_user_fn_decl(b.fn);
-                if (!fd) return sig;
+                if (!fd)
+                    return sig;
 
                 sig.type_params.clear();
                 sig.type_params.reserve(fd->typeParamsDecls_.size());
                 for (auto* tp : fd->typeParamsDecls_)
-                    if (tp) sig.type_params.push_back(tp->name_);
+                    if (tp)
+                        sig.type_params.push_back(tp->name_);
 
                 sig.params.clear();
                 sig.params.reserve(fd->params_.size());
@@ -1010,7 +1300,8 @@ namespace sema
             if (b.kind == BindingKind::GlobalLoadFn)
             {
                 ast::LoadFnDecl* ld = find_user_load_fn_decl(b.load_fn);
-                if (!ld) return sig;
+                if (!ld)
+                    return sig;
 
                 sig.type_params.clear();
 
@@ -1026,143 +1317,20 @@ namespace sema
 
             if (b.kind == BindingKind::RuntimeIntrinsic)
             {
-                // In your pipeline, you can either:
-                //  - bind reserved names as GlobalFn (via Pass4.5 injected IDs), OR
-                //  - bind them as RuntimeIntrinsic.
-                // Pass7 supports both, but RuntimeIntrinsic requires the reserved prototype from Pass3.5.
                 if (try_reserved_sig_by_name())
                     return sig;
-
-                return sig; // not ok
+                return sig;
             }
 
             return sig;
         }
-
-        // ------------------------------------------------------------
-        // builtins + literal coercion
-        // ------------------------------------------------------------
-        std::optional<BuiltinType> builtin_of(TypeId t) const
-        {
-            if (!is_valid_typeid(p5_, t)) return std::nullopt;
-            const TypeNode& n = p5_.types.nodes[t.value];
-            if (n.kind != TypeKind::Builtin) return std::nullopt;
-            return n.builtin;
-        }
-
-        static bool builtin_int_info(BuiltinType b, std::uint32_t& bits, bool& is_signed)
-        {
-            switch (b)
-            {
-            case BuiltinType::I8: bits = 8;
-                is_signed = true;
-                return true;
-            case BuiltinType::I16: bits = 16;
-                is_signed = true;
-                return true;
-            case BuiltinType::I32: bits = 32;
-                is_signed = true;
-                return true;
-            case BuiltinType::I64: bits = 64;
-                is_signed = true;
-                return true;
-            case BuiltinType::I128: bits = 128;
-                is_signed = true;
-                return true;
-
-            case BuiltinType::U8: bits = 8;
-                is_signed = false;
-                return true;
-            case BuiltinType::U16: bits = 16;
-                is_signed = false;
-                return true;
-            case BuiltinType::U32: bits = 32;
-                is_signed = false;
-                return true;
-            case BuiltinType::U64: bits = 64;
-                is_signed = false;
-                return true;
-            case BuiltinType::U128: bits = 128;
-                is_signed = false;
-                return true;
-
-            default: return false;
-            }
-        }
-
-        static U128 lit_magnitude_u128(const IntLitValue& v)
-        {
-            return std::visit([](auto x) -> U128 { return static_cast<U128>(x); }, v);
-        }
-
-        static U128 max_unsigned_bits(std::uint32_t bits)
-        {
-            if (bits >= 128) return ~static_cast<U128>(0);
-            return (static_cast<U128>(1) << bits) - static_cast<U128>(1);
-        }
-
-        static U128 max_signed_bits(std::uint32_t bits)
-        {
-            if (bits <= 1) return 0;
-            if (bits >= 128) return (static_cast<U128>(1) << 127) - static_cast<U128>(1);
-            return (static_cast<U128>(1) << (bits - 1)) - static_cast<U128>(1);
-        }
-
-        bool coerce_int_literal_to(TypeId expected, ast::Expr* e)
-        {
-            auto* il = dynamic_cast<ast::IntLiteralExpr*>(e);
-            if (!il) return false;
-
-            auto it = out_.int_id.find(il);
-            if (it == out_.int_id.end()) return false;
-
-            const auto b = builtin_of(expected);
-            if (!b.has_value()) return false;
-
-            std::uint32_t bits = 0;
-            bool is_signed = false;
-            if (!builtin_int_info(*b, bits, is_signed)) return false;
-
-            const IntLitValue& cur = out_.ints[it->second];
-            const U128 mag = lit_magnitude_u128(cur);
-
-            const U128 maxv = is_signed ? max_signed_bits(bits) : max_unsigned_bits(bits);
-            if (mag > maxv)
-            {
-                push_diag(out_, Pass7Diagnostic::Code::IntOverflow, il->location_,
-                          "integer literal does not fit expected type");
-                return false;
-            }
-
-            if (is_signed)
-            {
-                if (bits <= 8) out_.ints[it->second] = static_cast<I8>(mag);
-                else if (bits <= 16) out_.ints[it->second] = static_cast<I16>(mag);
-                else if (bits <= 32) out_.ints[it->second] = static_cast<I32>(mag);
-                else if (bits <= 64) out_.ints[it->second] = static_cast<I64>(mag);
-                else out_.ints[it->second] = static_cast<I128>(mag);
-            }
-            else
-            {
-                if (bits <= 8) out_.ints[it->second] = static_cast<U8>(mag);
-                else if (bits <= 16) out_.ints[it->second] = static_cast<U16>(mag);
-                else if (bits <= 32) out_.ints[it->second] = static_cast<U32>(mag);
-                else if (bits <= 64) out_.ints[it->second] = static_cast<U64>(mag);
-                else out_.ints[it->second] = static_cast<U128>(mag);
-            }
-
-            set_expr_type(il, expected);
-            return true;
-        }
     };
 
-    // ------------------------------------------------------------
-    // Visitor wiring
-    // ------------------------------------------------------------
 
     void Pass7TypeCheckVisitor::visit(ast::Module& m)
     {
-        mb_ = (unit_i_ < p6_.modules.size()) ? &p6_.modules[unit_i_] : nullptr;
+        (void)m;
+        mb_ = unit_i_ < p6_.modules.size() ? &p6_.modules[unit_i_] : nullptr;
         fb_ = nullptr;
 
         ast::visitor::OverallVisitor::visit(m);
@@ -1174,7 +1342,6 @@ namespace sema
     void Pass7TypeCheckVisitor::visit(ast::FnDecl& f)
     {
         fb_ = nullptr;
-
         if (mb_)
         {
             for (const auto& b : mb_->fns | std::views::values)
@@ -1187,13 +1354,77 @@ namespace sema
             }
         }
 
+        cur_fn_ret_ = type_of_typeexpr(f.ret_);
+        cur_fn_loc_ = f.location_;
+
         ast::visitor::OverallVisitor::visit(f);
+
+        cur_fn_ret_ = TypeId{UINT32_MAX};
+        cur_fn_loc_ = {};
         fb_ = nullptr;
     }
 
-    // ------------------------------------------------------------
-    // Expression typing
-    // ------------------------------------------------------------
+    void Pass7TypeCheckVisitor::visit(ast::ReturnStatement& r)
+    {
+        if (r.expr_)
+        {
+            (void)coerce_int_literal_to(cur_fn_ret_, r.expr_);
+            (void)coerce_bool_literal_to(cur_fn_ret_, r.expr_);
+            (void)coerce_struct_literal_to(cur_fn_ret_, r.expr_);
+            (void)coerce_array_literal_to(cur_fn_ret_, r.expr_);
+            (void)coerce_dyn_array_literal_to(cur_fn_ret_, r.expr_); // NEW
+
+            TypeId got = get_expr_type(r.expr_);
+            TypeId want = cur_fn_ret_;
+
+            if (!is_valid_typeid(p5_, want) || !is_valid_typeid(p5_, got))
+            {
+                pass7_log_text(out_.errors,
+                               r.location_,
+                               pass7_module_prefix()
+                               + "UnknownExprType: cannot type-check return expression (unknown type)");
+                return;
+            }
+
+            TypeId void_tid = builtin_tid(p5_, builtin_cache_, BuiltinType::Void);
+            if (is_valid_typeid(p5_, void_tid) && want.value == void_tid.value)
+            {
+                pass7_log_text(out_.errors,
+                               r.location_,
+                               pass7_module_prefix()
+                               + "TypeMismatchInit: returning a value from a Void function");
+                return;
+            }
+
+            if (!assignable(want, got))
+            {
+                std::ostringstream oss;
+                oss << pass7_module_prefix()
+                    << "TypeMismatchInit: return type mismatch (expected " << want.value
+                    << ", got " << got.value << ")";
+                pass7_log_text(out_.errors, r.location_, oss.str());
+            }
+
+            return;
+        }
+
+        TypeId void_tid = builtin_tid(p5_, builtin_cache_, BuiltinType::Void);
+        if (is_valid_typeid(p5_, void_tid) && is_valid_typeid(p5_, cur_fn_ret_) &&
+            cur_fn_ret_.value != void_tid.value)
+        {
+            std::ostringstream oss;
+            oss << pass7_module_prefix()
+                << "UnknownExprType: missing return value (function ret type "
+                << cur_fn_ret_.value << ")";
+            pass7_log_text(out_.errors, r.location_, oss.str());
+        }
+    }
+
+    void Pass7TypeCheckVisitor::visit(ast::BoolLiteralExpr& b)
+    {
+        TypeId t = builtin_tid(p5_, builtin_cache_, BuiltinType::Bool);
+        set_expr_type(&b, t);
+    }
 
     void Pass7TypeCheckVisitor::visit(ast::IntLiteralExpr& i)
     {
@@ -1232,8 +1463,10 @@ namespace sema
 
         const FloatLitValue& v = out_.floats[it->second];
         TypeId t = TypeId{UINT32_MAX};
-        if (std::holds_alternative<F32>(v)) t = builtin_tid(p5_, builtin_cache_, BuiltinType::F32);
-        else t = builtin_tid(p5_, builtin_cache_, BuiltinType::F64);
+        if (std::holds_alternative<F32>(v))
+            t = builtin_tid(p5_, builtin_cache_, BuiltinType::F32);
+        else
+            t = builtin_tid(p5_, builtin_cache_, BuiltinType::F64);
 
         set_expr_type(&f, t);
     }
@@ -1266,20 +1499,22 @@ namespace sema
             const LocalSlotInfo& si = fb_->slots[b.slot.index];
 
             ast::TypeExpr* texpr = nullptr;
-            if (si.var_decl) texpr = si.var_decl->type_;
-            if (si.param_decl) texpr = si.param_decl->type_;
+            if (si.var_decl)
+                texpr = si.var_decl->type_;
+            if (si.param_decl)
+                texpr = si.param_decl->type_;
 
             set_expr_type(&r, type_of_typeexpr(texpr));
             return;
         }
 
-        // Using fn/load-fn/import-alias as a value is not a typed expression in this language.
         set_expr_type(&r, TypeId{UINT32_MAX});
     }
 
     void Pass7TypeCheckVisitor::visit(ast::UnaryExpr& u)
     {
-        if (u.expr_) u.expr_->accept(*this);
+        if (u.expr_)
+            u.expr_->accept(*this);
 
         TypeId ot = get_expr_type(u.expr_);
         TypeId outT{UINT32_MAX};
@@ -1302,8 +1537,10 @@ namespace sema
                 PlaceResult pr = analyze_place(u.expr_);
                 if (!pr.is_place || !is_valid_typeid(p5_, pr.type))
                 {
-                    push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, u.location_,
-                              "cannot take address-of non-place expression");
+                    pass7_log_text(out_.errors,
+                                   u.location_,
+                                   pass7_module_prefix()
+                                   + "UnknownExprType: cannot take address-of non-place expression");
                     outT = TypeId{UINT32_MAX};
                     break;
                 }
@@ -1316,19 +1553,23 @@ namespace sema
                 PlaceResult pr = analyze_place(u.expr_);
                 if (!pr.is_place || !is_valid_typeid(p5_, pr.type))
                 {
-                    push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, u.location_,
-                              "cannot take &mut of non-place expression");
+                    pass7_log_text(out_.errors,
+                                   u.location_,
+                                   pass7_module_prefix()
+                                   + "UnknownExprType: cannot take &mut of non-place expression");
                     outT = TypeId{UINT32_MAX};
                     break;
                 }
                 if (!pr.is_mutable)
                 {
-                    push_diag(out_, Pass7Diagnostic::Code::ImmutableAssign, u.location_,
-                              "cannot take &mut of immutable place");
+                    pass7_log_text(out_.errors,
+                                   u.location_,
+                                   pass7_module_prefix()
+                                   + "ImmutableAssign: cannot take &mut of immutable place");
                     outT = TypeId{UINT32_MAX};
                     break;
                 }
-                outT = intern_ref_tid(pr.type, /*mut=*/true); // IMPORTANT: mut=true
+                outT = intern_ref_tid(pr.type, /*mut=*/true);
                 break;
             }
 
@@ -1348,8 +1589,10 @@ namespace sema
         if (!is_valid_typeid(p5_, outT) &&
             (u.op == ast::UnaryOp::addr_of || u.op == ast::UnaryOp::addr_of_mut))
         {
-            push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, u.location_,
-                      "cannot form reference type: missing &T / &mut T in type table (Pass5)");
+            pass7_log_text(out_.errors,
+                           u.location_,
+                           pass7_module_prefix()
+                           + "UnknownExprType: cannot form reference type (missing &T / &mut T in Pass5)");
         }
 
         set_expr_type(&u, outT);
@@ -1357,8 +1600,10 @@ namespace sema
 
     void Pass7TypeCheckVisitor::visit(ast::BinaryExpr& b)
     {
-        if (b.lhs_) b.lhs_->accept(*this);
-        if (b.rhs_) b.rhs_->accept(*this);
+        if (b.lhs_)
+            b.lhs_->accept(*this);
+        if (b.rhs_)
+            b.rhs_->accept(*this);
 
         TypeId lt = get_expr_type(b.lhs_);
         TypeId rt = get_expr_type(b.rhs_);
@@ -1400,83 +1645,109 @@ namespace sema
 
     void Pass7TypeCheckVisitor::visit(ast::IndexExpr& i)
     {
-        if (i.base_) i.base_->accept(*this);
-        if (i.index_) i.index_->accept(*this);
+        if (i.base_)
+            i.base_->accept(*this);
+        if (i.index_)
+            i.index_->accept(*this);
 
         TypeId bt = get_expr_type(i.base_);
-        ArrayInfo ai = as_array_type(bt);
 
-        set_expr_type(&i, ai.ok ? ai.elem : TypeId{UINT32_MAX});
+        if (ArrayInfo ai = as_array_type(bt); ai.ok)
+        {
+            set_expr_type(&i, ai.elem);
+            return;
+        }
+
+        // NEW: Box<T> indexing returns T
+        if (DynArrayInfo di = as_dyn_array_type(bt); di.ok)
+        {
+            set_expr_type(&i, di.elem);
+            return;
+        }
+
+        set_expr_type(&i, TypeId{UINT32_MAX});
     }
 
     void Pass7TypeCheckVisitor::visit(ast::FieldExpr& f)
     {
-        if (f.base_) f.base_->accept(*this);
+        if (f.base_)
+            f.base_->accept(*this);
 
         TypeId bt = get_expr_type(f.base_);
+
+        // AUTO-DEREF: if base is &S or &mut S, look fields up on S
+        if (RefInfo ri = as_ref_type(bt); ri.ok)
+            bt = ri.pointee;
+
         if (auto ft = struct_field_type(bt, f.field); ft.has_value())
             set_expr_type(&f, *ft);
         else
             set_expr_type(&f, TypeId{UINT32_MAX});
     }
 
-    // ------------------------------------------------------------
-    // Statement / check logic
-    // ------------------------------------------------------------
-
     void Pass7TypeCheckVisitor::visit(ast::VarStmt& v)
     {
-        // Do NOT call OverallVisitor first: it would visit init_ before we can provide context.
-
-        // Still visit other children if you have them (rare for VarStmt). Typically only init_ matters.
-
         if (!v.type_ || !v.init_)
             return;
 
         const TypeId dst = type_of_typeexpr(v.type_);
 
-        // Provide context BEFORE any visit of the initializer.
+        (void)coerce_dyn_array_literal_to(dst, v.init_); // NEW
         (void)coerce_array_literal_to(dst, v.init_);
+        (void)coerce_bool_literal_to(dst, v.init_);
         (void)coerce_int_literal_to(dst, v.init_);
         (void)coerce_struct_literal_to(dst, v.init_);
 
-        const TypeId src = get_expr_type(v.init_); // this will visit lazily
+        const TypeId src = get_expr_type(v.init_);
 
         if (!is_valid_typeid(p5_, dst) || !is_valid_typeid(p5_, src))
         {
-            push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, v.location_,
-                      "cannot type-check initializer (unknown type)");
+            pass7_log_text(out_.errors,
+                           v.location_,
+                           pass7_module_prefix()
+                           + "UnknownExprType: cannot type-check initializer (unknown type)");
             return;
         }
 
         if (!assignable(dst, src))
         {
             std::ostringstream oss;
-            oss << "type mismatch in initializer (dst=" << dst.value << ", src=" << src.value << ")";
-            push_diag(out_, Pass7Diagnostic::Code::TypeMismatchInit, v.location_, oss.str());
+            oss << pass7_module_prefix()
+                << "TypeMismatchInit: type mismatch in initializer (dst=" << dst.value
+                << ", src=" << src.value << ")";
+
+            pass7_log_text(out_.errors, v.location_, oss.str());
         }
     }
 
     void Pass7TypeCheckVisitor::visit(ast::AssignExpr& a)
     {
-        if (a.lhs_) a.lhs_->accept(*this);
-        if (a.rhs_) a.rhs_->accept(*this);
+        if (a.lhs_)
+            a.lhs_->accept(*this);
+        if (a.rhs_)
+            a.rhs_->accept(*this);
 
         PlaceResult pr = analyze_place(a.lhs_);
         if (!pr.is_place)
         {
-            push_diag(out_, Pass7Diagnostic::Code::NonAssignableLhs, a.location_,
-                      "left-hand side of assignment is not assignable");
+            pass7_log_text(out_.errors,
+                           a.location_,
+                           pass7_module_prefix()
+                           + "NonAssignableLhs: left-hand side of assignment is not assignable");
         }
         else if (!pr.is_mutable)
         {
-            push_diag(out_, Pass7Diagnostic::Code::ImmutableAssign, a.location_,
-                      "cannot assign to immutable place");
+            pass7_log_begin(out_.errors, a.location_);
+            log_msg(out_.errors, pass7_module_prefix() + "ImmutableAssign: cannot assign to immutable place");
+            if (auto* r = dynamic_cast<ast::RefExpr*>(a.lhs_))
+                log_ident(out_.errors, r->name, r->location_);
         }
 
         const TypeId dst = get_expr_type(a.lhs_);
 
+        (void)coerce_dyn_array_literal_to(dst, a.rhs_); // NEW
         (void)coerce_int_literal_to(dst, a.rhs_);
+        (void)coerce_bool_literal_to(dst, a.rhs_);
         (void)coerce_struct_literal_to(dst, a.rhs_);
         (void)coerce_array_literal_to(dst, a.rhs_);
 
@@ -1484,16 +1755,20 @@ namespace sema
 
         if (!is_valid_typeid(p5_, dst) || !is_valid_typeid(p5_, src))
         {
-            push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, a.location_,
-                      "cannot type-check assignment (unknown type)");
+            pass7_log_text(out_.errors,
+                           a.location_,
+                           pass7_module_prefix()
+                           + "UnknownExprType: cannot type-check assignment (unknown type)");
             return;
         }
 
         if (!assignable(dst, src))
         {
             std::ostringstream oss;
-            oss << "type mismatch in assignment (dst=" << dst.value << ", src=" << src.value << ")";
-            push_diag(out_, Pass7Diagnostic::Code::TypeMismatchAssign, a.location_, oss.str());
+            oss << pass7_module_prefix()
+                << "TypeMismatchAssign: type mismatch in assignment (dst=" << dst.value
+                << ", src=" << src.value << ")";
+            pass7_log_text(out_.errors, a.location_, oss.str());
         }
 
         set_expr_type(&a, dst);
@@ -1502,77 +1777,74 @@ namespace sema
     void Pass7TypeCheckVisitor::visit(ast::ArrayLiteralExpr& a)
     {
         for (auto& ep : a.v_)
-            if (ep) ep->accept(*this);
+            if (ep)
+                ep->accept(*this);
 
-        // If already typed by contextual coercion, do nothing.
         auto it = out_.expr_type.find(&a);
         if (it != out_.expr_type.end() && is_valid_typeid(p5_, it->second))
             return;
 
-        // No context: cannot infer reliably (keep language rule simple)
-        push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, a.location_,
-                  "cannot infer array element type (unknown element type)");
+        pass7_log_text(out_.errors,
+                       a.location_,
+                       pass7_module_prefix()
+                       + "UnknownExprType: cannot infer array literal element type (no context)");
         set_expr_type(&a, TypeId{UINT32_MAX});
     }
 
-    TypeId Pass7TypeCheckVisitor::intern_array_fixed_tid(TypeId elem, std::uint64_t len) const
+    void Pass7TypeCheckVisitor::visit(ast::CharLiteralExpr& c)
     {
-        if (!is_valid_typeid(p5_, elem)) return TypeId{UINT32_MAX};
-
-        TypeKey k{};
-        k.kind = TypeKind::ArrayFixed;
-        k.elem = elem;
-        k.array_len = len;
-
-        return p5_.types.get_or_intern(k);
-    }
-
-
-    // ============================================================
-    // FIXED: CallExpr typing (works for user fns, load fns, and reserved/builtin fns via Pass3.5)
-    // ============================================================
-
-    void Pass7TypeCheckVisitor::visit(ast::CallExpr& c)
-    {
-        // 1) Visit children first (so arg expr types exist)
-        if (c.callee_) c.callee_->accept(*this);
-        for (auto* a : c.args_)
-            if (a) a->accept(*this);
-
-        // 2) Resolve signature from Pass6 binding (RefExpr or PathExpr)
-        FnSig sig = signature_of_callee(c.callee_);
-        if (!sig.ok)
+        auto it = out_.char_id.find(&c);
+        if (it == out_.char_id.end())
         {
-            push_diag(out_, Pass7Diagnostic::Code::NonCallableCallee, c.location_,
-                      "callee is not callable (expected fn or load fn)");
             set_expr_type(&c, TypeId{UINT32_MAX});
             return;
         }
 
-        // 3) Instantiate generics using explicit type arguments
+        TypeId t = builtin_tid(p5_, builtin_cache_, BuiltinType::Char);
+        set_expr_type(&c, t);
+    }
+
+    void Pass7TypeCheckVisitor::visit(ast::CallExpr& c)
+    {
+        if (c.callee_)
+            c.callee_->accept(*this);
+
+        FnSig sig = signature_of_callee(c.callee_);
+        if (!sig.ok)
+        {
+            pass7_log_begin(out_.errors, c.location_);
+            log_msg(out_.errors, pass7_module_prefix()
+                    + "NonCallableCallee: callee is not callable (expected fn or load fn)");
+            if (auto nm = callee_leaf_name(c.callee_); nm.has_value())
+                log_ident(out_.errors, *nm, c.location_);
+            set_expr_type(&c, TypeId{UINT32_MAX});
+            return;
+        }
+
         if (!instantiate_sig_for_call(sig, c))
         {
             set_expr_type(&c, TypeId{UINT32_MAX});
             return;
         }
 
-        // 4) Arity check
         if (c.args_.size() != sig.params.size())
         {
             std::ostringstream oss;
-            oss << "wrong number of arguments (expected " << sig.params.size()
-                << ", got " << c.args_.size() << ")";
-            push_diag(out_, Pass7Diagnostic::Code::WrongArgCount, c.location_, oss.str());
+            oss << pass7_module_prefix()
+                << "WrongArgCount: wrong number of arguments (expected "
+                << sig.params.size() << ", got " << c.args_.size() << ")";
+            pass7_log_text(out_.errors, c.location_, oss.str());
             set_expr_type(&c, sig.ret);
             return;
         }
 
-        // 5) Per-arg type check + literal coercions
         for (size_t i = 0; i < c.args_.size(); ++i)
         {
             TypeId pt = sig.params[i];
 
+            (void)coerce_dyn_array_literal_to(pt, c.args_[i]); // NEW
             (void)coerce_int_literal_to(pt, c.args_[i]);
+            (void)coerce_bool_literal_to(pt, c.args_[i]);
             (void)coerce_struct_literal_to(pt, c.args_[i]);
             (void)coerce_array_literal_to(pt, c.args_[i]);
 
@@ -1580,27 +1852,40 @@ namespace sema
 
             if (!is_valid_typeid(p5_, at) || !is_valid_typeid(p5_, pt))
             {
-                push_diag(out_, Pass7Diagnostic::Code::UnknownExprType, c.location_,
-                          "cannot type-check call (unknown arg/param type)");
+                pass7_log_text(out_.errors,
+                               c.location_,
+                               pass7_module_prefix()
+                               + "UnknownExprType: cannot type-check call (unknown arg/param type)");
                 continue;
             }
 
             if (!assignable(pt, at))
             {
                 std::ostringstream oss;
-                oss << "type mismatch in call arg #" << i
+                oss << pass7_module_prefix()
+                    << "TypeMismatchCallArg: type mismatch in call arg #" << i
                     << " (param=" << pt.value << ", arg=" << at.value << ")";
                 const lex::Loc loc = c.args_[i] ? c.args_[i]->location_ : c.location_;
-                push_diag(out_, Pass7Diagnostic::Code::TypeMismatchCallArg, loc, oss.str());
+                pass7_log_text(out_.errors, loc, oss.str());
             }
         }
 
         set_expr_type(&c, sig.ret);
     }
 
-    // ============================================================
-    // Pass7 driver
-    // ============================================================
+
+    static ModuleId pass7_unit_module_id(const Pass4Result& p4,
+                                         const Pass6Result& p6,
+                                         std::uint32_t unit_i)
+    {
+        if (unit_i < p4.modules.size())
+            return p4.modules[unit_i].module_id;
+
+        if (unit_i < p6.modules.size())
+            return p6.modules[unit_i].module_id;
+
+        return kInvalidModuleId;
+    }
 
     Pass7Result run_pass7(const Translation& tr,
                           const CompilerContext& ctx,
@@ -1611,21 +1896,35 @@ namespace sema
     {
         Pass7Result out{};
 
-        // (1) literal lowering
-        for (std::uint32_t unit_i = 0; unit_i < static_cast<std::uint32_t>(tr.units.size()); ++unit_i)
+        for (std::uint32_t unit_i = 0;
+             unit_i < static_cast<std::uint32_t>(tr.units.size()); ++unit_i)
         {
             ast::Module* m = tr.units[unit_i].module_;
-            if (!m) continue;
+            if (!m)
+                continue;
+
+            const std::vector<lex::SymId>* mod_path = &kPass7EmptyPath;
+            if (m->pathExpr_)
+                mod_path = &m->pathExpr_->path_;
+
+            Pass7UnitModuleScope scope(pass7_unit_module_id(p4, p6, unit_i), mod_path);
 
             Pass7LiteralLoweringVisitor vis(ctx, out);
             m->accept(vis);
         }
 
-        // (2) type checking + assignment legality
-        for (std::uint32_t unit_i = 0; unit_i < static_cast<std::uint32_t>(tr.units.size()); ++unit_i)
+        for (std::uint32_t unit_i = 0;
+             unit_i < static_cast<std::uint32_t>(tr.units.size()); ++unit_i)
         {
             ast::Module* m = tr.units[unit_i].module_;
-            if (!m) continue;
+            if (!m)
+                continue;
+
+            const std::vector<lex::SymId>* mod_path = &kPass7EmptyPath;
+            if (m->pathExpr_)
+                mod_path = &m->pathExpr_->path_;
+
+            Pass7UnitModuleScope scope(pass7_unit_module_id(p4, p6, unit_i), mod_path);
 
             Pass7TypeCheckVisitor tcv(p4, p5, p6, p3_5, out, unit_i);
             m->accept(tcv);
@@ -1633,4 +1932,4 @@ namespace sema
 
         return out;
     }
-} // namespace sema
+}

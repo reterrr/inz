@@ -1,7 +1,7 @@
-// sema/pass5_reserved.hpp
 #pragma once
 
-#include <cstdint>
+#include "logging_entities.hpp"
+
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -10,48 +10,34 @@
 #include "translation.hpp"
 #include "ast/nodes/visit/overallvisitor.hpp"
 
-// module + decls
+
 #include "decl/struct_decl.hpp"
 #include "decl/type_param_decl.hpp"
 
-// type exprs
+
 #include "expr/path_type_expr.hpp"
 
-// pass3.5 (only for earlier duplicate diagnostics; not required for type resolution)
+
 #include "pass_3.5.hpp"
 #include "type_system.hpp"
 
 namespace sema
 {
-    struct Pass5ReservedDiagnostic final
-    {
-        enum class Code : uint8_t
-        {
-            UnknownTypeName,
-            IllegalBoxArity,
-            IllegalFixedArrayLength,
-            UnsupportedTypePathDepth,
-            UnsupportedTypeForm,
-        };
-
-        Code code{};
-        lex::Loc loc{};
-        std::string message;
-    };
-
     struct Pass5ReservedResult final
     {
         TypeDB types;
 
-        // TypeExpr* -> TypeId
+
         std::unordered_map<const ast::TypeExpr*, TypeId, PtrHash<ast::TypeExpr>, PtrEq<ast::TypeExpr>> type_of;
 
-        // reserved struct name -> id
+
         std::unordered_map<lex::SymId, ReservedStructId> reserved_struct_by_name;
         std::vector<ast::StructDecl*> reserved_struct_decls;
 
-        std::vector<Pass5ReservedDiagnostic> diagnostics;
-        bool ok() const { return diagnostics.empty(); }
+
+        LogSequence errors;
+
+        bool ok() const { return errors.empty(); }
     };
 
     class Pass5ReservedVisitor final : public ast::visitor::OverallVisitor
@@ -62,14 +48,15 @@ namespace sema
                              lex::SymId str_sym,
                              Pass5ReservedResult& out)
             : p35_(p35), box_sym_(box_sym), str_sym_(str_sym), out_(out)
-        {}
+        {
+        }
 
         void visit(ast::Module& m) override;
         void visit(ast::StructDecl& s) override;
         void visit(ast::FnDecl& f) override;
         void visit(ast::ParamDecl& p) override;
 
-        // type expr nodes
+
         void visit(ast::BuiltinTypeExpr& t) override;
         void visit(ast::PathTypeExpr& t) override;
         void visit(ast::ArrayTypeExpr& t) override;
@@ -83,22 +70,26 @@ namespace sema
 
         TypeId last_{};
 
-        // current generic scope: stack of visible type params (SymId)
+
         std::vector<lex::SymId> type_param_stack_;
 
-        void diag(Pass5ReservedDiagnostic::Code c, const lex::Loc& loc, std::string msg) const;
 
-        static const std::vector<ast::TypeExpr*>& type_args_of(const ast::PathTypeExpr& t)
-        {
-            return t.typeArgs_;
-        }
+        std::vector<lex::SymId> cur_module_path_;
+        lex::Loc cur_module_loc_{};
+
+
+        void log_error_prefix(const lex::Loc& loc, std::string msg) const;
+        void log_error_with_ident(const lex::Loc& loc, std::string msg, lex::SymId id) const;
+        void log_error_with_path(const lex::Loc& loc, std::string msg, const std::vector<lex::SymId>& path) const;
+
+        static const std::vector<ast::TypeExpr*>& type_args_of(const ast::PathTypeExpr& t) { return t.typeArgs_; }
 
         TypeId ty_builtin(BuiltinType b) const;
         TypeId ty_void() const;
         TypeId ty_type_param(lex::SymId name) const;
         TypeId resolve(ast::TypeExpr* t);
 
-        BuiltinType map_builtin(kl::rt::BuiltinTypeExprKind k, const lex::Loc& loc) const;
+        BuiltinType map_builtin(kl::rt::BuiltinTypeExprKind k, const lex::Loc& loc);
 
         bool is_box(const ast::PathTypeExpr& t) const;
         bool is_str_single_segment(const ast::PathTypeExpr& t) const;
@@ -114,4 +105,4 @@ namespace sema
                                                         const Pass3_5Result& p35,
                                                         lex::SymId box_sym,
                                                         lex::SymId str_sym);
-} // namespace sema
+}

@@ -5,44 +5,21 @@
 #ifndef DECL_VISITOR_HPP
 #define DECL_VISITOR_HPP
 
-
 #include "visitor.hpp"
 
-namespace ast
-{
-    struct LoadFnDecl;
-    struct ImplFnDecl;
-    struct TraitFnDecl;
-    struct ParamDecl;
-    struct FnDecl;
-    struct TypeAliasDecl;
-    struct ImportDecl;
-    struct StructDecl;
-    struct FieldDecl;
-    struct TypeParamDecl;
-    struct TraitDecl;
-    struct ImplDecl;
-    struct SelfParamDecl;
-}
+namespace ast {
+struct LoadFnDecl;
+struct ParamDecl;
+struct FnDecl;
+struct ImportDecl;
+struct StructDecl;
+struct FieldDecl;
+struct TypeParamDecl;
+} // namespace ast
 
-namespace ast::visitor
-{
-    struct DeclVisitor
-        : Visitor<ParamDecl,
-                  SelfParamDecl,
-                  FnDecl,
-                  LoadFnDecl,
-                  TraitFnDecl,
-                  ImplFnDecl,
-                  TypeAliasDecl,
-                  ImportDecl,
-                  StructDecl,
-                  TraitDecl,
-                  ImplDecl,
-                  FieldDecl,
-                  TypeParamDecl>
-    {
-    };
-}
+namespace ast::visitor {
+struct DeclVisitor : Visitor<ParamDecl, FnDecl, LoadFnDecl, ImportDecl,
+                             StructDecl, FieldDecl, TypeParamDecl> {};
+} // namespace ast::visitor
 
-#endif //DECL_VISITOR_HPP
+#endif // DECL_VISITOR_HPP

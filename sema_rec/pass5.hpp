@@ -1,4 +1,7 @@
+// sema/pass5.hpp
 #pragma once
+
+#include "logging_entities.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -20,22 +23,15 @@ struct CompilerContext;
 
 namespace sema
 {
-    struct Pass5Diagnostic final
+    // Keep codes (now serialized into log messages)
+    enum class Pass5Error : std::uint8_t
     {
-        enum class Code : uint8_t
-        {
-            UnknownTypeName,
-            UnknownImportAlias,
-            IllegalBoxArity,
-            IllegalFixedArrayLength,
-            UnsupportedTypePathDepth,
-            UnsupportedTypeForm,
-        };
-
-        Code code{};
-        ModuleId module = kInvalidModuleId; // NEW: module where diagnostic originates
-        lex::Loc loc{};
-        std::string message;
+        UnknownTypeName,
+        UnknownImportAlias,
+        IllegalBoxArity,
+        IllegalFixedArrayLength,
+        UnsupportedTypePathDepth,
+        UnsupportedTypeForm,
     };
 
     struct StructLayout final
@@ -43,7 +39,7 @@ namespace sema
         std::vector<lex::SymId> fields_in_order;
         std::vector<TypeId> field_types_in_order;
         std::unordered_map<lex::SymId, TypeId> name_to_type;
-        std::unordered_map<lex::SymId, uint32_t> name_to_index;
+        std::unordered_map<lex::SymId, std::uint32_t> name_to_index;
     };
 
     struct StructIdHash final
@@ -64,8 +60,10 @@ namespace sema
         // struct-id -> layout
         std::unordered_map<StructId, StructLayout, StructIdHash> struct_layout;
 
-        std::vector<Pass5Diagnostic> diagnostics;
-        bool ok() const { return diagnostics.empty(); }
+        // Logging-as-errors (replaces Pass5Diagnostic list)
+        LogSequence errors;
+
+        bool ok() const { return errors.empty(); }
     };
 
     class Pass5TypeResolveVisitor final : public ast::visitor::OverallVisitor
@@ -74,7 +72,7 @@ namespace sema
         Pass5TypeResolveVisitor(const CompilerContext& ctx,
                                 const Pass4_5Result& p45,
                                 const Pass5ReservedResult& p5r,
-                                uint32_t unit_index,
+                                std::uint32_t unit_index,
                                 lex::SymId box_sym,
                                 lex::SymId str_sym,
                                 Pass5Result& out);
@@ -87,7 +85,7 @@ namespace sema
         void visit(ast::ParamDecl& p) override;
         void visit(ast::VarStmt& v) override;
         void visit(ast::LoadFnDecl& lf) override;
-        void visit(ast::CallExpr& c) override; // NEW: for f::<T>(...)
+        void visit(ast::CallExpr& c) override; // for f::<T>(...)
 
         // type expr nodes
         void visit(ast::BuiltinTypeExpr& t) override;
@@ -99,7 +97,7 @@ namespace sema
         const CompilerContext& ctx_;
         const Pass4_5Result& p45_;
         const Pass5ReservedResult& p5r_;
-        uint32_t unit_index_ = 0;
+        std::uint32_t unit_index_ = 0;
 
         lex::SymId box_sym_{};
         lex::SymId str_sym_{};
@@ -107,17 +105,30 @@ namespace sema
         Pass5Result& out_;
         const ModuleVisibleEnv* env_ = nullptr;
 
-        // NEW: current module id (source for diagnostics)
+        // current module id (for data lookups)
         ModuleId module_ = kInvalidModuleId;
+
+        // current module *path* for error prefixing (a::b::c)
+        std::vector<lex::SymId> cur_module_path_;
 
         TypeId last_{};
 
         // generic scope: visible type params (SymId)
         std::vector<lex::SymId> type_param_stack_;
 
-        void diag(Pass5Diagnostic::Code c, const lex::Loc& loc, std::string msg) const;
+    private:
+        // --------------------------
+        // Error emission (STRICT)
+        // cluster = module_path, message, cause
+        // --------------------------
+        void err_anchor(const lex::Loc& loc, std::string msg);
+        void err_ident(const lex::Loc& loc, std::string msg, lex::SymId id);
+        void err_numeric(const lex::Loc& loc, std::string msg, lex::SymId numeric_id);
+        void err_path(const lex::Loc& loc, std::string msg, const std::vector<lex::SymId>& path);
 
-        std::optional<std::uint64_t> const_eval_u64(ast::Expr* e);
+    private:
+        std::optional<std::uint64_t> const_eval_u64(ast::Expr* e) const;
+
         TypeId ty_builtin(BuiltinType b);
         TypeId ty_void();
         TypeId ty_struct(StructId sid);
@@ -130,7 +141,7 @@ namespace sema
         void push_type_params(const std::vector<ast::TypeParamDecl*>& tps);
         void pop_to_size(size_t sz);
 
-        BuiltinType map_builtin(kl::rt::BuiltinTypeExprKind k, const lex::Loc& loc) const;
+        BuiltinType map_builtin(kl::rt::BuiltinTypeExprKind k, const lex::Loc& loc);
 
         std::optional<StructId> local_struct_id_of(lex::SymId name) const;
     };
@@ -141,4 +152,5 @@ namespace sema
                                        const Pass5ReservedResult& p5r,
                                        lex::SymId box_sym,
                                        lex::SymId str_sym);
+
 } // namespace sema

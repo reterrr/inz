@@ -1,28 +1,51 @@
 #include "pass_4.5.hpp"
 
 #include <cstdint>
-#include <sstream>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace sema
 {
-    // ------------------------------------------------------------
-    // Helpers
-    // ------------------------------------------------------------
-
-    static void push_diag(std::vector<Pass4_5Diagnostic>& ds,
-                          Pass4_5Diagnostic::Code c,
-                          ModuleId module,
-                          const lex::Loc& loc,
-                          std::string msg)
+    static inline std::vector<lex::SymId> unit_module_path(const Translation& tr,
+                                                           std::uint32_t unit_i)
     {
-        ds.push_back(Pass4_5Diagnostic{
-            .code = c,
-            .module = module,
-            .loc = loc,
-            .message = std::move(msg),
-        });
+        if (unit_i >= static_cast<std::uint32_t>(tr.units.size()))
+            return {};
+
+        ast::Module* mod = tr.units[unit_i].module_;
+        if (!mod || !mod->pathExpr_)
+            return {};
+
+        return mod->pathExpr_->path_;
     }
+
+    static inline lex::Loc unit_module_loc(const Translation& tr, std::uint32_t unit_i)
+    {
+        if (unit_i >= static_cast<std::uint32_t>(tr.units.size()))
+            return lex::Loc{};
+
+        ast::Module* mod = tr.units[unit_i].module_;
+        if (!mod)
+            return lex::Loc{};
+        return mod->location_;
+    }
+
+    static inline void log_module_path_first(LogSequence& logs,
+                                             const std::vector<lex::SymId>& segs,
+                                             const lex::Loc& loc,
+                                             bool also_log_idents = false)
+    {
+        logs.emplace_back(LogPath{SymKind::Ident, segs, loc});
+
+
+        if (also_log_idents)
+        {
+            for (lex::SymId s : segs)
+                logs.emplace_back(Log{SymKind::Ident, s, loc});
+        }
+    }
+
 
     static std::uint32_t module_to_unit_index(const Pass2Result& p2, ModuleId m)
     {
@@ -33,34 +56,47 @@ namespace sema
 
     static bool local_has_any_name(const ModuleVisibleEnv& env, lex::SymId name)
     {
-        return env.local_structs_all.contains(name)
-            || env.local_fns_all.contains(name)
-            || env.local_load_fns_all.contains(name);
+        return env.local_structs_all.contains(name) ||
+            env.local_fns_all.contains(name) ||
+            env.local_load_fns_all.contains(name);
     }
 
     static bool imported_has_any_name(const ModuleVisibleEnv& env, lex::SymId name)
     {
-        return env.imported_structs.contains(name)
-            || env.imported_fns.contains(name)
-            || env.imported_load_fns.contains(name);
+        return env.imported_structs.contains(name) ||
+            env.imported_fns.contains(name) ||
+            env.imported_load_fns.contains(name);
     }
 
-    // ------------------------------------------------------------
-    // Pass 4.5
-    // ------------------------------------------------------------
 
-    Pass4_5Result run_pass4_5_visible_env(const Pass2Result& p2,
+    static inline void log_err(Pass4_5Result& out,
+                               const std::vector<lex::SymId>& mod_path,
+                               const lex::Loc& anchor_loc,
+                               std::string msg_prefix,
+                               std::optional<LogEntity> focus = std::nullopt,
+                               std::string msg_suffix = {})
+    {
+        log_module_path_first(out.logs, mod_path, anchor_loc, /*also_log_idents=*/false);
+        out.logs.emplace_back(std::move(msg_prefix));
+        if (focus.has_value())
+            out.logs.emplace_back(std::move(*focus));
+        if (!msg_suffix.empty())
+            out.logs.emplace_back(std::move(msg_suffix));
+    }
+
+
+    Pass4_5Result run_pass4_5_visible_env(const Translation& tr,
+                                          const Pass2Result& p2,
                                           const Pass3Result& p3,
                                           const Pass4Result& p4,
                                           const Pass3_5Result& p3_5)
     {
         Pass4_5Result out{};
+
         const auto n_units = static_cast<std::uint32_t>(p4.modules.size());
         out.envs.resize(n_units);
 
-        // ------------------------------------------------------------
-        // Compute global reserved "no literal" structs ONCE
-        // ------------------------------------------------------------
+
         out.reserved_no_lit_structs.reserve(p3_5.sigs.structs.size());
         for (const auto& [name, rs] : p3_5.sigs.structs)
         {
@@ -72,9 +108,7 @@ namespace sema
                 out.reserved_no_lit_structs.insert(it->second);
         }
 
-        // ------------------------------------------------------------
-        // Per-unit environment build
-        // ------------------------------------------------------------
+
         for (std::uint32_t unit_i = 0; unit_i < n_units; ++unit_i)
         {
             ModuleVisibleEnv& env = out.envs[unit_i];
@@ -82,34 +116,28 @@ namespace sema
 
             env.module_id = mg.module_id;
 
-            // ---------------------------------------
-            // Prelude injection helpers (need env.module_id)
-            // ---------------------------------------
+
+            const std::vector<lex::SymId> importer_path = unit_module_path(tr, unit_i);
+            const lex::Loc importer_loc = unit_module_loc(tr, unit_i);
+
+
             auto inject_builtin_struct = [&](lex::SymId name, StructId sid)
             {
                 if (local_has_any_name(env, name))
                 {
-                    std::ostringstream oss;
-                    oss << "builtin struct name collides with local name: "
-                        << static_cast<std::uint32_t>(name);
-                    push_diag(out.diagnostics,
-                              Pass4_5Diagnostic::Code::ImportedTypeCollidesWithLocal,
-                              env.module_id,
-                              lex::Loc{}, // implicit prelude
-                              oss.str());
+                    log_module_path_first(out.logs, importer_path, importer_loc, /*also_log_idents=*/true);
+                    out.logs.emplace_back(std::string(
+                        "pass4.5: BuiltinTypeCollidesWithLocal: builtin struct collides with local name: "));
+                    out.logs.emplace_back(Log{SymKind::Ident, name, importer_loc});
                     return;
                 }
 
                 if (imported_has_any_name(env, name))
                 {
-                    std::ostringstream oss;
-                    oss << "builtin struct name collides with imported name: "
-                        << static_cast<std::uint32_t>(name);
-                    push_diag(out.diagnostics,
-                              Pass4_5Diagnostic::Code::DuplicateImportedTypeName,
-                              env.module_id,
-                              lex::Loc{},
-                              oss.str());
+                    log_module_path_first(out.logs, importer_path, importer_loc, /*also_log_idents=*/true);
+                    out.logs.emplace_back(std::string(
+                        "pass4.5: DuplicateImportedTypeName: builtin struct collides with imported name: "));
+                    out.logs.emplace_back(Log{SymKind::Ident, name, importer_loc});
                     return;
                 }
 
@@ -121,27 +149,19 @@ namespace sema
             {
                 if (local_has_any_name(env, name))
                 {
-                    std::ostringstream oss;
-                    oss << "builtin load fn name collides with local name: "
-                        << static_cast<std::uint32_t>(name);
-                    push_diag(out.diagnostics,
-                              Pass4_5Diagnostic::Code::ImportedValueCollidesWithLocal,
-                              env.module_id,
-                              lex::Loc{},
-                              oss.str());
+                    log_module_path_first(out.logs, importer_path, importer_loc, /*also_log_idents=*/true);
+                    out.logs.emplace_back(std::string(
+                        "pass4.5: BuiltinValueCollidesWithLocal: builtin load fn collides with local name: "));
+                    out.logs.emplace_back(Log{SymKind::Ident, name, importer_loc});
                     return;
                 }
 
                 if (env.imported_load_fns.contains(name) || env.imported_fns.contains(name))
                 {
-                    std::ostringstream oss;
-                    oss << "builtin load fn name collides with imported value name: "
-                        << static_cast<std::uint32_t>(name);
-                    push_diag(out.diagnostics,
-                              Pass4_5Diagnostic::Code::DuplicateImportedValueName,
-                              env.module_id,
-                              lex::Loc{},
-                              oss.str());
+                    log_module_path_first(out.logs, importer_path, importer_loc, /*also_log_idents=*/true);
+                    out.logs.emplace_back(std::string(
+                        "pass4.5: DuplicateImportedValueName: builtin load fn collides with imported value name: "));
+                    out.logs.emplace_back(Log{SymKind::Ident, name, importer_loc});
                     return;
                 }
 
@@ -153,36 +173,26 @@ namespace sema
             {
                 if (local_has_any_name(env, name))
                 {
-                    std::ostringstream oss;
-                    oss << "builtin intrinsic name collides with local name: "
-                        << static_cast<std::uint32_t>(name);
-                    push_diag(out.diagnostics,
-                              Pass4_5Diagnostic::Code::ImportedValueCollidesWithLocal,
-                              env.module_id,
-                              lex::Loc{},
-                              oss.str());
+                    log_module_path_first(out.logs, importer_path, importer_loc, /*also_log_idents=*/true);
+                    out.logs.emplace_back(std::string(
+                        "pass4.5: BuiltinIntrinsicCollidesWithLocal: builtin intrinsic collides with local name: "));
+                    out.logs.emplace_back(Log{SymKind::Ident, name, importer_loc});
                     return;
                 }
 
                 if (imported_has_any_name(env, name))
                 {
-                    std::ostringstream oss;
-                    oss << "builtin intrinsic name collides with imported name: "
-                        << static_cast<std::uint32_t>(name);
-                    push_diag(out.diagnostics,
-                              Pass4_5Diagnostic::Code::DuplicateImportedValueName,
-                              env.module_id,
-                              lex::Loc{},
-                              oss.str());
+                    log_module_path_first(out.logs, importer_path, importer_loc, /*also_log_idents=*/true);
+                    out.logs.emplace_back(std::string(
+                        "pass4.5: DuplicateImportedValueName: builtin intrinsic collides with imported name: "));
+                    out.logs.emplace_back(Log{SymKind::Ident, name, importer_loc});
                     return;
                 }
 
                 env.reserved_intrinsics.emplace(name, intr);
             };
 
-            // ------------------------------------------------------------
-            // 1) Locals (public + private)
-            // ------------------------------------------------------------
+
             env.local_structs_all.clear();
             env.local_fns_all.clear();
             env.local_load_fns_all.clear();
@@ -200,37 +210,27 @@ namespace sema
             for (const LoadFnSym& lf : mg.load_fns)
                 env.local_load_fns_all.emplace(lf.name, lf.id);
 
-            // Visible begins as locals
+
             env.visible_structs = env.local_structs_all;
             env.visible_fns = env.local_fns_all;
             env.visible_load_fns = env.local_load_fns_all;
 
-            // Reset import-derived maps and alias table
+
             env.imports_by_alias.clear();
             env.imported_structs.clear();
             env.imported_fns.clear();
             env.imported_load_fns.clear();
             env.reserved_intrinsics.clear();
 
-            // ------------------------------------------------------------
-            // 1.5) IMPLICIT BUILTIN PRELUDE (unqualified)
-            // ------------------------------------------------------------
 
             for (const auto& [name, sid] : p3_5.struct_by_name)
                 inject_builtin_struct(name, sid);
 
-            // If you use builtin load-fns:
-            // for (const auto& [name, lfid] : p3_5.load_fn_by_name)
-            //     inject_builtin_load_fn(name, lfid);
 
-            // Intrinsics (value namespace, but not FnId-backed)
-            // Requires: p3_5.intrinsic_by_name : map<SymId, RuntimeIntrinsic>
             for (const auto& [name, intr] : p3_5.intrinsic_by_name)
                 inject_builtin_intrinsic(name, intr);
 
-            // ------------------------------------------------------------
-            // 2) Imports: resolve and flatten PUBLIC symbols only
-            // ------------------------------------------------------------
+
             if (unit_i >= p3.import_tables.size())
                 continue;
 
@@ -247,14 +247,10 @@ namespace sema
 
                 if (local_has_any_name(env, alias))
                 {
-                    std::ostringstream oss;
-                    oss << "import alias collides with local name: "
-                        << static_cast<std::uint32_t>(alias);
-                    push_diag(out.diagnostics,
-                              Pass4_5Diagnostic::Code::ImportAliasCollidesWithLocal,
-                              env.module_id,
-                              imp.loc,
-                              oss.str());
+                    log_module_path_first(out.logs, importer_path, imp.loc, /*also_log_idents=*/true);
+                    out.logs.emplace_back(
+                        std::string("pass4.5: ImportAliasCollidesWithLocal: import alias collides with local name: "));
+                    out.logs.emplace_back(Log{SymKind::Ident, alias, imp.loc});
                     continue;
                 }
 
@@ -275,7 +271,7 @@ namespace sema
                 if (imported.exported_names.empty())
                     continue;
 
-                // ---- PUBLIC structs ----
+
                 for (const auto& [name, sid] : imported.struct_by_name)
                 {
                     if (!imported.exported_names.contains(name))
@@ -283,27 +279,19 @@ namespace sema
 
                     if (local_has_any_name(env, name))
                     {
-                        std::ostringstream oss;
-                        oss << "imported public struct collides with local name: "
-                            << static_cast<std::uint32_t>(name);
-                        push_diag(out.diagnostics,
-                                  Pass4_5Diagnostic::Code::ImportedTypeCollidesWithLocal,
-                                  env.module_id,
-                                  imp.loc,
-                                  oss.str());
+                        log_module_path_first(out.logs, importer_path, imp.loc, /*also_log_idents=*/true);
+                        out.logs.emplace_back(std::string(
+                            "pass4.5: ImportedTypeCollidesWithLocal: imported public struct collides with local name: "));
+                        out.logs.emplace_back(Log{SymKind::Ident, name, imp.loc});
                         continue;
                     }
 
                     if (imported_has_any_name(env, name))
                     {
-                        std::ostringstream oss;
-                        oss << "duplicate imported public type name from multiple imports: "
-                            << static_cast<std::uint32_t>(name);
-                        push_diag(out.diagnostics,
-                                  Pass4_5Diagnostic::Code::DuplicateImportedTypeName,
-                                  env.module_id,
-                                  imp.loc,
-                                  oss.str());
+                        log_module_path_first(out.logs, importer_path, imp.loc, /*also_log_idents=*/true);
+                        out.logs.emplace_back(std::string(
+                            "pass4.5: DuplicateImportedTypeName: duplicate imported public type name from multiple imports: "));
+                        out.logs.emplace_back(Log{SymKind::Ident, name, imp.loc});
                         continue;
                     }
 
@@ -311,35 +299,27 @@ namespace sema
                     env.visible_structs.emplace(name, sid);
                 }
 
-                // ---- PUBLIC load-fns ----
+
                 for (const auto& [name, lfid] : imported.load_fn_by_name)
                 {
                     if (!imported.exported_names.contains(name))
-                        continue; // require export
+                        continue;
 
                     if (local_has_any_name(env, name))
                     {
-                        std::ostringstream oss;
-                        oss << "imported public load fn collides with local name: "
-                            << static_cast<std::uint32_t>(name);
-                        push_diag(out.diagnostics,
-                                  Pass4_5Diagnostic::Code::ImportedValueCollidesWithLocal,
-                                  env.module_id,
-                                  imp.loc,
-                                  oss.str());
+                        log_module_path_first(out.logs, importer_path, imp.loc, /*also_log_idents=*/true);
+                        out.logs.emplace_back(std::string(
+                            "pass4.5: ImportedValueCollidesWithLocal: imported public load fn collides with local name: "));
+                        out.logs.emplace_back(Log{SymKind::Ident, name, imp.loc});
                         continue;
                     }
 
                     if (env.imported_load_fns.contains(name) || env.imported_fns.contains(name))
                     {
-                        std::ostringstream oss;
-                        oss << "duplicate imported public value name from multiple imports: "
-                            << static_cast<std::uint32_t>(name);
-                        push_diag(out.diagnostics,
-                                  Pass4_5Diagnostic::Code::DuplicateImportedValueName,
-                                  env.module_id,
-                                  imp.loc,
-                                  oss.str());
+                        log_module_path_first(out.logs, importer_path, imp.loc, /*also_log_idents=*/true);
+                        out.logs.emplace_back(std::string(
+                            "pass4.5: DuplicateImportedValueName: duplicate imported public value name from multiple imports: "));
+                        out.logs.emplace_back(Log{SymKind::Ident, name, imp.loc});
                         continue;
                     }
 
@@ -347,7 +327,7 @@ namespace sema
                     env.visible_load_fns.emplace(name, lfid);
                 }
 
-                // ---- PUBLIC fns ----
+
                 for (const auto& [name, fid] : imported.fn_by_name)
                 {
                     if (!imported.exported_names.contains(name))
@@ -355,27 +335,19 @@ namespace sema
 
                     if (local_has_any_name(env, name))
                     {
-                        std::ostringstream oss;
-                        oss << "imported public fn collides with local name: "
-                            << static_cast<std::uint32_t>(name);
-                        push_diag(out.diagnostics,
-                                  Pass4_5Diagnostic::Code::ImportedValueCollidesWithLocal,
-                                  env.module_id,
-                                  imp.loc,
-                                  oss.str());
+                        log_module_path_first(out.logs, importer_path, imp.loc, /*also_log_idents=*/true);
+                        out.logs.emplace_back(std::string(
+                            "pass4.5: ImportedValueCollidesWithLocal: imported public fn collides with local name: "));
+                        out.logs.emplace_back(Log{SymKind::Ident, name, imp.loc});
                         continue;
                     }
 
                     if (imported_has_any_name(env, name))
                     {
-                        std::ostringstream oss;
-                        oss << "duplicate imported public value name from multiple imports: "
-                            << static_cast<std::uint32_t>(name);
-                        push_diag(out.diagnostics,
-                                  Pass4_5Diagnostic::Code::DuplicateImportedValueName,
-                                  env.module_id,
-                                  imp.loc,
-                                  oss.str());
+                        log_module_path_first(out.logs, importer_path, imp.loc, /*also_log_idents=*/true);
+                        out.logs.emplace_back(std::string(
+                            "pass4.5: DuplicateImportedValueName: duplicate imported public value name from multiple imports: "));
+                        out.logs.emplace_back(Log{SymKind::Ident, name, imp.loc});
                         continue;
                     }
 
@@ -387,4 +359,4 @@ namespace sema
 
         return out;
     }
-} // namespace sema
+}

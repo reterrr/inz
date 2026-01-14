@@ -12,12 +12,23 @@ void rt_free(void* p);
 void rt_retain(void* obj);
 void rt_release(void* obj);
 void rt_print(void* p);
+void rt_put(void* obj); // like rt_print but no newline
+void rt_nl();
+
+long long rt_int_to_i64(void* p);
+double rt_float_to_f64(void* p);
+
+void* rt_box_raw_data(void* box);
+long long rt_box_len_i64(void* box);
+unsigned long long rt_box_elem_kind_u64(void* box);
 
 // ------------------------------------------------------------
 // Boxing / unboxing
 // ------------------------------------------------------------
 void* rt_int_from_i64(long long v);
 void* rt_int_from_u64(unsigned long long v);
+
+void* rt_char_from_u32(std::uint32_t cp);
 
 #if defined(__SIZEOF_INT128__)
 void* rt_int_from_i128(__int128 v);
@@ -81,10 +92,8 @@ Obj** rt_struct_field_slot(Obj* structObj, std::int64_t fieldIndex);
 //
 // box_get/box_set always operate in language-level values (Obj* boxed).
 // ------------------------------------------------------------
-void* box_new(void* lenObj,
-              unsigned long long elem_kind,
-              unsigned long long elem_size,
-              unsigned long long elem_align);
+void* box_new(void* lenObj, unsigned long long elem_kind,
+              unsigned long long elem_size, unsigned long long elem_align);
 
 void box_free(void* box);
 void* box_len(void* box);

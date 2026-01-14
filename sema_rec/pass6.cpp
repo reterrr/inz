@@ -1,13 +1,72 @@
 #include "pass6.hpp"
 
 #include <sstream>
+#include <string>
+#include <utility>
+#include <vector>
+
+
+#include "expr/assign_expr.hpp"
+#include "expr/field_expr.hpp"
+#include "expr/index_expr.hpp"
+#include "expr/path_expr.hpp"
+#include "expr/unary_op_expr.hpp"
+#include "expr/struct_literal_expr.hpp"
+#include "stmt/block_statement.hpp"
 
 namespace sema
 {
-    static Pass6Diagnostic mkdiag(Pass6Diagnostic::Code c, const lex::Loc& loc, std::string msg)
+    static inline void log_module_path_first(LogSequence& logs,
+                                             const std::vector<lex::SymId>& segs,
+                                             const lex::Loc& loc)
     {
-        return Pass6Diagnostic{.code = c, .loc = loc, .message = std::move(msg)};
+        logs.emplace_back(LogPath{SymKind::Ident, segs, loc});
     }
+
+
+    Pass6LocalBinderVisitor::Pass6LocalBinderVisitor(const Pass4Result& p4,
+                                                     const Pass4_5Result& p45,
+                                                     Pass6Result& out,
+                                                     std::uint32_t unit_index)
+        : p4_(p4)
+          , p45_(p45)
+          , out_(out)
+          , unit_index_(unit_index)
+    {
+        if (unit_index_ < p45_.envs.size())
+            module_ = p45_.envs[unit_index_].module_id;
+        else if (unit_index_ < p4_.modules.size())
+            module_ = p4_.modules[unit_index_].module_id;
+    }
+
+
+    void Pass6LocalBinderVisitor::log_prefix(const lex::Loc& loc) const
+    {
+        log_module_path_first(out_.errors, mod_path_, loc);
+    }
+
+    void Pass6LocalBinderVisitor::log_text(const lex::Loc& loc, std::string msg) const
+    {
+        log_prefix(loc);
+        out_.errors.emplace_back(std::move(msg));
+    }
+
+    void Pass6LocalBinderVisitor::log_ident_err(const lex::Loc& loc, std::string msg, lex::SymId id) const
+    {
+        log_prefix(loc);
+        out_.errors.emplace_back(std::move(msg));
+        out_.errors.emplace_back(Log{SymKind::Ident, id, loc});
+    }
+
+    void Pass6LocalBinderVisitor::log_path_err(const lex::Loc& loc,
+                                               std::string msg,
+                                               const std::vector<lex::SymId>& path) const
+    {
+        log_prefix(loc);
+        out_.errors.emplace_back(std::move(msg));
+        out_.errors.emplace_back(LogPath{SymKind::Ident, path, loc});
+    }
+
 
     void Pass6LocalBinderVisitor::push_scope() { scopes_.emplace_back(); }
 
@@ -35,40 +94,6 @@ namespace sema
         return std::nullopt;
     }
 
-    void Pass6LocalBinderVisitor::diag_dup_local(const lex::Loc& loc, lex::SymId name) const
-    {
-        std::ostringstream oss;
-        oss << "duplicate local name in same scope: " << static_cast<uint32_t>(name);
-        out_.diagnostics.push_back(mkdiag(Pass6Diagnostic::Code::DuplicateLocalNameInScope, loc, oss.str()));
-    }
-
-    void Pass6LocalBinderVisitor::diag_unresolved(const lex::Loc& loc, lex::SymId name) const
-    {
-        std::ostringstream oss;
-        oss << "unresolved name: " << static_cast<uint32_t>(name);
-        out_.diagnostics.push_back(mkdiag(Pass6Diagnostic::Code::UnresolvedName, loc, oss.str()));
-    }
-
-    void Pass6LocalBinderVisitor::diag_immutable_assign(const lex::Loc& loc, lex::SymId name) const
-    {
-        std::ostringstream oss;
-        oss << "cannot assign to immutable binding: " << static_cast<uint32_t>(name);
-        out_.diagnostics.push_back(mkdiag(Pass6Diagnostic::Code::ImmutableAssign, loc, oss.str()));
-    }
-
-    void Pass6LocalBinderVisitor::diag_invalid_assign_target(const lex::Loc& loc) const
-    {
-        out_.diagnostics.push_back(
-            mkdiag(Pass6Diagnostic::Code::InvalidAssignTarget, loc,
-                   "invalid assignment target (expected place expression)"));
-    }
-
-    void Pass6LocalBinderVisitor::diag_invalid_mut_borrow(const lex::Loc& loc, lex::SymId name) const
-    {
-        std::ostringstream oss;
-        oss << "cannot take mutable reference of immutable binding: " << static_cast<uint32_t>(name);
-        out_.diagnostics.push_back(mkdiag(Pass6Diagnostic::Code::InvalidMutBorrow, loc, oss.str()));
-    }
 
     SlotId Pass6LocalBinderVisitor::alloc_slot_for_param(ast::ParamDecl& p) const
     {
@@ -88,7 +113,7 @@ namespace sema
         return slot;
     }
 
-    SlotId Pass6LocalBinderVisitor::alloc_slot_for_var(ast::VarStmt& v)
+    SlotId Pass6LocalBinderVisitor::alloc_slot_for_var(ast::VarStmt& v) const
     {
         SlotId slot{cur_fn_->slot_count++};
 
@@ -106,9 +131,9 @@ namespace sema
         return slot;
     }
 
-    // ---------- NEW: runtime intrinsic lookup ----------
-    static std::optional<RuntimeIntrinsic> lookup_reserved_intrinsic(const ModuleVisibleEnv* env,
-                                                                     lex::SymId name)
+
+    std::optional<RuntimeIntrinsic> Pass6LocalBinderVisitor::lookup_reserved_intrinsic(const ModuleVisibleEnv* env,
+        lex::SymId name)
     {
         if (!env) return std::nullopt;
         auto it = env->reserved_intrinsics.find(name);
@@ -139,7 +164,7 @@ namespace sema
         return env_->imports_by_alias.contains(name);
     }
 
-    bool Pass6LocalBinderVisitor::is_place_expr(ast::Expr* e) const
+    bool Pass6LocalBinderVisitor::is_place_expr(ast::Expr* e)
     {
         if (dynamic_cast<ast::RefExpr*>(e))
             return true;
@@ -156,17 +181,20 @@ namespace sema
         return false;
     }
 
-    // ------------------------------------------------------------
-    // visitors
-    // ------------------------------------------------------------
 
     void Pass6LocalBinderVisitor::visit(ast::Module& m)
     {
+        mod_loc_ = m.location_;
+        mod_path_.clear();
+        if (m.pathExpr_)
+            mod_path_ = m.pathExpr_->path_;
+
         if (unit_index_ >= out_.modules.size())
             out_.modules.resize(unit_index_ + 1);
 
         mg_ = nullptr;
         env_ = nullptr;
+        module_ = kInvalidModuleId;
 
         if (unit_index_ < p4_.modules.size())
             mg_ = &p4_.modules[unit_index_];
@@ -174,13 +202,18 @@ namespace sema
         if (unit_index_ < p45_.envs.size())
             env_ = &p45_.envs[unit_index_];
 
+
+        if (mg_) module_ = mg_->module_id;
+        else if (env_) module_ = env_->module_id;
+
         ModuleBindings& mb = out_.modules[unit_index_];
-        if (mg_) mb.module_id = mg_->module_id;
+        mb.module_id = module_;
 
         ast::visitor::OverallVisitor::visit(m);
 
         mg_ = nullptr;
         env_ = nullptr;
+        module_ = kInvalidModuleId;
     }
 
     void Pass6LocalBinderVisitor::visit(ast::FnDecl& f)
@@ -220,15 +253,19 @@ namespace sema
         cur_fn_ = &fb;
 
         scopes_.clear();
-        push_scope(); // fn scope
+        push_scope();
 
         for (auto* p : f.params_)
         {
             if (!p) continue;
-            SlotId s = alloc_slot_for_param(*p);
+            const SlotId s = alloc_slot_for_param(*p);
 
             if (!declare_in_current_scope(p->name_, s))
-                diag_dup_local(p->location_, p->name_);
+            {
+                log_ident_err(p->location_,
+                              "pass6: DuplicateLocalNameInScope: duplicate local name in same scope: ",
+                              p->name_);
+            }
         }
 
         if (f.body_)
@@ -241,7 +278,6 @@ namespace sema
     void Pass6LocalBinderVisitor::visit(ast::LoadFnDecl& lf)
     {
         (void)lf;
-        // signature-only; do not recurse
     }
 
     void Pass6LocalBinderVisitor::visit(ast::BlockStatement& b)
@@ -260,10 +296,14 @@ namespace sema
             return;
         }
 
-        SlotId s = alloc_slot_for_var(v);
+        const SlotId s = alloc_slot_for_var(v);
 
         if (!declare_in_current_scope(v.name_, s))
-            diag_dup_local(v.location_, v.name_);
+        {
+            log_ident_err(v.location_,
+                          "pass6: DuplicateLocalNameInScope: duplicate local name in same scope: ",
+                          v.name_);
+        }
 
         ast::visitor::OverallVisitor::visit(v);
     }
@@ -274,14 +314,13 @@ namespace sema
             if (fi) fi->accept(*this);
     }
 
-    // ---------------- FIXED: RefExpr binds intrinsics before GlobalFn ----------------
+
     void Pass6LocalBinderVisitor::visit(ast::RefExpr& r)
     {
         if (!cur_fn_) return;
 
         Binding bnd{};
 
-        // locals first
         if (auto slot = lookup_local(r.name); slot.has_value())
         {
             bnd.kind = BindingKind::LocalSlot;
@@ -291,7 +330,6 @@ namespace sema
             return;
         }
 
-        // runtime intrinsics next (THIS is the crucial fix)
         if (auto k = lookup_reserved_intrinsic(env_, r.name); k.has_value())
         {
             bnd.kind = BindingKind::RuntimeIntrinsic;
@@ -301,7 +339,6 @@ namespace sema
             return;
         }
 
-        // normal globals
         if (auto fn = lookup_global_fn(r.name); fn.has_value())
         {
             bnd.kind = BindingKind::GlobalFn;
@@ -329,7 +366,10 @@ namespace sema
             return;
         }
 
-        diag_unresolved(r.location_, r.name);
+        log_ident_err(r.location_,
+                      "pass6: UnresolvedName: unresolved name: ",
+                      r.name);
+
         bnd.kind = BindingKind::Unresolved;
         cur_fn_->ref_binding.emplace(&r, bnd);
         cur_fn_->expr_binding.emplace(&r, bnd);
@@ -378,7 +418,7 @@ namespace sema
         return std::nullopt;
     }
 
-    // ---------------- FIXED: PathExpr binds intrinsics (unqualified) ----------------
+
     void Pass6LocalBinderVisitor::visit(ast::PathExpr& p)
     {
         ast::visitor::OverallVisitor::visit(p);
@@ -397,7 +437,6 @@ namespace sema
         if (segs.empty())
             return;
 
-        // Unqualified: name
         if (segs.size() == 1)
         {
             const lex::SymId name = segs[0];
@@ -410,7 +449,6 @@ namespace sema
                 return;
             }
 
-            // runtime intrinsic
             if (auto k = lookup_reserved_intrinsic(env_, name); k.has_value())
             {
                 bnd.kind = BindingKind::RuntimeIntrinsic;
@@ -451,16 +489,21 @@ namespace sema
                 return;
             }
 
-            diag_unresolved(p.location_, name);
+            log_ident_err(p.location_,
+                          "pass6: UnresolvedName: unresolved path name: ",
+                          name);
+
             bnd.kind = BindingKind::Unresolved;
             bind(std::move(bnd));
             return;
         }
 
-        // Qualified: alias::member
         if (segs.size() != 2)
         {
-            diag_unresolved(p.location_, segs.back());
+            log_path_err(p.location_,
+                         "pass6: UnresolvedName: unsupported path depth (expected Name or alias::Name): ",
+                         segs);
+
             bnd.kind = BindingKind::Unresolved;
             bind(std::move(bnd));
             return;
@@ -472,7 +515,10 @@ namespace sema
         auto itImp = env_->imports_by_alias.find(alias);
         if (itImp == env_->imports_by_alias.end() || !itImp->second.target_globals)
         {
-            diag_unresolved(p.location_, alias);
+            log_ident_err(p.location_,
+                          "pass6: UnresolvedName: unknown import alias in path: ",
+                          alias);
+
             bnd.kind = BindingKind::Unresolved;
             bind(std::move(bnd));
             return;
@@ -512,7 +558,10 @@ namespace sema
             return;
         }
 
-        diag_unresolved(p.location_, leaf);
+        log_path_err(p.location_,
+                     "pass6: UnresolvedName: unresolved imported name in path: ",
+                     segs);
+
         bnd.kind = BindingKind::Unresolved;
         bind(std::move(bnd));
     }
@@ -530,9 +579,8 @@ namespace sema
         auto* r = dynamic_cast<ast::RefExpr*>(u.expr_);
         if (!r)
         {
-            out_.diagnostics.push_back(
-                mkdiag(Pass6Diagnostic::Code::InvalidMutBorrow, u.location_,
-                       "cannot take mutable reference of non-place expression"));
+            log_text(u.location_,
+                     "pass6: InvalidMutBorrow: cannot take mutable reference of non-place expression");
             return;
         }
 
@@ -543,9 +591,9 @@ namespace sema
         const Binding& b = itb->second;
         if (b.kind != BindingKind::LocalSlot)
         {
-            out_.diagnostics.push_back(
-                mkdiag(Pass6Diagnostic::Code::InvalidMutBorrow, u.location_,
-                       "cannot take mutable reference of non-local binding"));
+            log_ident_err(u.location_,
+                          "pass6: InvalidMutBorrow: cannot take mutable reference of non-local binding: ",
+                          r->name);
             return;
         }
 
@@ -554,7 +602,11 @@ namespace sema
 
         const LocalSlotInfo& info = cur_fn_->slots[b.slot.index];
         if (info.mut_ != ast::Mutability::Mut)
-            diag_invalid_mut_borrow(u.location_, info.name);
+        {
+            log_ident_err(u.location_,
+                          "pass6: InvalidMutBorrow: cannot take mutable reference of immutable binding: ",
+                          info.name);
+        }
     }
 
     void Pass6LocalBinderVisitor::visit(ast::AssignExpr& a)
@@ -567,7 +619,8 @@ namespace sema
 
         if (!is_place_expr(a.lhs_))
         {
-            diag_invalid_assign_target(a.location_);
+            log_text(a.location_,
+                     "pass6: InvalidAssignTarget: invalid assignment target (expected place expression)");
             return;
         }
 
@@ -586,7 +639,9 @@ namespace sema
 
         if (b.kind != BindingKind::LocalSlot)
         {
-            diag_invalid_assign_target(a.location_);
+            log_ident_err(a.location_,
+                          "pass6: InvalidAssignTarget: invalid assignment target (not a local slot): ",
+                          lhs_ref->name);
             return;
         }
 
@@ -595,8 +650,13 @@ namespace sema
 
         const LocalSlotInfo& info = cur_fn_->slots[b.slot.index];
         if (info.mut_ != ast::Mutability::Mut)
-            diag_immutable_assign(a.location_, info.name);
+        {
+            log_ident_err(a.location_,
+                          "pass6: ImmutableAssign: cannot assign to immutable binding: ",
+                          info.name);
+        }
     }
+
 
     Pass6Result run_pass6_local_binder(const Translation& tr,
                                        const Pass4Result& p4,
@@ -605,7 +665,7 @@ namespace sema
         Pass6Result out{};
         out.modules.resize(tr.units.size());
 
-        for (uint32_t unit_i = 0; unit_i < static_cast<uint32_t>(tr.units.size()); ++unit_i)
+        for (std::uint32_t unit_i = 0; unit_i < static_cast<std::uint32_t>(tr.units.size()); ++unit_i)
         {
             ast::Module* m = tr.units[unit_i].module_;
             if (!m) continue;
@@ -616,4 +676,4 @@ namespace sema
 
         return out;
     }
-} // namespace sema
+}

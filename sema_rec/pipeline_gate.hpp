@@ -1,24 +1,39 @@
-// sema/pipeline_gate.hpp
 #pragma once
 
 #include <ostream>
 #include <string_view>
 
+#include "compiler_context.hpp"
+#include "logging_entities.hpp"
+
 namespace sema
 {
-    template <class ResultT, class PrintFn>
+    template <class T>
+    concept HasErrorsSeq = requires(const T& t) { t.errors; };
+
+    template <class T>
+    concept HasLogsSeq = requires(const T& t) { t.logs; };
+
+    template <class Result>
+    const LogSequence* get_logseq_ptr(const Result& r)
+    {
+        if constexpr (HasErrorsSeq<Result>) return &r.errors;
+        if constexpr (HasLogsSeq<Result>)   return &r.logs;
+        return nullptr;
+    }
+
+    template <class Result>
     bool must_ok_or_stop(std::ostream& os,
                          std::string_view pass_name,
-                         const ResultT& r,
-                         PrintFn&& print_one_pass_diags)
+                         const Result& r,
+                         const CompilerContext& cc)
     {
-        if (r.ok())
-            return true;
+        if (r.ok()) return true;
 
-        // Print only THIS pass diagnostics here.
-        print_one_pass_diags();
+        const LogSequence* seq = get_logseq_ptr(r);
+        if (seq) print_log_sequence(os, pass_name, *seq, cc);
+        else os << pass_name << ": failed (no LogSequence member: expected .errors or .logs)\n";
 
-        os << "Compilation stopped: " << pass_name << " failed.\n";
         return false;
     }
 } // namespace sema

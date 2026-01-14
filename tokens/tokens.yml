@@ -10,20 +10,11 @@ tokens:
 
     declarations:
       STRUCT: "struct"
-      TRAIT: "trait"
-      IMPL: "impl"          # <--- added
-      ENUM: "enum"
       FN: "fn"
-      TYPE: "type"
       RETURN: "return"
       MUT: "mut"
       IMM: "imm"
-      STATIC: "static"
       PUB: "pub"
-      SELF: "self"          # <--- added (reserved keyword)
-
-    impl_kw:
-      FOR: "for"            # <--- added (used in: impl Trait for Type)
 
     type_kw:
       I8: "i8"
@@ -48,11 +39,9 @@ tokens:
 
     modules:
       IMPORT: "import"
-      EXPORT: "export"
       PACKAGE: "package"
       AS: "as"
       LOAD: "load"
-
 
   identifiers:
     IDENTIFIER: "~"
@@ -76,11 +65,10 @@ tokens:
       COMMA: ","
       SMCLN: ";"
       COLON: ":"
-      COLONCOLON: "::"
-      TURBOFISH_S: "::<"
+      COLONCOLON: "::" #
+      TURBOFISH_S: "::<" #
     misc:
       DOT: "."
-      QUESTION: "?"
       ARROW: "->"
 
   operators:
@@ -102,7 +90,3 @@ tokens:
     BOOL_AND: "&&"
     BOOL_OR: "||"
     ASSIGN: "="
-    PLUS_ASSIGN: "+="
-    MIN_ASSIGN: "-="
-    MUL_ASSIGN: "*="
-    DIV_ASSIGN: "/="

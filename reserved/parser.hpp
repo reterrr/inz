@@ -45,7 +45,7 @@
 #ifndef YY_YY_PARSER_HPP_INCLUDED
 # define YY_YY_PARSER_HPP_INCLUDED
 // "%code requires" blocks.
-#line 31 "parser_rules.y"
+#line 32 "parser_rules.y"
 
   #include "generated/token.hpp"
   #include "types.hpp"
@@ -194,7 +194,7 @@
 # define YYDEBUG 1
 #endif
 
-#line 16 "parser_rules.y"
+#line 17 "parser_rules.y"
 namespace yy { namespace reserved {
 #line 200 "parser.hpp"
 
@@ -393,7 +393,6 @@ namespace yy { namespace reserved {
     union union_type
     {
       // TOK_IDENTIFIER
-      // TOK_SELF
       // TOK_INT_LITERAL
       // TOK_FLOAT_LITERAL
       // TOK_STRING_LITERAL
@@ -423,7 +422,6 @@ namespace yy { namespace reserved {
       char dummy8[sizeof (ast::Mutability)];
 
       // param
-      // self_param
       char dummy9[sizeof (ast::ParamDecl*)];
 
       // path_expr
@@ -528,51 +526,48 @@ namespace yy { namespace reserved {
     TOK_STRUCT = 258,              // TOK_STRUCT
     TOK_FN = 259,                  // TOK_FN
     TOK_IMPORT = 260,              // TOK_IMPORT
-    TOK_EXPORT = 261,              // TOK_EXPORT
-    TOK_PACKAGE = 262,             // TOK_PACKAGE
-    TOK_AS = 263,                  // TOK_AS
-    TOK_LOAD = 264,                // TOK_LOAD
-    TOK_MUT = 265,                 // TOK_MUT
-    TOK_IMM = 266,                 // TOK_IMM
-    TOK_STATIC = 267,              // TOK_STATIC
-    TOK_PUB = 268,                 // TOK_PUB
-    TOK_I8 = 269,                  // TOK_I8
-    TOK_U8 = 270,                  // TOK_U8
-    TOK_I16 = 271,                 // TOK_I16
-    TOK_U16 = 272,                 // TOK_U16
-    TOK_I32 = 273,                 // TOK_I32
-    TOK_U32 = 274,                 // TOK_U32
-    TOK_I64 = 275,                 // TOK_I64
-    TOK_U64 = 276,                 // TOK_U64
-    TOK_I128 = 277,                // TOK_I128
-    TOK_U128 = 278,                // TOK_U128
-    TOK_F32 = 279,                 // TOK_F32
-    TOK_F64 = 280,                 // TOK_F64
-    TOK_BOOL = 281,                // TOK_BOOL
-    TOK_CHAR = 282,                // TOK_CHAR
-    TOK_VOID = 283,                // TOK_VOID
-    TOK_IDENTIFIER = 284,          // TOK_IDENTIFIER
-    TOK_SELF = 285,                // TOK_SELF
-    TOK_INT_LITERAL = 286,         // TOK_INT_LITERAL
-    TOK_FLOAT_LITERAL = 287,       // TOK_FLOAT_LITERAL
-    TOK_STRING_LITERAL = 288,      // TOK_STRING_LITERAL
-    TOK_BOOL_LITERAL = 289,        // TOK_BOOL_LITERAL
-    TOK_CHAR_LITERAL = 290,        // TOK_CHAR_LITERAL
-    TOK_LPAR = 291,                // TOK_LPAR
-    TOK_RPAR = 292,                // TOK_RPAR
-    TOK_LBRACK = 293,              // TOK_LBRACK
-    TOK_RBRACK = 294,              // TOK_RBRACK
-    TOK_LCBRA = 295,               // TOK_LCBRA
-    TOK_RCBRA = 296,               // TOK_RCBRA
-    TOK_LESS = 297,                // TOK_LESS
-    TOK_GREATER = 298,             // TOK_GREATER
-    TOK_COMMA = 299,               // TOK_COMMA
-    TOK_SMCLN = 300,               // TOK_SMCLN
-    TOK_COLON = 301,               // TOK_COLON
-    TOK_COLONCOLON = 302,          // TOK_COLONCOLON
-    TOK_ARROW = 303,               // TOK_ARROW
-    TOK_TURBOFISH_S = 304,         // TOK_TURBOFISH_S
-    TOK_AMP = 305                  // TOK_AMP
+    TOK_PACKAGE = 261,             // TOK_PACKAGE
+    TOK_AS = 262,                  // TOK_AS
+    TOK_LOAD = 263,                // TOK_LOAD
+    TOK_MUT = 264,                 // TOK_MUT
+    TOK_IMM = 265,                 // TOK_IMM
+    TOK_PUB = 266,                 // TOK_PUB
+    TOK_I8 = 267,                  // TOK_I8
+    TOK_U8 = 268,                  // TOK_U8
+    TOK_I16 = 269,                 // TOK_I16
+    TOK_U16 = 270,                 // TOK_U16
+    TOK_I32 = 271,                 // TOK_I32
+    TOK_U32 = 272,                 // TOK_U32
+    TOK_I64 = 273,                 // TOK_I64
+    TOK_U64 = 274,                 // TOK_U64
+    TOK_I128 = 275,                // TOK_I128
+    TOK_U128 = 276,                // TOK_U128
+    TOK_F32 = 277,                 // TOK_F32
+    TOK_F64 = 278,                 // TOK_F64
+    TOK_BOOL = 279,                // TOK_BOOL
+    TOK_CHAR = 280,                // TOK_CHAR
+    TOK_VOID = 281,                // TOK_VOID
+    TOK_IDENTIFIER = 282,          // TOK_IDENTIFIER
+    TOK_INT_LITERAL = 283,         // TOK_INT_LITERAL
+    TOK_FLOAT_LITERAL = 284,       // TOK_FLOAT_LITERAL
+    TOK_STRING_LITERAL = 285,      // TOK_STRING_LITERAL
+    TOK_BOOL_LITERAL = 286,        // TOK_BOOL_LITERAL
+    TOK_CHAR_LITERAL = 287,        // TOK_CHAR_LITERAL
+    TOK_LPAR = 288,                // TOK_LPAR
+    TOK_RPAR = 289,                // TOK_RPAR
+    TOK_LBRACK = 290,              // TOK_LBRACK
+    TOK_RBRACK = 291,              // TOK_RBRACK
+    TOK_LCBRA = 292,               // TOK_LCBRA
+    TOK_RCBRA = 293,               // TOK_RCBRA
+    TOK_LESS = 294,                // TOK_LESS
+    TOK_GREATER = 295,             // TOK_GREATER
+    TOK_COMMA = 296,               // TOK_COMMA
+    TOK_SMCLN = 297,               // TOK_SMCLN
+    TOK_COLON = 298,               // TOK_COLON
+    TOK_COLONCOLON = 299,          // TOK_COLONCOLON
+    TOK_ARROW = 300,               // TOK_ARROW
+    TOK_TURBOFISH_S = 301,         // TOK_TURBOFISH_S
+    TOK_AMP = 302                  // TOK_AMP
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -589,7 +584,7 @@ namespace yy { namespace reserved {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 51, ///< Number of tokens.
+        YYNTOKENS = 48, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // "end of file"
         S_YYerror = 1,                           // error
@@ -597,86 +592,82 @@ namespace yy { namespace reserved {
         S_TOK_STRUCT = 3,                        // TOK_STRUCT
         S_TOK_FN = 4,                            // TOK_FN
         S_TOK_IMPORT = 5,                        // TOK_IMPORT
-        S_TOK_EXPORT = 6,                        // TOK_EXPORT
-        S_TOK_PACKAGE = 7,                       // TOK_PACKAGE
-        S_TOK_AS = 8,                            // TOK_AS
-        S_TOK_LOAD = 9,                          // TOK_LOAD
-        S_TOK_MUT = 10,                          // TOK_MUT
-        S_TOK_IMM = 11,                          // TOK_IMM
-        S_TOK_STATIC = 12,                       // TOK_STATIC
-        S_TOK_PUB = 13,                          // TOK_PUB
-        S_TOK_I8 = 14,                           // TOK_I8
-        S_TOK_U8 = 15,                           // TOK_U8
-        S_TOK_I16 = 16,                          // TOK_I16
-        S_TOK_U16 = 17,                          // TOK_U16
-        S_TOK_I32 = 18,                          // TOK_I32
-        S_TOK_U32 = 19,                          // TOK_U32
-        S_TOK_I64 = 20,                          // TOK_I64
-        S_TOK_U64 = 21,                          // TOK_U64
-        S_TOK_I128 = 22,                         // TOK_I128
-        S_TOK_U128 = 23,                         // TOK_U128
-        S_TOK_F32 = 24,                          // TOK_F32
-        S_TOK_F64 = 25,                          // TOK_F64
-        S_TOK_BOOL = 26,                         // TOK_BOOL
-        S_TOK_CHAR = 27,                         // TOK_CHAR
-        S_TOK_VOID = 28,                         // TOK_VOID
-        S_TOK_IDENTIFIER = 29,                   // TOK_IDENTIFIER
-        S_TOK_SELF = 30,                         // TOK_SELF
-        S_TOK_INT_LITERAL = 31,                  // TOK_INT_LITERAL
-        S_TOK_FLOAT_LITERAL = 32,                // TOK_FLOAT_LITERAL
-        S_TOK_STRING_LITERAL = 33,               // TOK_STRING_LITERAL
-        S_TOK_BOOL_LITERAL = 34,                 // TOK_BOOL_LITERAL
-        S_TOK_CHAR_LITERAL = 35,                 // TOK_CHAR_LITERAL
-        S_TOK_LPAR = 36,                         // TOK_LPAR
-        S_TOK_RPAR = 37,                         // TOK_RPAR
-        S_TOK_LBRACK = 38,                       // TOK_LBRACK
-        S_TOK_RBRACK = 39,                       // TOK_RBRACK
-        S_TOK_LCBRA = 40,                        // TOK_LCBRA
-        S_TOK_RCBRA = 41,                        // TOK_RCBRA
-        S_TOK_LESS = 42,                         // TOK_LESS
-        S_TOK_GREATER = 43,                      // TOK_GREATER
-        S_TOK_COMMA = 44,                        // TOK_COMMA
-        S_TOK_SMCLN = 45,                        // TOK_SMCLN
-        S_TOK_COLON = 46,                        // TOK_COLON
-        S_TOK_COLONCOLON = 47,                   // TOK_COLONCOLON
-        S_TOK_ARROW = 48,                        // TOK_ARROW
-        S_TOK_TURBOFISH_S = 49,                  // TOK_TURBOFISH_S
-        S_TOK_AMP = 50,                          // TOK_AMP
-        S_YYACCEPT = 51,                         // $accept
-        S_translation_unit = 52,                 // translation_unit
-        S_sig_module = 53,                       // sig_module
-        S_import_list_opt = 54,                  // import_list_opt
-        S_import_list = 55,                      // import_list
-        S_import_decl = 56,                      // import_decl
-        S_path = 57,                             // path
-        S_path_expr = 58,                        // path_expr
-        S_ident_no_self = 59,                    // ident_no_self
-        S_ident_any = 60,                        // ident_any
-        S_type_params_opt = 61,                  // type_params_opt
-        S_type_param_list = 62,                  // type_param_list
-        S_type_param = 63,                       // type_param
-        S_type_args = 64,                        // type_args
-        S_type_arg_list = 65,                    // type_arg_list
-        S_pub_opt = 66,                          // pub_opt
-        S_sig_decl_list_opt = 67,                // sig_decl_list_opt
-        S_sig_decl_list = 68,                    // sig_decl_list
-        S_sig_decl = 69,                         // sig_decl
-        S_sig_fn_decl = 70,                      // sig_fn_decl
-        S_sig_load_fn_decl = 71,                 // sig_load_fn_decl
-        S_sig_struct_decl = 72,                  // sig_struct_decl
-        S_param_list_opt = 73,                   // param_list_opt
-        S_param_list = 74,                       // param_list
-        S_param = 75,                            // param
-        S_self_param = 76,                       // self_param
-        S_ret_type_expr = 77,                    // ret_type_expr
-        S_type_expr = 78,                        // type_expr
-        S_ref_type_expr = 79,                    // ref_type_expr
-        S_ref_mutability = 80,                   // ref_mutability
-        S_type_postfix = 81,                     // type_postfix
-        S_type_primary = 82,                     // type_primary
-        S_builtin_type_expr = 83,                // builtin_type_expr
-        S_path_type_expr = 84,                   // path_type_expr
-        S_const_int_expr = 85                    // const_int_expr
+        S_TOK_PACKAGE = 6,                       // TOK_PACKAGE
+        S_TOK_AS = 7,                            // TOK_AS
+        S_TOK_LOAD = 8,                          // TOK_LOAD
+        S_TOK_MUT = 9,                           // TOK_MUT
+        S_TOK_IMM = 10,                          // TOK_IMM
+        S_TOK_PUB = 11,                          // TOK_PUB
+        S_TOK_I8 = 12,                           // TOK_I8
+        S_TOK_U8 = 13,                           // TOK_U8
+        S_TOK_I16 = 14,                          // TOK_I16
+        S_TOK_U16 = 15,                          // TOK_U16
+        S_TOK_I32 = 16,                          // TOK_I32
+        S_TOK_U32 = 17,                          // TOK_U32
+        S_TOK_I64 = 18,                          // TOK_I64
+        S_TOK_U64 = 19,                          // TOK_U64
+        S_TOK_I128 = 20,                         // TOK_I128
+        S_TOK_U128 = 21,                         // TOK_U128
+        S_TOK_F32 = 22,                          // TOK_F32
+        S_TOK_F64 = 23,                          // TOK_F64
+        S_TOK_BOOL = 24,                         // TOK_BOOL
+        S_TOK_CHAR = 25,                         // TOK_CHAR
+        S_TOK_VOID = 26,                         // TOK_VOID
+        S_TOK_IDENTIFIER = 27,                   // TOK_IDENTIFIER
+        S_TOK_INT_LITERAL = 28,                  // TOK_INT_LITERAL
+        S_TOK_FLOAT_LITERAL = 29,                // TOK_FLOAT_LITERAL
+        S_TOK_STRING_LITERAL = 30,               // TOK_STRING_LITERAL
+        S_TOK_BOOL_LITERAL = 31,                 // TOK_BOOL_LITERAL
+        S_TOK_CHAR_LITERAL = 32,                 // TOK_CHAR_LITERAL
+        S_TOK_LPAR = 33,                         // TOK_LPAR
+        S_TOK_RPAR = 34,                         // TOK_RPAR
+        S_TOK_LBRACK = 35,                       // TOK_LBRACK
+        S_TOK_RBRACK = 36,                       // TOK_RBRACK
+        S_TOK_LCBRA = 37,                        // TOK_LCBRA
+        S_TOK_RCBRA = 38,                        // TOK_RCBRA
+        S_TOK_LESS = 39,                         // TOK_LESS
+        S_TOK_GREATER = 40,                      // TOK_GREATER
+        S_TOK_COMMA = 41,                        // TOK_COMMA
+        S_TOK_SMCLN = 42,                        // TOK_SMCLN
+        S_TOK_COLON = 43,                        // TOK_COLON
+        S_TOK_COLONCOLON = 44,                   // TOK_COLONCOLON
+        S_TOK_ARROW = 45,                        // TOK_ARROW
+        S_TOK_TURBOFISH_S = 46,                  // TOK_TURBOFISH_S
+        S_TOK_AMP = 47,                          // TOK_AMP
+        S_YYACCEPT = 48,                         // $accept
+        S_translation_unit = 49,                 // translation_unit
+        S_sig_module = 50,                       // sig_module
+        S_import_list_opt = 51,                  // import_list_opt
+        S_import_list = 52,                      // import_list
+        S_import_decl = 53,                      // import_decl
+        S_path = 54,                             // path
+        S_path_expr = 55,                        // path_expr
+        S_ident_no_self = 56,                    // ident_no_self
+        S_ident_any = 57,                        // ident_any
+        S_type_params_opt = 58,                  // type_params_opt
+        S_type_param_list = 59,                  // type_param_list
+        S_type_param = 60,                       // type_param
+        S_type_args = 61,                        // type_args
+        S_type_arg_list = 62,                    // type_arg_list
+        S_pub_opt = 63,                          // pub_opt
+        S_sig_decl_list_opt = 64,                // sig_decl_list_opt
+        S_sig_decl_list = 65,                    // sig_decl_list
+        S_sig_decl = 66,                         // sig_decl
+        S_sig_fn_decl = 67,                      // sig_fn_decl
+        S_sig_load_fn_decl = 68,                 // sig_load_fn_decl
+        S_sig_struct_decl = 69,                  // sig_struct_decl
+        S_param_list_opt = 70,                   // param_list_opt
+        S_param_list = 71,                       // param_list
+        S_param = 72,                            // param
+        S_ret_type_expr = 73,                    // ret_type_expr
+        S_type_expr = 74,                        // type_expr
+        S_ref_type_expr = 75,                    // ref_type_expr
+        S_ref_mutability = 76,                   // ref_mutability
+        S_type_postfix = 77,                     // type_postfix
+        S_type_primary = 78,                     // type_primary
+        S_builtin_type_expr = 79,                // builtin_type_expr
+        S_path_type_expr = 80,                   // path_type_expr
+        S_const_int_expr = 81                    // const_int_expr
       };
     };
 
@@ -714,7 +705,6 @@ namespace yy { namespace reserved {
         switch (this->kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
-      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
@@ -752,7 +742,6 @@ namespace yy { namespace reserved {
         break;
 
       case symbol_kind::S_param: // param
-      case symbol_kind::S_self_param: // self_param
         value.move< ast::ParamDecl* > (std::move (that.value));
         break;
 
@@ -1191,7 +1180,6 @@ namespace yy { namespace reserved {
 switch (yykind)
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
-      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
@@ -1229,7 +1217,6 @@ switch (yykind)
         break;
 
       case symbol_kind::S_param: // param
-      case symbol_kind::S_self_param: // self_param
         value.template destroy< ast::ParamDecl* > ();
         break;
 
@@ -1559,21 +1546,6 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_TOK_EXPORT (location_type l)
-      {
-        return symbol_type (token::TOK_EXPORT, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_EXPORT (const location_type& l)
-      {
-        return symbol_type (token::TOK_EXPORT, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
       make_TOK_PACKAGE (location_type l)
       {
         return symbol_type (token::TOK_PACKAGE, std::move (l));
@@ -1644,21 +1616,6 @@ switch (yykind)
       make_TOK_IMM (const location_type& l)
       {
         return symbol_type (token::TOK_IMM, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_STATIC (location_type l)
-      {
-        return symbol_type (token::TOK_STATIC, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_STATIC (const location_type& l)
-      {
-        return symbol_type (token::TOK_STATIC, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -1914,21 +1871,6 @@ switch (yykind)
       make_TOK_IDENTIFIER (const Str& v, const location_type& l)
       {
         return symbol_type (token::TOK_IDENTIFIER, v, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_SELF (Str v, location_type l)
-      {
-        return symbol_type (token::TOK_SELF, std::move (v), std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_SELF (const Str& v, const location_type& l)
-      {
-        return symbol_type (token::TOK_SELF, v, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -2580,9 +2522,9 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 107,     ///< Last index in yytable_.
-      yynnts_ = 35,  ///< Number of nonterminal symbols.
-      yyfinal_ = 9 ///< Termination state number.
+      yylast_ = 111,     ///< Last index in yytable_.
+      yynnts_ = 34,  ///< Number of nonterminal symbols.
+      yyfinal_ = 8 ///< Termination state number.
     };
 
 
@@ -2634,10 +2576,10 @@ switch (yykind)
       15,    16,    17,    18,    19,    20,    21,    22,    23,    24,
       25,    26,    27,    28,    29,    30,    31,    32,    33,    34,
       35,    36,    37,    38,    39,    40,    41,    42,    43,    44,
-      45,    46,    47,    48,    49,    50
+      45,    46,    47
     };
     // Last valid token kind.
-    const int code_max = 305;
+    const int code_max = 302;
 
     if (t <= 0)
       return symbol_kind::S_YYEOF;
@@ -2657,7 +2599,6 @@ switch (yykind)
     switch (this->kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
-      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
@@ -2695,7 +2636,6 @@ switch (yykind)
         break;
 
       case symbol_kind::S_param: // param
-      case symbol_kind::S_self_param: // self_param
         value.copy< ast::ParamDecl* > (YY_MOVE (that.value));
         break;
 
@@ -2796,7 +2736,6 @@ switch (yykind)
     switch (this->kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
-      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
@@ -2834,7 +2773,6 @@ switch (yykind)
         break;
 
       case symbol_kind::S_param: // param
-      case symbol_kind::S_self_param: // self_param
         value.move< ast::ParamDecl* > (YY_MOVE (s.value));
         break;
 
@@ -2968,19 +2906,19 @@ switch (yykind)
   }
 
 
-#line 16 "parser_rules.y"
+#line 17 "parser_rules.y"
 } } // yy::reserved
-#line 2974 "parser.hpp"
+#line 2912 "parser.hpp"
 
 
 // "%code provides" blocks.
-#line 47 "parser_rules.y"
+#line 48 "parser_rules.y"
 
   namespace yy::reserved {
     parser::symbol_type yylex(Scanner& scanner);
   }
 
-#line 2984 "parser.hpp"
+#line 2922 "parser.hpp"
 
 
 #endif // !YY_YY_PARSER_HPP_INCLUDED

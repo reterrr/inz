@@ -1,5 +1,7 @@
 #pragma once
 
+#include "logging_entities.hpp"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -29,6 +31,8 @@ namespace sema
         llvm::Function* rt_alloc{};
         llvm::Function* rt_free{};
         llvm::Function* rt_print{};
+        llvm::Function* rt_put{};
+        llvm::Function* rt_nl{};
 
         // boxing
         llvm::Function* rt_box_bool{};
@@ -77,6 +81,7 @@ namespace sema
         llvm::Function* rt_box_elem_slot{};
         llvm::Function* rt_retain{};
         llvm::Function* rt_release{};
+        llvm::Function* rt_char_from_u32{};
     };
 
     struct Pass9_1Result
@@ -100,27 +105,15 @@ namespace sema
         // Example: std::unordered_map<LoadFnId, llvm::Function*> load_fn_decls;
         std::unordered_map<LoadFnId, llvm::Function*, LocalIdHash<LoadFnTag>> load_fn_decls;
         std::unordered_map<FnId, llvm::Function*, LocalIdHash<FnTag>> fn_decls;
+
+        const ast::Module* log_mod = nullptr;
+        std::vector<const ast::Module*> unit_mods;
+        LogSequence errors;
     };
 
     // -----------------------------
     // Shared IR helpers
     // -----------------------------
-    namespace ir
-    {
-        inline llvm::Function* get_or_declare(llvm::Module& M,
-                                              llvm::FunctionType* FT,
-                                              llvm::StringRef name)
-        {
-            if (auto* F = M.getFunction(name))
-            {
-                // Catch ABI mismatches early during bring-up.
-                assert(F->getFunctionType() == FT && "get_or_declare: function type mismatch");
-                return F;
-            }
-            return llvm::Function::Create(FT, llvm::Function::ExternalLinkage, name, M);
-        }
-    } // namespace ir
-
     // -----------------------------
     // Pass entry points
     // -----------------------------

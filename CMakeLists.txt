@@ -10,6 +10,7 @@ find_package(LLVM REQUIRED)
 find_package(Boost REQUIRED)
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 set(TOKEN_DIR ${CMAKE_SOURCE_DIR}/tokens)
 set(GEN_DIR ${CMAKE_SOURCE_DIR}/generated)
@@ -47,12 +48,12 @@ include_directories(
 #endif()
 
 add_executable(inz main.cpp
-#        lexer/lexer.cpp
+        #        lexer/lexer.cpp
         generated/lexer/lexer.yy.cpp
         parser/parser.cpp
         ast/node_type.hpp
         ast/node.hpp
-#        sema/type/type.hpp
+        #        sema/type/type.hpp
         ast/nodes/expr/expr.hpp
         ast/nodes/visit/visitable.hpp
         ast/nodes/visit/expr_visitor.hpp
@@ -86,27 +87,25 @@ add_executable(inz main.cpp
         ast/nodes/stmt/continue_statement.hpp
         ast/nodes/stmt/break_statement.hpp
         ast/nodes/stmt/do_while_statement.hpp
-        ast/nodes/decl/type_alias_decl.hpp
         ast/nodes/module/import_decl.hpp
         ast/nodes/expr/field_expr.hpp
         ast/nodes/expr/call_expr.hpp
         ast/nodes/expr/index_expr.hpp
         ast/ast_iterator.hpp
-        ast/nodes/project.hpp
         ast/nodes/visit/dump_visitor.hpp
         ast/nodes/decl/struct_decl.hpp
         ast/nodes/decl/field_decl.hpp
-#        sema/passes/scope_pass.cpp
-#        sema/symbol_table.hpp
-#        sema/passes/pass.hpp
-#        sema/passes/decl_pass.hpp
-#        sema/passes/decl_pass.cpp
-#        ast/nodes/visit/overallvisitor.cpp
-#        ast/nodes/visit/overallvisitor.hpp
-#        sema/scope_stack.hpp
-#        sema/symbol.hpp
-#        sema/type_interner.hpp
-#        sema/sema.hpp
+        #        sema/passes/scope_pass.cpp
+        #        sema/symbol_table.hpp
+        #        sema/passes/pass.hpp
+        #        sema/passes/decl_pass.hpp
+        #        sema/passes/decl_pass.cpp
+        #        ast/nodes/visit/overallvisitor.cpp
+        #        ast/nodes/visit/overallvisitor.hpp
+        #        sema/scope_stack.hpp
+        #        sema/symbol.hpp
+        #        sema/type_interner.hpp
+        #        sema/sema.hpp
         ast/nodes/visit/project_visitor.hpp
         ast/nodes/expr/type_expr.hpp
         ast/nodes/expr/array_type_expr.hpp
@@ -125,53 +124,32 @@ add_executable(inz main.cpp
         ast/interner.hpp
         ast/nodes/type/type_parametrized_decl.hpp
         ast/nodes/type/type_arged_expr.hpp
-#        sema/passes/module_pass.cpp
-#        sema/passes/module_pass.hpp
+        #        sema/passes/module_pass.cpp
+        #        sema/passes/module_pass.hpp
         compiler_context.hpp
         project_loader.hpp
         translation.hpp
-        hir/arena.hpp
-        hir/ids.hpp
-        hir/decls.hpp
-        hir/exprs.hpp
-        hir/stmts.hpp
-        hir/hir_types.hpp
-        hir/modules.hpp
-        hir/lowerer.hpp
         ast/nodes/stmt/block_stmt_kind.hpp
         ast/nodes/decl/field_visibility.hpp
         ast/nodes/stmt/var_mutablity_storage.hpp
         ast/nodes/expr/assign_op.hpp
         ast/nodes/expr/type_expr_kind.hpp
-        hir/iterator.hpp
-        hir/visitor.hpp
-        hir/defer_visit.hpp
-        hir/dump_visitor.hpp
-        hir/core_deferring_visit.hpp
         sema/module_graph.hpp
         sema/module_import_pass.hpp
-        ast/nodes/decl/trait_decl.hpp
-        ast/nodes/decl/impl_decl.hpp
-        ast/nodes/decl/self_param_decl.hpp
-        ast/nodes/decl/self_param_kind.hpp
-        hir/arena_holder.hpp
+
         sema/path_pool.hpp
         sema/module_builder_pass.hpp
-        hir/metadata.hpp
+
         sema/scope_pass.hpp
-        ast/nodes/decl/trait_fn_decl.hpp
-        ast/nodes/decl/impl_fn_decl.hpp
-        hir/fn_header.hpp
+
         ast/nodes/decl/fn_header.hpp
         ast/nodes/decl/fn_decl.hpp
-        ast/nodes/decl/method_decl.hpp
-        hir/core_applying_visit.hpp
-        hir/default_defering_visit.hpp
+
+
         sema/decl_bind_pass.hpp
         sema/name_resolution_pass.hpp
-        hir/typ_res_kind.hpp
-        hir/value_res_kind.hpp
-        hir/ir_lowerer.hpp
+
+
         sema/type_formation_pass.hpp
         sema/dump_module_tree.hpp
         compilation_contoller.hpp
@@ -180,18 +158,18 @@ add_executable(inz main.cpp
         pre_assign_controller.hpp
         sema/prep_pass.hpp
         sema/module_pass.hpp
-        ir/lowerer.hpp
+
         sema/prelude_injector.hpp
         sema/db_printer.hpp
         sema/new_scope.hpp
-        hir/method_pass.hpp
+
         sema/type_lower_pass.hpp
         reserved/parser.cpp
         sema_rec/pass2.hpp
         sema_rec/pass2.cpp
         sema_rec/pass_3.5.hpp
         sema_rec/pass_3.5.cpp
-                sema_rec/pass3.hpp
+        sema_rec/pass3.hpp
         sema_rec/pass3.cpp
         sema_rec/pass4.hpp
         sema_rec/pass4.cpp
@@ -200,7 +178,7 @@ add_executable(inz main.cpp
         sema_rec/pass5_reserved.hpp
         sema_rec/pass5_reserved.cpp
         sema_rec/type_system.hpp
-                sema_rec/pass5.hpp
+        sema_rec/pass5.hpp
         sema_rec/pass5.cpp
         sema_rec/pass6.hpp
         sema_rec/pass6.cpp
@@ -208,8 +186,6 @@ add_executable(inz main.cpp
         sema_rec/pass7.cpp
         sema_rec/pass8.hpp
         sema_rec/pass8.cpp
-        sema_rec/pass9.hpp
-        sema_rec/pass9.cpp
         sema_rec/pass9_1_bootstrap.hpp
         sema_rec/pass9_1_bootstrap.cpp
         sema_rec/pass9_2_declare_user_fns.hpp
@@ -226,8 +202,6 @@ add_executable(inz main.cpp
         sema_rec/pass9_4.cpp
         sema_rec/pass11.hpp
         sema_rec/pass11.cpp
-        sema_rec/diag_print.hpp
-        sema_rec/diag_print.cpp
         sema_rec/pipeline_gate.hpp
         sema_rec/reserved_struct.hpp
         sema_rec/pass12_execute.hpp
@@ -235,8 +209,9 @@ add_executable(inz main.cpp
         runtime.hpp
         runtime.cpp
         sema_rec/runtime_intrinsics.hpp
+        sema_rec/logging_entities.hpp
+        sema_rec/sym_kind.hpp
 )
-
 
 
 target_include_directories(inz PRIVATE
@@ -250,6 +225,7 @@ target_include_directories(inz PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/ast/nodes/decl
         ${LLVM_INCLUDE_DIRS}
 )
+
 add_definitions(${LLVM_DEFINITIONS})
-target_link_libraries(inz PRIVATE LLVM)
+target_link_libraries(inz PRIVATE LLVM Eigen3::Eigen)
 target_link_options(inz PRIVATE "-Wl,--export-dynamic")
