@@ -26,3 +26,5 @@ lib
 lib64
 .venv
 bin
+hir
+sema
