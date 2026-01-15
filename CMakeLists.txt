@@ -95,17 +95,6 @@ add_executable(inz main.cpp
         ast/nodes/visit/dump_visitor.hpp
         ast/nodes/decl/struct_decl.hpp
         ast/nodes/decl/field_decl.hpp
-        #        sema/passes/scope_pass.cpp
-        #        sema/symbol_table.hpp
-        #        sema/passes/pass.hpp
-        #        sema/passes/decl_pass.hpp
-        #        sema/passes/decl_pass.cpp
-        #        ast/nodes/visit/overallvisitor.cpp
-        #        ast/nodes/visit/overallvisitor.hpp
-        #        sema/scope_stack.hpp
-        #        sema/symbol.hpp
-        #        sema/type_interner.hpp
-        #        sema/sema.hpp
         ast/nodes/visit/project_visitor.hpp
         ast/nodes/expr/type_expr.hpp
         ast/nodes/expr/array_type_expr.hpp
@@ -116,7 +105,6 @@ add_executable(inz main.cpp
         ast/nodes/expr/literal_expr.hpp
         ast/nodes/expr/string_literal_expr.hpp
         ast/nodes/expr/array_literal_expr.hpp
-        #test/test.cpp
         ast/nodes/expr/path_expr.hpp
         ast/nodes/expr/cast_expr.hpp
         ast/nodes/stmt/else_if_statement.hpp
@@ -124,46 +112,23 @@ add_executable(inz main.cpp
         ast/interner.hpp
         ast/nodes/type/type_parametrized_decl.hpp
         ast/nodes/type/type_arged_expr.hpp
-        #        sema/passes/module_pass.cpp
-        #        sema/passes/module_pass.hpp
         compiler_context.hpp
-        project_loader.hpp
         translation.hpp
         ast/nodes/stmt/block_stmt_kind.hpp
         ast/nodes/decl/field_visibility.hpp
         ast/nodes/stmt/var_mutablity_storage.hpp
         ast/nodes/expr/assign_op.hpp
         ast/nodes/expr/type_expr_kind.hpp
-        sema/module_graph.hpp
-        sema/module_import_pass.hpp
 
-        sema/path_pool.hpp
-        sema/module_builder_pass.hpp
-
-        sema/scope_pass.hpp
 
         ast/nodes/decl/fn_header.hpp
         ast/nodes/decl/fn_decl.hpp
 
 
-        sema/decl_bind_pass.hpp
-        sema/name_resolution_pass.hpp
-
-
-        sema/type_formation_pass.hpp
-        sema/dump_module_tree.hpp
         compilation_contoller.hpp
-        sema/body_type_check_pass.hpp
         ast/nodes/decl/load_fn_decl.hpp
-        pre_assign_controller.hpp
-        sema/prep_pass.hpp
-        sema/module_pass.hpp
 
-        sema/prelude_injector.hpp
-        sema/db_printer.hpp
-        sema/new_scope.hpp
 
-        sema/type_lower_pass.hpp
         reserved/parser.cpp
         sema_rec/pass2.hpp
         sema_rec/pass2.cpp
