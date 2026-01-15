@@ -7,12 +7,10 @@
 #include <filesystem>
 #include <vector>
 
-#include "ast.hpp"
 #include "interner.hpp"
 
 struct CompilerContext
 {
-    ast::Ast ast; // basically just factory
     ast::Interner<> stringInterner;
     ast::Interner<> identInterner;
     ast::Interner<> numericInterner;

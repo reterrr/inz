@@ -14,96 +14,69 @@ using lex::Pos;
 
 #define YY_DECL int Scanner::yylex()
 
-static Pos cur;  // { line=1, column=1, offset=0 } by default
-
-inline void advance(Pos& p, const char* text, size_t n) {
-  for (size_t i = 0; i < n; ++i) {
+static inline void advance(Pos& p, const char* text, std::size_t n) {
+  for (std::size_t i = 0; i < n; ++i) {
     unsigned char c = static_cast<unsigned char>(text[i]);
     ++p.offset;
-    if (c == '\n') { ++p.line; p.column = 1; }
-    else           { ++p.column; }
+
+    if (c == '\r') {
+      ++p.line;
+      p.column = 1;
+      if (i + 1 < n && text[i + 1] == '\n') { // swallow LF in CRLF
+        ++i;
+        ++p.offset;
+      }
+    } else if (c == '\n') {
+      ++p.line;
+      p.column = 1;
+    } else {
+      ++p.column;
+    }
   }
 }
 
-static inline Loc token_loc_and_advance(const char* text, size_t n) {
+static inline Loc token_loc_and_advance(Scanner& s, const char* text, std::size_t n) {
   Loc L{};
-  L.begin = cur;
-  if (n) {
-    L.end        = cur;
-    L.end.column += static_cast<uint32_t>(n - 1);
-    L.end.offset += static_cast<uint64_t>(n - 1);
-  } else {
-    L.end = cur;
-  }
-  advance(cur, text, n);
+  L.begin = s.cur();
+  advance(s.cur(), text, n);
+  L.end = s.cur();   // end is one-past
   return L;
 }
 
 #define EMIT_KIND(KIND) do { \
-  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Loc loc = token_loc_and_advance(*this, yytext, (std::size_t)yyleng); \
   Token t{}; t.type_ = (KIND); t.loc_ = loc; \
   this->setCurrentToken(t); \
   return static_cast<int>(KIND); \
-} while(0)
+} while (0)
 
 #define EMIT_INT() do { \
-  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Loc loc = token_loc_and_advance(*this, yytext, (std::size_t)yyleng); \
   Token t{}; t.type_ = Type::TOK_INT_LITERAL; t.loc_ = loc; \
-  t.u_.sym = this->internNumeric(yytext, (size_t)yyleng); \
+  t.u_.sym = this->internNumeric(yytext, (std::size_t)yyleng); \
   this->setCurrentToken(t); \
   return static_cast<int>(Type::TOK_INT_LITERAL); \
-} while(0)
+} while (0)
 
 #define EMIT_FLOAT() do { \
-  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Loc loc = token_loc_and_advance(*this, yytext, (std::size_t)yyleng); \
   Token t{}; t.type_ = Type::TOK_FLOAT_LITERAL; t.loc_ = loc; \
-  t.u_.sym = this->internNumeric(yytext, (size_t)yyleng); \
+  t.u_.sym = this->internNumeric(yytext, (std::size_t)yyleng); \
   this->setCurrentToken(t); \
   return static_cast<int>(Type::TOK_FLOAT_LITERAL); \
-} while(0)
+} while (0)
 
 #define EMIT_BOOL(V) do { \
-  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Loc loc = token_loc_and_advance(*this, yytext, (std::size_t)yyleng); \
   Token t{}; t.type_ = Type::TOK_BOOL_LITERAL; t.loc_ = loc; \
   t.u_.boolean = (V); \
   this->setCurrentToken(t); \
   return static_cast<int>(Type::TOK_BOOL_LITERAL); \
-} while(0)
+} while (0)
 
-#define EMIT_CHAR() do { \
-  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
-  Token t{}; t.type_ = Type::TOK_CHAR_LITERAL; t.loc_ = loc; \
-  t.u_.ch = decode_char_literal(yytext, (size_t)yyleng); \
-  this->setCurrentToken(t); \
-  return static_cast<int>(Type::TOK_CHAR_LITERAL); \
-} while(0)
-
-
-#define EMIT_STRING() do { \
-  const char* payload = yytext + 1; \
-  size_t n = (size_t)yyleng >= 2 ? (size_t)yyleng - 2 : 0; \
-  lex::SymId sym = this->internString(payload, n); \
-  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
-  Token t{}; t.type_ = Type::TOK_STRING_LITERAL; t.loc_ = loc; \
-  t.u_.sym = sym; \
-  this->setCurrentToken(t); \
-  return static_cast<int>(Type::TOK_STRING_LITERAL); \
-} while(0)
-
-#define EMIT_IDENT() do { \
-  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
-  lex::SymId sym = this->internIdent(yytext, (size_t)yyleng); \
-  Token t{}; t.type_ = Type::TOK_IDENTIFIER; t.loc_ = loc; \
-  t.u_.sym = sym; \
-  this->setCurrentToken(t); \
-  return static_cast<int>(Type::TOK_IDENTIFIER); \
-} while(0)
-
-static inline char32_t decode_char_literal(const char* text, size_t n) {
-  // text includes quotes: e.g.  'a' or '\n'
+static inline char32_t decode_char_literal(const char* text, std::size_t n) {
   if (n < 3) return U'\0';
-  if (text[1] != '\\') return (unsigned char)text[1];
-
+  if (text[1] != '\\') return static_cast<unsigned char>(text[1]);
   switch (text[2]) {
     case 'n':  return U'\n';
     case 't':  return U'\t';
@@ -111,17 +84,43 @@ static inline char32_t decode_char_literal(const char* text, size_t n) {
     case '\\': return U'\\';
     case '\'': return U'\'';
     case '0':  return U'\0';
-    default:   return (unsigned char)text[2];
+    default:   return static_cast<unsigned char>(text[2]);
   }
 }
 
 #define EMIT_CHAR() do { \
-  Loc loc = token_loc_and_advance(yytext, (size_t)yyleng); \
+  Loc loc = token_loc_and_advance(*this, yytext, (std::size_t)yyleng); \
   Token t{}; t.type_ = Type::TOK_CHAR_LITERAL; t.loc_ = loc; \
-  t.u_.ch = decode_char_literal(yytext, (size_t)yyleng); \
+  t.u_.ch = decode_char_literal(yytext, (std::size_t)yyleng); \
   this->setCurrentToken(t); \
   return static_cast<int>(Type::TOK_CHAR_LITERAL); \
-} while(0)
+} while (0)
+
+#define EMIT_SELF() do { \
+  Loc loc = token_loc_and_advance(*this, yytext, (std::size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_SELF; t.loc_ = loc; \
+  t.u_.sym = this->internIdent(yytext, (std::size_t)yyleng); \
+  this->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_SELF); \
+} while (0)
+
+#define EMIT_STRING() do { \
+  const char* payload = yytext + 1; \
+  std::size_t n = (std::size_t)yyleng >= 2 ? (std::size_t)yyleng - 2 : 0; \
+  Loc loc = token_loc_and_advance(*this, yytext, (std::size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_STRING_LITERAL; t.loc_ = loc; \
+  t.u_.sym = this->internString(payload, n); \
+  this->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_STRING_LITERAL); \
+} while (0)
+
+#define EMIT_IDENT() do { \
+  Loc loc = token_loc_and_advance(*this, yytext, (std::size_t)yyleng); \
+  Token t{}; t.type_ = Type::TOK_IDENTIFIER; t.loc_ = loc; \
+  t.u_.sym = this->internIdent(yytext, (std::size_t)yyleng); \
+  this->setCurrentToken(t); \
+  return static_cast<int>(Type::TOK_IDENTIFIER); \
+} while (0)
 
 %}
 
@@ -134,7 +133,11 @@ static inline char32_t decode_char_literal(const char* text, size_t n) {
 
 {% for _, group in tokens.keywords.items() -%}
 {% for token, lit in group.items() -%}
+{% if token == "SELF" -%}
+"{{ lit }}" { EMIT_SELF(); }
+{% else -%}
 "{{ lit }}" { EMIT_KIND(Type::TOK_{{ token }}); }
+{% endif -%}
 {% endfor -%}
 {% endfor %}
 
@@ -162,15 +165,16 @@ static inline char32_t decode_char_literal(const char* text, size_t n) {
 
 [a-zA-Z_][a-zA-Z0-9_]*               { EMIT_IDENT(); }
 
-[ \t]+                               { advance(cur, yytext, (size_t)yyleng); }
-(\r\n|\r|\n)+                        { advance(cur, yytext, (size_t)yyleng); }
-"//"[^\r\n]*                         { advance(cur, yytext, (size_t)yyleng); }
-"/*"([^*]|\*+[^*/])*"*/"             { advance(cur, yytext, (size_t)yyleng); }
+[ \t]+            { advance(this->cur(), yytext, (std::size_t)yyleng); }
+(\r\n|\r|\n)+     { advance(this->cur(), yytext, (std::size_t)yyleng); }
+"//"[^\r\n]*      { advance(this->cur(), yytext, (std::size_t)yyleng); }
+"/*"([^*]|\*+[^*/])*"*/"  { advance(this->cur(), yytext, (std::size_t)yyleng); }
+
 
 .                                    { EMIT_KIND(Type::TOK_UNDEF); }
 
 <<EOF>> {
-  Loc loc{}; loc.begin = cur; loc.end = cur;
+  Loc loc{}; loc.begin = this->cur(); loc.end = this->cur();
   Token t{}; t.type_ = Type::TOK_END; t.loc_ = loc;
   this->setCurrentToken(t);
   return 0;

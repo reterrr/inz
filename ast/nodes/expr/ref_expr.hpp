@@ -10,19 +10,27 @@
 #include "visit/expr_visitor.hpp"
 #include "decl/decl.hpp"
 
-namespace ast {
-    struct RefExpr final : Expr {
+namespace ast
+{
+    struct RefExpr final : Expr
+    {
         lex::SymId name;
         DeclPtr binding_;
 
-        RefExpr(const lex::SymId name, const lex::Loc &loc)
+        RefExpr(const lex::SymId name, const lex::Loc& loc)
             : Expr(NodeKind::Expr_Ref, loc),
               name(name),
-              binding_(nullptr) {
+              binding_(nullptr)
+        {
         }
 
-        void accept(visitor::ExprVisitor &v) override { v.visit(*this); }
+        void accept(visitor::ExprVisitor& v) override;
     };
+
+    inline void RefExpr::accept(visitor::ExprVisitor& v)
+    {
+        v.visit(*this);
+    }
 }
 
 #endif

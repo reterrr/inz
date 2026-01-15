@@ -13,7 +13,9 @@ namespace ast {
         postdecrement,
         negation,
         logical_not,
-        deref
+        deref,
+        addr_of,
+        addr_of_mut
     };
 }
 

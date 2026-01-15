@@ -3,12 +3,18 @@
 X(Module,       NodeKind::Decl_Module,      ast::Module*,              alloc_module,        fill_module)
 X(Import,       NodeKind::Decl_Import,      ast::ImportDecl*,          alloc_import,        fill_import)
 
-X(FnDecl,       NodeKind::Decl_Fn,          ast::FunctionDecl*,        alloc_fndecl,        fill_fndecl)
+X(FnDecl,       NodeKind::Decl_Fn,          ast::FnDecl*,        alloc_fndecl,        fill_fndecl)
+X(LoadFnDecl,   NodeKind::Decl_LoadFn,      ast::LoadFnDecl*,    alloc_loadfndecl,    fill_loadfndecl)
+X(ImplFnDecl,   NodeKind::Decl_ImplFn,      ast::ImplFnDecl*,    alloc_impl_fndecl,    fill_impl_fndecl)
+X(TraitFnDecl,  NodeKind::Decl_TraitFn,     ast::TraitFnDecl*,   alloc_trait_fndecl,   fill_trait_fndecl)
 X(StructDecl,   NodeKind::Decl_Struct,      ast::StructDecl*,          alloc_struct,        fill_structdecl)
 // X(TypeAlias,    NodeKind::Decl_TypeAlias,   ast::TypeAliasDecl*,        alloc_typealias,     fill_typealias)
 X(ParamDecl,    NodeKind::Decl_Param,       ast::ParamDecl*,           alloc_param,         fill_param)
 X(FieldDecl,    NodeKind::Decl_Field,       ast::FieldDecl*,           alloc_field_decl,         fill_field_decl)
 X(TypeParam,    NodeKind::Decl_TypeParam,   ast::TypeParamDecl*,       alloc_type_param,     fill_type_param)
+X(TraitDecl,    NodeKind::Decl_Trait,       ast::TraitDecl*,           alloc_trait_decl,     fill_trait_decl)
+X(ImplDecl,     NodeKind::Decl_Impl,        ast::ImplDecl*,            alloc_impl_decl,      fill_impl_decl)
+X(SelfParamDecl, NodeKind::Decl_SelfParam,  ast::SelfParamDecl*,       alloc_self_param_decl, fill_self_param_decl)
 
 
 
@@ -34,7 +40,7 @@ X(BinaryExpr,   NodeKind::Expr_Binary,      ast::BinaryExpr*,          alloc_exp
 X(AssignExpr,   NodeKind::Expr_Assign,      ast::AssignExpr*,          alloc_expr_assign,   fill_expr_assign)
 X(IndexExpr,    NodeKind::Expr_Index,       ast::IndexExpr*,           alloc_expr_index,    fill_expr_index)
 X(FieldExpr,    NodeKind::Expr_Field,       ast::FieldExpr*,           alloc_expr_field,    fill_expr_field)
-X(FieldInitExpr, NodeKind::Expr_FieldInit, ast::FieldInitExpr*,        alloc_field_init,    fill_field_init       )
+X(FieldInitExpr, NodeKind::Expr_FieldInit, ast::FieldInitExpr*,        alloc_field_init,    fill_field_init)
 
 
 X(Literal,       NodeKind::Expr_Literal,      ast::LiteralExpr*,      alloc_expr_lit,  fill_expr_lit)

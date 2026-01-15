@@ -45,7 +45,7 @@
 #ifndef YY_YY_PARSER_PARSER_HPP_INCLUDED
 # define YY_YY_PARSER_PARSER_HPP_INCLUDED
 // "%code requires" blocks.
-#line 22 "parser/parser_rules.y"
+#line 23 "parser/parser_rules.y"
 
   #include "generated/token.hpp"
   #include "types.hpp"
@@ -393,10 +393,12 @@ namespace yy {
     union union_type
     {
       // TOK_IDENTIFIER
+      // TOK_SELF
       // TOK_INT_LITERAL
       // TOK_FLOAT_LITERAL
       // TOK_STRING_LITERAL
-      // ident
+      // ident_no_self
+      // ident_any
       char dummy1[sizeof (Str)];
 
       // anon_block
@@ -454,9 +456,7 @@ namespace yy {
       char dummy13[sizeof (ast::FieldInitExpr*)];
 
       // fn_decl
-      // fn_decl_def
-      // fn_decl_fwd
-      char dummy14[sizeof (ast::FunctionDecl*)];
+      char dummy14[sizeof (ast::FnDecl*)];
 
       // if_stmt
       char dummy15[sizeof (ast::IfStatement*)];
@@ -464,9 +464,8 @@ namespace yy {
       // import_decl
       char dummy16[sizeof (ast::ImportDecl*)];
 
-      // translation_unit
-      // module
-      char dummy17[sizeof (ast::Module*)];
+      // load_fn_decl
+      char dummy17[sizeof (ast::LoadFnDecl*)];
 
       // ref_mutability
       char dummy18[sizeof (ast::Mutability)];
@@ -475,6 +474,7 @@ namespace yy {
       char dummy19[sizeof (ast::ParamDecl*)];
 
       // path_expr
+      // qpath_expr
       char dummy20[sizeof (ast::PathExpr*)];
 
       // path_type_expr
@@ -509,9 +509,6 @@ namespace yy {
       // var_stmt_default
       // var_stmt_imm
       // var_stmt_mut
-      // var_stmt_static_default
-      // var_stmt_static_imm
-      // var_stmt_static_mut
       char dummy28[sizeof (ast::VarStmt*)];
 
       // while_stmt
@@ -531,6 +528,7 @@ namespace yy {
       char dummy33[sizeof (std::optional<kl::rt::IntKind>)];
 
       // path
+      // qpath
       char dummy34[sizeof (std::vector<Str>)];
 
       // decl_list_opt
@@ -542,6 +540,8 @@ namespace yy {
 
       // arg_list_opt
       // arg_list
+      // array_elems_opt
+      // array_elems
       char dummy37[sizeof (std::vector<ast::Expr*>)];
 
       // field_decl_list_opt
@@ -625,80 +625,74 @@ namespace yy {
     TOK_DO = 260,                  // TOK_DO
     TOK_ELSE = 261,                // TOK_ELSE
     TOK_STRUCT = 262,              // TOK_STRUCT
-    TOK_ENUM = 263,                // TOK_ENUM
-    TOK_TRAIT = 264,               // TOK_TRAIT
-    TOK_FN = 265,                  // TOK_FN
-    TOK_TYPE = 266,                // TOK_TYPE
-    TOK_RETURN = 267,              // TOK_RETURN
-    TOK_MUT = 268,                 // TOK_MUT
-    TOK_IMM = 269,                 // TOK_IMM
-    TOK_STATIC = 270,              // TOK_STATIC
-    TOK_PUB = 271,                 // TOK_PUB
-    TOK_BREAK = 272,               // TOK_BREAK
-    TOK_CONTINUE = 273,            // TOK_CONTINUE
-    TOK_IMPORT = 274,              // TOK_IMPORT
-    TOK_EXPORT = 275,              // TOK_EXPORT
-    TOK_PACKAGE = 276,             // TOK_PACKAGE
-    TOK_AS = 277,                  // TOK_AS
-    TOK_I8 = 278,                  // TOK_I8
-    TOK_U8 = 279,                  // TOK_U8
-    TOK_I16 = 280,                 // TOK_I16
-    TOK_U16 = 281,                 // TOK_U16
-    TOK_I32 = 282,                 // TOK_I32
-    TOK_U32 = 283,                 // TOK_U32
-    TOK_I64 = 284,                 // TOK_I64
-    TOK_U64 = 285,                 // TOK_U64
-    TOK_I128 = 286,                // TOK_I128
-    TOK_U128 = 287,                // TOK_U128
-    TOK_F32 = 288,                 // TOK_F32
-    TOK_F64 = 289,                 // TOK_F64
-    TOK_BOOL = 290,                // TOK_BOOL
-    TOK_CHAR = 291,                // TOK_CHAR
-    TOK_IDENTIFIER = 292,          // TOK_IDENTIFIER
-    TOK_INT_LITERAL = 293,         // TOK_INT_LITERAL
-    TOK_FLOAT_LITERAL = 294,       // TOK_FLOAT_LITERAL
-    TOK_STRING_LITERAL = 295,      // TOK_STRING_LITERAL
-    TOK_BOOL_LITERAL = 296,        // TOK_BOOL_LITERAL
-    TOK_CHAR_LITERAL = 297,        // TOK_CHAR_LITERAL
-    TOK_LPAR = 298,                // TOK_LPAR
-    TOK_RPAR = 299,                // TOK_RPAR
-    TOK_LBRACK = 300,              // TOK_LBRACK
-    TOK_RBRACK = 301,              // TOK_RBRACK
-    TOK_LCBRA = 302,               // TOK_LCBRA
-    TOK_RCBRA = 303,               // TOK_RCBRA
-    TOK_COMMA = 304,               // TOK_COMMA
-    TOK_SMCLN = 305,               // TOK_SMCLN
-    TOK_COLON = 306,               // TOK_COLON
-    TOK_DOT = 307,                 // TOK_DOT
-    TOK_QUESTION = 308,            // TOK_QUESTION
-    TOK_ARROW = 309,               // TOK_ARROW
-    TOK_COLONCOLON = 310,          // TOK_COLONCOLON
-    TOK_TURBOFISH_S = 311,         // TOK_TURBOFISH_S
-    TOK_NEGATION = 312,            // TOK_NEGATION
-    TOK_INC = 313,                 // TOK_INC
-    TOK_DEC = 314,                 // TOK_DEC
-    TOK_AMP = 315,                 // TOK_AMP
-    TOK_STAR = 316,                // TOK_STAR
-    TOK_SLASH = 317,               // TOK_SLASH
-    TOK_MODULO = 318,              // TOK_MODULO
-    TOK_PLUS = 319,                // TOK_PLUS
-    TOK_MINUS = 320,               // TOK_MINUS
-    TOK_LESS = 321,                // TOK_LESS
-    TOK_LEQ = 322,                 // TOK_LEQ
-    TOK_GREATER = 323,             // TOK_GREATER
-    TOK_GEQ = 324,                 // TOK_GEQ
-    TOK_EQUAL = 325,               // TOK_EQUAL
-    TOK_NEQUAL = 326,              // TOK_NEQUAL
-    TOK_BOOL_AND = 327,            // TOK_BOOL_AND
-    TOK_BOOL_OR = 328,             // TOK_BOOL_OR
-    TOK_ASSIGN = 329,              // TOK_ASSIGN
-    TOK_PLUS_ASSIGN = 330,         // TOK_PLUS_ASSIGN
-    TOK_MIN_ASSIGN = 331,          // TOK_MIN_ASSIGN
-    TOK_MUL_ASSIGN = 332,          // TOK_MUL_ASSIGN
-    TOK_DIV_ASSIGN = 333,          // TOK_DIV_ASSIGN
-    TERNARY = 334,                 // TERNARY
-    UMINUS = 335,                  // UMINUS
-    UPRE = 336                     // UPRE
+    TOK_FN = 263,                  // TOK_FN
+    TOK_RETURN = 264,              // TOK_RETURN
+    TOK_MUT = 265,                 // TOK_MUT
+    TOK_IMM = 266,                 // TOK_IMM
+    TOK_PUB = 267,                 // TOK_PUB
+    TOK_BREAK = 268,               // TOK_BREAK
+    TOK_CONTINUE = 269,            // TOK_CONTINUE
+    TOK_IMPORT = 270,              // TOK_IMPORT
+    TOK_PACKAGE = 271,             // TOK_PACKAGE
+    TOK_AS = 272,                  // TOK_AS
+    TOK_LOAD = 273,                // TOK_LOAD
+    TOK_I8 = 274,                  // TOK_I8
+    TOK_U8 = 275,                  // TOK_U8
+    TOK_I16 = 276,                 // TOK_I16
+    TOK_U16 = 277,                 // TOK_U16
+    TOK_I32 = 278,                 // TOK_I32
+    TOK_U32 = 279,                 // TOK_U32
+    TOK_I64 = 280,                 // TOK_I64
+    TOK_U64 = 281,                 // TOK_U64
+    TOK_I128 = 282,                // TOK_I128
+    TOK_U128 = 283,                // TOK_U128
+    TOK_F32 = 284,                 // TOK_F32
+    TOK_F64 = 285,                 // TOK_F64
+    TOK_BOOL = 286,                // TOK_BOOL
+    TOK_CHAR = 287,                // TOK_CHAR
+    TOK_VOID = 288,                // TOK_VOID
+    TOK_IDENTIFIER = 289,          // TOK_IDENTIFIER
+    TOK_SELF = 290,                // TOK_SELF
+    TOK_INT_LITERAL = 291,         // TOK_INT_LITERAL
+    TOK_FLOAT_LITERAL = 292,       // TOK_FLOAT_LITERAL
+    TOK_STRING_LITERAL = 293,      // TOK_STRING_LITERAL
+    TOK_BOOL_LITERAL = 294,        // TOK_BOOL_LITERAL
+    TOK_CHAR_LITERAL = 295,        // TOK_CHAR_LITERAL
+    TOK_LPAR = 296,                // TOK_LPAR
+    TOK_RPAR = 297,                // TOK_RPAR
+    TOK_LBRACK = 298,              // TOK_LBRACK
+    TOK_RBRACK = 299,              // TOK_RBRACK
+    TOK_LCBRA = 300,               // TOK_LCBRA
+    TOK_RCBRA = 301,               // TOK_RCBRA
+    TOK_COMMA = 302,               // TOK_COMMA
+    TOK_SMCLN = 303,               // TOK_SMCLN
+    TOK_COLON = 304,               // TOK_COLON
+    TOK_DOT = 305,                 // TOK_DOT
+    TOK_ARROW = 306,               // TOK_ARROW
+    TOK_COLONCOLON = 307,          // TOK_COLONCOLON
+    TOK_TURBOFISH_S = 308,         // TOK_TURBOFISH_S
+    TOK_NEGATION = 309,            // TOK_NEGATION
+    TOK_INC = 310,                 // TOK_INC
+    TOK_DEC = 311,                 // TOK_DEC
+    TOK_AMP = 312,                 // TOK_AMP
+    TOK_STAR = 313,                // TOK_STAR
+    TOK_SLASH = 314,               // TOK_SLASH
+    TOK_MODULO = 315,              // TOK_MODULO
+    TOK_PLUS = 316,                // TOK_PLUS
+    TOK_MINUS = 317,               // TOK_MINUS
+    TOK_LESS = 318,                // TOK_LESS
+    TOK_LEQ = 319,                 // TOK_LEQ
+    TOK_GREATER = 320,             // TOK_GREATER
+    TOK_GEQ = 321,                 // TOK_GEQ
+    TOK_EQUAL = 322,               // TOK_EQUAL
+    TOK_NEQUAL = 323,              // TOK_NEQUAL
+    TOK_BOOL_AND = 324,            // TOK_BOOL_AND
+    TOK_BOOL_OR = 325,             // TOK_BOOL_OR
+    TOK_ASSIGN = 326,              // TOK_ASSIGN
+    TERNARY = 327,                 // TERNARY
+    UMINUS = 328,                  // UMINUS
+    UPRE = 329,                    // UPRE
+    LOWER_THAN_ASSIGN = 330        // LOWER_THAN_ASSIGN
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -715,7 +709,7 @@ namespace yy {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 82, ///< Number of tokens.
+        YYNTOKENS = 76, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // "end of file"
         S_YYerror = 1,                           // error
@@ -725,167 +719,162 @@ namespace yy {
         S_TOK_DO = 5,                            // TOK_DO
         S_TOK_ELSE = 6,                          // TOK_ELSE
         S_TOK_STRUCT = 7,                        // TOK_STRUCT
-        S_TOK_ENUM = 8,                          // TOK_ENUM
-        S_TOK_TRAIT = 9,                         // TOK_TRAIT
-        S_TOK_FN = 10,                           // TOK_FN
-        S_TOK_TYPE = 11,                         // TOK_TYPE
-        S_TOK_RETURN = 12,                       // TOK_RETURN
-        S_TOK_MUT = 13,                          // TOK_MUT
-        S_TOK_IMM = 14,                          // TOK_IMM
-        S_TOK_STATIC = 15,                       // TOK_STATIC
-        S_TOK_PUB = 16,                          // TOK_PUB
-        S_TOK_BREAK = 17,                        // TOK_BREAK
-        S_TOK_CONTINUE = 18,                     // TOK_CONTINUE
-        S_TOK_IMPORT = 19,                       // TOK_IMPORT
-        S_TOK_EXPORT = 20,                       // TOK_EXPORT
-        S_TOK_PACKAGE = 21,                      // TOK_PACKAGE
-        S_TOK_AS = 22,                           // TOK_AS
-        S_TOK_I8 = 23,                           // TOK_I8
-        S_TOK_U8 = 24,                           // TOK_U8
-        S_TOK_I16 = 25,                          // TOK_I16
-        S_TOK_U16 = 26,                          // TOK_U16
-        S_TOK_I32 = 27,                          // TOK_I32
-        S_TOK_U32 = 28,                          // TOK_U32
-        S_TOK_I64 = 29,                          // TOK_I64
-        S_TOK_U64 = 30,                          // TOK_U64
-        S_TOK_I128 = 31,                         // TOK_I128
-        S_TOK_U128 = 32,                         // TOK_U128
-        S_TOK_F32 = 33,                          // TOK_F32
-        S_TOK_F64 = 34,                          // TOK_F64
-        S_TOK_BOOL = 35,                         // TOK_BOOL
-        S_TOK_CHAR = 36,                         // TOK_CHAR
-        S_TOK_IDENTIFIER = 37,                   // TOK_IDENTIFIER
-        S_TOK_INT_LITERAL = 38,                  // TOK_INT_LITERAL
-        S_TOK_FLOAT_LITERAL = 39,                // TOK_FLOAT_LITERAL
-        S_TOK_STRING_LITERAL = 40,               // TOK_STRING_LITERAL
-        S_TOK_BOOL_LITERAL = 41,                 // TOK_BOOL_LITERAL
-        S_TOK_CHAR_LITERAL = 42,                 // TOK_CHAR_LITERAL
-        S_TOK_LPAR = 43,                         // TOK_LPAR
-        S_TOK_RPAR = 44,                         // TOK_RPAR
-        S_TOK_LBRACK = 45,                       // TOK_LBRACK
-        S_TOK_RBRACK = 46,                       // TOK_RBRACK
-        S_TOK_LCBRA = 47,                        // TOK_LCBRA
-        S_TOK_RCBRA = 48,                        // TOK_RCBRA
-        S_TOK_COMMA = 49,                        // TOK_COMMA
-        S_TOK_SMCLN = 50,                        // TOK_SMCLN
-        S_TOK_COLON = 51,                        // TOK_COLON
-        S_TOK_DOT = 52,                          // TOK_DOT
-        S_TOK_QUESTION = 53,                     // TOK_QUESTION
-        S_TOK_ARROW = 54,                        // TOK_ARROW
-        S_TOK_COLONCOLON = 55,                   // TOK_COLONCOLON
-        S_TOK_TURBOFISH_S = 56,                  // TOK_TURBOFISH_S
-        S_TOK_NEGATION = 57,                     // TOK_NEGATION
-        S_TOK_INC = 58,                          // TOK_INC
-        S_TOK_DEC = 59,                          // TOK_DEC
-        S_TOK_AMP = 60,                          // TOK_AMP
-        S_TOK_STAR = 61,                         // TOK_STAR
-        S_TOK_SLASH = 62,                        // TOK_SLASH
-        S_TOK_MODULO = 63,                       // TOK_MODULO
-        S_TOK_PLUS = 64,                         // TOK_PLUS
-        S_TOK_MINUS = 65,                        // TOK_MINUS
-        S_TOK_LESS = 66,                         // TOK_LESS
-        S_TOK_LEQ = 67,                          // TOK_LEQ
-        S_TOK_GREATER = 68,                      // TOK_GREATER
-        S_TOK_GEQ = 69,                          // TOK_GEQ
-        S_TOK_EQUAL = 70,                        // TOK_EQUAL
-        S_TOK_NEQUAL = 71,                       // TOK_NEQUAL
-        S_TOK_BOOL_AND = 72,                     // TOK_BOOL_AND
-        S_TOK_BOOL_OR = 73,                      // TOK_BOOL_OR
-        S_TOK_ASSIGN = 74,                       // TOK_ASSIGN
-        S_TOK_PLUS_ASSIGN = 75,                  // TOK_PLUS_ASSIGN
-        S_TOK_MIN_ASSIGN = 76,                   // TOK_MIN_ASSIGN
-        S_TOK_MUL_ASSIGN = 77,                   // TOK_MUL_ASSIGN
-        S_TOK_DIV_ASSIGN = 78,                   // TOK_DIV_ASSIGN
-        S_TERNARY = 79,                          // TERNARY
-        S_UMINUS = 80,                           // UMINUS
-        S_UPRE = 81,                             // UPRE
-        S_YYACCEPT = 82,                         // $accept
-        S_translation_unit = 83,                 // translation_unit
-        S_module = 84,                           // module
-        S_import_list_opt = 85,                  // import_list_opt
-        S_import_list = 86,                      // import_list
-        S_import_decl = 87,                      // import_decl
-        S_path = 88,                             // path
-        S_path_expr = 89,                        // path_expr
-        S_ident = 90,                            // ident
-        S_type_params_opt = 91,                  // type_params_opt
-        S_type_param_list = 92,                  // type_param_list
-        S_type_param = 93,                       // type_param
-        S_type_args = 94,                        // type_args
-        S_type_arg_list = 95,                    // type_arg_list
-        S_pub_opt = 96,                          // pub_opt
-        S_decl_list_opt = 97,                    // decl_list_opt
-        S_decl_list = 98,                        // decl_list
-        S_decl = 99,                             // decl
-        S_fn_decl = 100,                         // fn_decl
-        S_fn_decl_def = 101,                     // fn_decl_def
-        S_fn_decl_fwd = 102,                     // fn_decl_fwd
-        S_struct_decl = 103,                     // struct_decl
-        S_struct_decl_def = 104,                 // struct_decl_def
-        S_struct_decl_fwd = 105,                 // struct_decl_fwd
-        S_field_decl_list_opt = 106,             // field_decl_list_opt
-        S_field_decl_list = 107,                 // field_decl_list
-        S_field_decl = 108,                      // field_decl
-        S_ret_type_expr = 109,                   // ret_type_expr
-        S_param_list_opt = 110,                  // param_list_opt
-        S_param_list = 111,                      // param_list
-        S_param = 112,                           // param
-        S_type_expr = 113,                       // type_expr
-        S_ref_type_expr = 114,                   // ref_type_expr
-        S_ref_mutability = 115,                  // ref_mutability
-        S_type_postfix = 116,                    // type_postfix
-        S_type_primary = 117,                    // type_primary
-        S_builtin_type_expr = 118,               // builtin_type_expr
-        S_path_type_expr = 119,                  // path_type_expr
-        S_anon_block = 120,                      // anon_block
-        S_fn_block = 121,                        // fn_block
-        S_if_block = 122,                        // if_block
-        S_else_if_block = 123,                   // else_if_block
-        S_else_block = 124,                      // else_block
-        S_while_block = 125,                     // while_block
-        S_do_while_block = 126,                  // do_while_block
-        S_stmt_list_opt = 127,                   // stmt_list_opt
-        S_stmt_list = 128,                       // stmt_list
-        S_stmt = 129,                            // stmt
-        S_simple_stmt = 130,                     // simple_stmt
-        S_compound_stmt = 131,                   // compound_stmt
-        S_return_stmt = 132,                     // return_stmt
-        S_if_stmt = 133,                         // if_stmt
-        S_elseif_list = 134,                     // elseif_list
-        S_elseif = 135,                          // elseif
-        S_else_part = 136,                       // else_part
-        S_while_stmt = 137,                      // while_stmt
-        S_do_while_stmt = 138,                   // do_while_stmt
-        S_break_stmt = 139,                      // break_stmt
-        S_continue_stmt = 140,                   // continue_stmt
-        S_expr_stmt = 141,                       // expr_stmt
-        S_var_stmt = 142,                        // var_stmt
-        S_var_stmt_default = 143,                // var_stmt_default
-        S_var_stmt_imm = 144,                    // var_stmt_imm
-        S_var_stmt_mut = 145,                    // var_stmt_mut
-        S_var_stmt_static_default = 146,         // var_stmt_static_default
-        S_var_stmt_static_imm = 147,             // var_stmt_static_imm
-        S_var_stmt_static_mut = 148,             // var_stmt_static_mut
-        S_expr = 149,                            // expr
-        S_expr_opt = 150,                        // expr_opt
-        S_assign = 151,                          // assign
-        S_cond = 152,                            // cond
-        S_logic_or = 153,                        // logic_or
-        S_logic_and = 154,                       // logic_and
-        S_equality = 155,                        // equality
-        S_relational = 156,                      // relational
-        S_additive = 157,                        // additive
-        S_multiplicative = 158,                  // multiplicative
-        S_unary = 159,                           // unary
-        S_postfix = 160,                         // postfix
-        S_arg_list_opt = 161,                    // arg_list_opt
-        S_arg_list = 162,                        // arg_list
-        S_int_literal_type_opt = 163,            // int_literal_type_opt
-        S_float_literal_type_opt = 164,          // float_literal_type_opt
-        S_primary = 165,                         // primary
-        S_field_inits_opt = 166,                 // field_inits_opt
-        S_field_inits = 167,                     // field_inits
-        S_field_init = 168                       // field_init
+        S_TOK_FN = 8,                            // TOK_FN
+        S_TOK_RETURN = 9,                        // TOK_RETURN
+        S_TOK_MUT = 10,                          // TOK_MUT
+        S_TOK_IMM = 11,                          // TOK_IMM
+        S_TOK_PUB = 12,                          // TOK_PUB
+        S_TOK_BREAK = 13,                        // TOK_BREAK
+        S_TOK_CONTINUE = 14,                     // TOK_CONTINUE
+        S_TOK_IMPORT = 15,                       // TOK_IMPORT
+        S_TOK_PACKAGE = 16,                      // TOK_PACKAGE
+        S_TOK_AS = 17,                           // TOK_AS
+        S_TOK_LOAD = 18,                         // TOK_LOAD
+        S_TOK_I8 = 19,                           // TOK_I8
+        S_TOK_U8 = 20,                           // TOK_U8
+        S_TOK_I16 = 21,                          // TOK_I16
+        S_TOK_U16 = 22,                          // TOK_U16
+        S_TOK_I32 = 23,                          // TOK_I32
+        S_TOK_U32 = 24,                          // TOK_U32
+        S_TOK_I64 = 25,                          // TOK_I64
+        S_TOK_U64 = 26,                          // TOK_U64
+        S_TOK_I128 = 27,                         // TOK_I128
+        S_TOK_U128 = 28,                         // TOK_U128
+        S_TOK_F32 = 29,                          // TOK_F32
+        S_TOK_F64 = 30,                          // TOK_F64
+        S_TOK_BOOL = 31,                         // TOK_BOOL
+        S_TOK_CHAR = 32,                         // TOK_CHAR
+        S_TOK_VOID = 33,                         // TOK_VOID
+        S_TOK_IDENTIFIER = 34,                   // TOK_IDENTIFIER
+        S_TOK_SELF = 35,                         // TOK_SELF
+        S_TOK_INT_LITERAL = 36,                  // TOK_INT_LITERAL
+        S_TOK_FLOAT_LITERAL = 37,                // TOK_FLOAT_LITERAL
+        S_TOK_STRING_LITERAL = 38,               // TOK_STRING_LITERAL
+        S_TOK_BOOL_LITERAL = 39,                 // TOK_BOOL_LITERAL
+        S_TOK_CHAR_LITERAL = 40,                 // TOK_CHAR_LITERAL
+        S_TOK_LPAR = 41,                         // TOK_LPAR
+        S_TOK_RPAR = 42,                         // TOK_RPAR
+        S_TOK_LBRACK = 43,                       // TOK_LBRACK
+        S_TOK_RBRACK = 44,                       // TOK_RBRACK
+        S_TOK_LCBRA = 45,                        // TOK_LCBRA
+        S_TOK_RCBRA = 46,                        // TOK_RCBRA
+        S_TOK_COMMA = 47,                        // TOK_COMMA
+        S_TOK_SMCLN = 48,                        // TOK_SMCLN
+        S_TOK_COLON = 49,                        // TOK_COLON
+        S_TOK_DOT = 50,                          // TOK_DOT
+        S_TOK_ARROW = 51,                        // TOK_ARROW
+        S_TOK_COLONCOLON = 52,                   // TOK_COLONCOLON
+        S_TOK_TURBOFISH_S = 53,                  // TOK_TURBOFISH_S
+        S_TOK_NEGATION = 54,                     // TOK_NEGATION
+        S_TOK_INC = 55,                          // TOK_INC
+        S_TOK_DEC = 56,                          // TOK_DEC
+        S_TOK_AMP = 57,                          // TOK_AMP
+        S_TOK_STAR = 58,                         // TOK_STAR
+        S_TOK_SLASH = 59,                        // TOK_SLASH
+        S_TOK_MODULO = 60,                       // TOK_MODULO
+        S_TOK_PLUS = 61,                         // TOK_PLUS
+        S_TOK_MINUS = 62,                        // TOK_MINUS
+        S_TOK_LESS = 63,                         // TOK_LESS
+        S_TOK_LEQ = 64,                          // TOK_LEQ
+        S_TOK_GREATER = 65,                      // TOK_GREATER
+        S_TOK_GEQ = 66,                          // TOK_GEQ
+        S_TOK_EQUAL = 67,                        // TOK_EQUAL
+        S_TOK_NEQUAL = 68,                       // TOK_NEQUAL
+        S_TOK_BOOL_AND = 69,                     // TOK_BOOL_AND
+        S_TOK_BOOL_OR = 70,                      // TOK_BOOL_OR
+        S_TOK_ASSIGN = 71,                       // TOK_ASSIGN
+        S_TERNARY = 72,                          // TERNARY
+        S_UMINUS = 73,                           // UMINUS
+        S_UPRE = 74,                             // UPRE
+        S_LOWER_THAN_ASSIGN = 75,                // LOWER_THAN_ASSIGN
+        S_YYACCEPT = 76,                         // $accept
+        S_translation_unit = 77,                 // translation_unit
+        S_module = 78,                           // module
+        S_import_list_opt = 79,                  // import_list_opt
+        S_import_list = 80,                      // import_list
+        S_import_decl = 81,                      // import_decl
+        S_path = 82,                             // path
+        S_path_expr = 83,                        // path_expr
+        S_qpath = 84,                            // qpath
+        S_qpath_expr = 85,                       // qpath_expr
+        S_ident_no_self = 86,                    // ident_no_self
+        S_ident_any = 87,                        // ident_any
+        S_type_params_opt = 88,                  // type_params_opt
+        S_type_param_list = 89,                  // type_param_list
+        S_type_param = 90,                       // type_param
+        S_type_args = 91,                        // type_args
+        S_type_arg_list = 92,                    // type_arg_list
+        S_pub_opt = 93,                          // pub_opt
+        S_decl_list_opt = 94,                    // decl_list_opt
+        S_decl_list = 95,                        // decl_list
+        S_decl = 96,                             // decl
+        S_fn_decl = 97,                          // fn_decl
+        S_load_fn_decl = 98,                     // load_fn_decl
+        S_struct_decl = 99,                      // struct_decl
+        S_struct_decl_def = 100,                 // struct_decl_def
+        S_struct_decl_fwd = 101,                 // struct_decl_fwd
+        S_field_decl_list_opt = 102,             // field_decl_list_opt
+        S_field_decl_list = 103,                 // field_decl_list
+        S_field_decl = 104,                      // field_decl
+        S_ret_type_expr = 105,                   // ret_type_expr
+        S_param_list_opt = 106,                  // param_list_opt
+        S_param_list = 107,                      // param_list
+        S_param = 108,                           // param
+        S_type_expr = 109,                       // type_expr
+        S_ref_type_expr = 110,                   // ref_type_expr
+        S_ref_mutability = 111,                  // ref_mutability
+        S_type_postfix = 112,                    // type_postfix
+        S_type_primary = 113,                    // type_primary
+        S_builtin_type_expr = 114,               // builtin_type_expr
+        S_path_type_expr = 115,                  // path_type_expr
+        S_anon_block = 116,                      // anon_block
+        S_fn_block = 117,                        // fn_block
+        S_if_block = 118,                        // if_block
+        S_else_if_block = 119,                   // else_if_block
+        S_else_block = 120,                      // else_block
+        S_while_block = 121,                     // while_block
+        S_do_while_block = 122,                  // do_while_block
+        S_stmt_list_opt = 123,                   // stmt_list_opt
+        S_stmt_list = 124,                       // stmt_list
+        S_stmt = 125,                            // stmt
+        S_simple_stmt = 126,                     // simple_stmt
+        S_compound_stmt = 127,                   // compound_stmt
+        S_return_stmt = 128,                     // return_stmt
+        S_if_stmt = 129,                         // if_stmt
+        S_elseif_list = 130,                     // elseif_list
+        S_elseif = 131,                          // elseif
+        S_else_part = 132,                       // else_part
+        S_while_stmt = 133,                      // while_stmt
+        S_do_while_stmt = 134,                   // do_while_stmt
+        S_break_stmt = 135,                      // break_stmt
+        S_continue_stmt = 136,                   // continue_stmt
+        S_expr_stmt = 137,                       // expr_stmt
+        S_var_stmt = 138,                        // var_stmt
+        S_var_stmt_default = 139,                // var_stmt_default
+        S_var_stmt_imm = 140,                    // var_stmt_imm
+        S_var_stmt_mut = 141,                    // var_stmt_mut
+        S_expr = 142,                            // expr
+        S_expr_opt = 143,                        // expr_opt
+        S_assign = 144,                          // assign
+        S_cond = 145,                            // cond
+        S_logic_or = 146,                        // logic_or
+        S_logic_and = 147,                       // logic_and
+        S_equality = 148,                        // equality
+        S_relational = 149,                      // relational
+        S_additive = 150,                        // additive
+        S_multiplicative = 151,                  // multiplicative
+        S_unary = 152,                           // unary
+        S_postfix = 153,                         // postfix
+        S_arg_list_opt = 154,                    // arg_list_opt
+        S_arg_list = 155,                        // arg_list
+        S_array_elems_opt = 156,                 // array_elems_opt
+        S_array_elems = 157,                     // array_elems
+        S_int_literal_type_opt = 158,            // int_literal_type_opt
+        S_float_literal_type_opt = 159,          // float_literal_type_opt
+        S_primary = 160,                         // primary
+        S_field_inits_opt = 161,                 // field_inits_opt
+        S_field_inits = 162,                     // field_inits
+        S_field_init = 163                       // field_init
       };
     };
 
@@ -923,10 +912,12 @@ namespace yy {
         switch (this->kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
+      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
-      case symbol_kind::S_ident: // ident
+      case symbol_kind::S_ident_no_self: // ident_no_self
+      case symbol_kind::S_ident_any: // ident_any
         value.move< Str > (std::move (that.value));
         break;
 
@@ -997,9 +988,7 @@ namespace yy {
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
-      case symbol_kind::S_fn_decl_def: // fn_decl_def
-      case symbol_kind::S_fn_decl_fwd: // fn_decl_fwd
-        value.move< ast::FunctionDecl* > (std::move (that.value));
+        value.move< ast::FnDecl* > (std::move (that.value));
         break;
 
       case symbol_kind::S_if_stmt: // if_stmt
@@ -1010,9 +999,8 @@ namespace yy {
         value.move< ast::ImportDecl* > (std::move (that.value));
         break;
 
-      case symbol_kind::S_translation_unit: // translation_unit
-      case symbol_kind::S_module: // module
-        value.move< ast::Module* > (std::move (that.value));
+      case symbol_kind::S_load_fn_decl: // load_fn_decl
+        value.move< ast::LoadFnDecl* > (std::move (that.value));
         break;
 
       case symbol_kind::S_ref_mutability: // ref_mutability
@@ -1024,6 +1012,7 @@ namespace yy {
         break;
 
       case symbol_kind::S_path_expr: // path_expr
+      case symbol_kind::S_qpath_expr: // qpath_expr
         value.move< ast::PathExpr* > (std::move (that.value));
         break;
 
@@ -1066,9 +1055,6 @@ namespace yy {
       case symbol_kind::S_var_stmt_default: // var_stmt_default
       case symbol_kind::S_var_stmt_imm: // var_stmt_imm
       case symbol_kind::S_var_stmt_mut: // var_stmt_mut
-      case symbol_kind::S_var_stmt_static_default: // var_stmt_static_default
-      case symbol_kind::S_var_stmt_static_imm: // var_stmt_static_imm
-      case symbol_kind::S_var_stmt_static_mut: // var_stmt_static_mut
         value.move< ast::VarStmt* > (std::move (that.value));
         break;
 
@@ -1094,6 +1080,7 @@ namespace yy {
         break;
 
       case symbol_kind::S_path: // path
+      case symbol_kind::S_qpath: // qpath
         value.move< std::vector<Str> > (std::move (that.value));
         break;
 
@@ -1108,6 +1095,8 @@ namespace yy {
 
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
+      case symbol_kind::S_array_elems_opt: // array_elems_opt
+      case symbol_kind::S_array_elems: // array_elems
         value.move< std::vector<ast::Expr*> > (std::move (that.value));
         break;
 
@@ -1352,13 +1341,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::FunctionDecl*&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, ast::FnDecl*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const ast::FunctionDecl*& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const ast::FnDecl*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1394,13 +1383,13 @@ namespace yy {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
-      basic_symbol (typename Base::kind_type t, ast::Module*&& v, location_type&& l)
+      basic_symbol (typename Base::kind_type t, ast::LoadFnDecl*&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
         , location (std::move (l))
       {}
 #else
-      basic_symbol (typename Base::kind_type t, const ast::Module*& v, const location_type& l)
+      basic_symbol (typename Base::kind_type t, const ast::LoadFnDecl*& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1810,10 +1799,12 @@ namespace yy {
 switch (yykind)
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
+      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
-      case symbol_kind::S_ident: // ident
+      case symbol_kind::S_ident_no_self: // ident_no_self
+      case symbol_kind::S_ident_any: // ident_any
         value.template destroy< Str > ();
         break;
 
@@ -1884,9 +1875,7 @@ switch (yykind)
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
-      case symbol_kind::S_fn_decl_def: // fn_decl_def
-      case symbol_kind::S_fn_decl_fwd: // fn_decl_fwd
-        value.template destroy< ast::FunctionDecl* > ();
+        value.template destroy< ast::FnDecl* > ();
         break;
 
       case symbol_kind::S_if_stmt: // if_stmt
@@ -1897,9 +1886,8 @@ switch (yykind)
         value.template destroy< ast::ImportDecl* > ();
         break;
 
-      case symbol_kind::S_translation_unit: // translation_unit
-      case symbol_kind::S_module: // module
-        value.template destroy< ast::Module* > ();
+      case symbol_kind::S_load_fn_decl: // load_fn_decl
+        value.template destroy< ast::LoadFnDecl* > ();
         break;
 
       case symbol_kind::S_ref_mutability: // ref_mutability
@@ -1911,6 +1899,7 @@ switch (yykind)
         break;
 
       case symbol_kind::S_path_expr: // path_expr
+      case symbol_kind::S_qpath_expr: // qpath_expr
         value.template destroy< ast::PathExpr* > ();
         break;
 
@@ -1953,9 +1942,6 @@ switch (yykind)
       case symbol_kind::S_var_stmt_default: // var_stmt_default
       case symbol_kind::S_var_stmt_imm: // var_stmt_imm
       case symbol_kind::S_var_stmt_mut: // var_stmt_mut
-      case symbol_kind::S_var_stmt_static_default: // var_stmt_static_default
-      case symbol_kind::S_var_stmt_static_imm: // var_stmt_static_imm
-      case symbol_kind::S_var_stmt_static_mut: // var_stmt_static_mut
         value.template destroy< ast::VarStmt* > ();
         break;
 
@@ -1981,6 +1967,7 @@ switch (yykind)
         break;
 
       case symbol_kind::S_path: // path
+      case symbol_kind::S_qpath: // qpath
         value.template destroy< std::vector<Str> > ();
         break;
 
@@ -1995,6 +1982,8 @@ switch (yykind)
 
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
+      case symbol_kind::S_array_elems_opt: // array_elems_opt
+      case symbol_kind::S_array_elems: // array_elems
         value.template destroy< std::vector<ast::Expr*> > ();
         break;
 
@@ -2156,7 +2145,7 @@ switch (yykind)
     };
 
     /// Build a parser object.
-    parser (Scanner& scanner_yyarg, ast::Ast& ast_yyarg, Translation& unit_yyarg);
+    parser (Scanner& scanner_yyarg, ast::Ast& ast_yyarg, Translation& unit_yyarg, std::string_view filePath_yyarg);
     virtual ~parser ();
 
 #if 201103L <= YY_CPLUSPLUS
@@ -2324,36 +2313,6 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_TOK_ENUM (location_type l)
-      {
-        return symbol_type (token::TOK_ENUM, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_ENUM (const location_type& l)
-      {
-        return symbol_type (token::TOK_ENUM, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_TRAIT (location_type l)
-      {
-        return symbol_type (token::TOK_TRAIT, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_TRAIT (const location_type& l)
-      {
-        return symbol_type (token::TOK_TRAIT, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
       make_TOK_FN (location_type l)
       {
         return symbol_type (token::TOK_FN, std::move (l));
@@ -2364,21 +2323,6 @@ switch (yykind)
       make_TOK_FN (const location_type& l)
       {
         return symbol_type (token::TOK_FN, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_TYPE (location_type l)
-      {
-        return symbol_type (token::TOK_TYPE, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_TYPE (const location_type& l)
-      {
-        return symbol_type (token::TOK_TYPE, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -2424,21 +2368,6 @@ switch (yykind)
       make_TOK_IMM (const location_type& l)
       {
         return symbol_type (token::TOK_IMM, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_STATIC (location_type l)
-      {
-        return symbol_type (token::TOK_STATIC, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_STATIC (const location_type& l)
-      {
-        return symbol_type (token::TOK_STATIC, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -2504,21 +2433,6 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_TOK_EXPORT (location_type l)
-      {
-        return symbol_type (token::TOK_EXPORT, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_EXPORT (const location_type& l)
-      {
-        return symbol_type (token::TOK_EXPORT, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
       make_TOK_PACKAGE (location_type l)
       {
         return symbol_type (token::TOK_PACKAGE, std::move (l));
@@ -2544,6 +2458,21 @@ switch (yykind)
       make_TOK_AS (const location_type& l)
       {
         return symbol_type (token::TOK_AS, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_TOK_LOAD (location_type l)
+      {
+        return symbol_type (token::TOK_LOAD, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_TOK_LOAD (const location_type& l)
+      {
+        return symbol_type (token::TOK_LOAD, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -2759,6 +2688,21 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
+      make_TOK_VOID (location_type l)
+      {
+        return symbol_type (token::TOK_VOID, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_TOK_VOID (const location_type& l)
+      {
+        return symbol_type (token::TOK_VOID, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
       make_TOK_IDENTIFIER (Str v, location_type l)
       {
         return symbol_type (token::TOK_IDENTIFIER, std::move (v), std::move (l));
@@ -2769,6 +2713,21 @@ switch (yykind)
       make_TOK_IDENTIFIER (const Str& v, const location_type& l)
       {
         return symbol_type (token::TOK_IDENTIFIER, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_TOK_SELF (Str v, location_type l)
+      {
+        return symbol_type (token::TOK_SELF, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_TOK_SELF (const Str& v, const location_type& l)
+      {
+        return symbol_type (token::TOK_SELF, v, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -2994,21 +2953,6 @@ switch (yykind)
       make_TOK_DOT (const location_type& l)
       {
         return symbol_type (token::TOK_DOT, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_QUESTION (location_type l)
-      {
-        return symbol_type (token::TOK_QUESTION, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_QUESTION (const location_type& l)
-      {
-        return symbol_type (token::TOK_QUESTION, l);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
@@ -3329,66 +3273,6 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_TOK_PLUS_ASSIGN (location_type l)
-      {
-        return symbol_type (token::TOK_PLUS_ASSIGN, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_PLUS_ASSIGN (const location_type& l)
-      {
-        return symbol_type (token::TOK_PLUS_ASSIGN, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_MIN_ASSIGN (location_type l)
-      {
-        return symbol_type (token::TOK_MIN_ASSIGN, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_MIN_ASSIGN (const location_type& l)
-      {
-        return symbol_type (token::TOK_MIN_ASSIGN, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_MUL_ASSIGN (location_type l)
-      {
-        return symbol_type (token::TOK_MUL_ASSIGN, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_MUL_ASSIGN (const location_type& l)
-      {
-        return symbol_type (token::TOK_MUL_ASSIGN, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_TOK_DIV_ASSIGN (location_type l)
-      {
-        return symbol_type (token::TOK_DIV_ASSIGN, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_TOK_DIV_ASSIGN (const location_type& l)
-      {
-        return symbol_type (token::TOK_DIV_ASSIGN, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
       make_TERNARY (location_type l)
       {
         return symbol_type (token::TERNARY, std::move (l));
@@ -3429,6 +3313,21 @@ switch (yykind)
       make_UPRE (const location_type& l)
       {
         return symbol_type (token::UPRE, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_LOWER_THAN_ASSIGN (location_type l)
+      {
+        return symbol_type (token::LOWER_THAN_ASSIGN, std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_LOWER_THAN_ASSIGN (const location_type& l)
+      {
+        return symbol_type (token::LOWER_THAN_ASSIGN, l);
       }
 #endif
 
@@ -3780,9 +3679,9 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 396,     ///< Last index in yytable_.
-      yynnts_ = 87,  ///< Number of nonterminal symbols.
-      yyfinal_ = 8 ///< Termination state number.
+      yylast_ = 387,     ///< Last index in yytable_.
+      yynnts_ = 88,  ///< Number of nonterminal symbols.
+      yyfinal_ = 9 ///< Termination state number.
     };
 
 
@@ -3790,6 +3689,7 @@ switch (yykind)
     Scanner& scanner;
     ast::Ast& ast;
     Translation& unit;
+    std::string_view filePath;
 
   };
 
@@ -3836,10 +3736,10 @@ switch (yykind)
       45,    46,    47,    48,    49,    50,    51,    52,    53,    54,
       55,    56,    57,    58,    59,    60,    61,    62,    63,    64,
       65,    66,    67,    68,    69,    70,    71,    72,    73,    74,
-      75,    76,    77,    78,    79,    80,    81
+      75
     };
     // Last valid token kind.
-    const int code_max = 336;
+    const int code_max = 330;
 
     if (t <= 0)
       return symbol_kind::S_YYEOF;
@@ -3859,10 +3759,12 @@ switch (yykind)
     switch (this->kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
+      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
-      case symbol_kind::S_ident: // ident
+      case symbol_kind::S_ident_no_self: // ident_no_self
+      case symbol_kind::S_ident_any: // ident_any
         value.copy< Str > (YY_MOVE (that.value));
         break;
 
@@ -3933,9 +3835,7 @@ switch (yykind)
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
-      case symbol_kind::S_fn_decl_def: // fn_decl_def
-      case symbol_kind::S_fn_decl_fwd: // fn_decl_fwd
-        value.copy< ast::FunctionDecl* > (YY_MOVE (that.value));
+        value.copy< ast::FnDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_if_stmt: // if_stmt
@@ -3946,9 +3846,8 @@ switch (yykind)
         value.copy< ast::ImportDecl* > (YY_MOVE (that.value));
         break;
 
-      case symbol_kind::S_translation_unit: // translation_unit
-      case symbol_kind::S_module: // module
-        value.copy< ast::Module* > (YY_MOVE (that.value));
+      case symbol_kind::S_load_fn_decl: // load_fn_decl
+        value.copy< ast::LoadFnDecl* > (YY_MOVE (that.value));
         break;
 
       case symbol_kind::S_ref_mutability: // ref_mutability
@@ -3960,6 +3859,7 @@ switch (yykind)
         break;
 
       case symbol_kind::S_path_expr: // path_expr
+      case symbol_kind::S_qpath_expr: // qpath_expr
         value.copy< ast::PathExpr* > (YY_MOVE (that.value));
         break;
 
@@ -4002,9 +3902,6 @@ switch (yykind)
       case symbol_kind::S_var_stmt_default: // var_stmt_default
       case symbol_kind::S_var_stmt_imm: // var_stmt_imm
       case symbol_kind::S_var_stmt_mut: // var_stmt_mut
-      case symbol_kind::S_var_stmt_static_default: // var_stmt_static_default
-      case symbol_kind::S_var_stmt_static_imm: // var_stmt_static_imm
-      case symbol_kind::S_var_stmt_static_mut: // var_stmt_static_mut
         value.copy< ast::VarStmt* > (YY_MOVE (that.value));
         break;
 
@@ -4030,6 +3927,7 @@ switch (yykind)
         break;
 
       case symbol_kind::S_path: // path
+      case symbol_kind::S_qpath: // qpath
         value.copy< std::vector<Str> > (YY_MOVE (that.value));
         break;
 
@@ -4044,6 +3942,8 @@ switch (yykind)
 
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
+      case symbol_kind::S_array_elems_opt: // array_elems_opt
+      case symbol_kind::S_array_elems: // array_elems
         value.copy< std::vector<ast::Expr*> > (YY_MOVE (that.value));
         break;
 
@@ -4114,10 +4014,12 @@ switch (yykind)
     switch (this->kind ())
     {
       case symbol_kind::S_TOK_IDENTIFIER: // TOK_IDENTIFIER
+      case symbol_kind::S_TOK_SELF: // TOK_SELF
       case symbol_kind::S_TOK_INT_LITERAL: // TOK_INT_LITERAL
       case symbol_kind::S_TOK_FLOAT_LITERAL: // TOK_FLOAT_LITERAL
       case symbol_kind::S_TOK_STRING_LITERAL: // TOK_STRING_LITERAL
-      case symbol_kind::S_ident: // ident
+      case symbol_kind::S_ident_no_self: // ident_no_self
+      case symbol_kind::S_ident_any: // ident_any
         value.move< Str > (YY_MOVE (s.value));
         break;
 
@@ -4188,9 +4090,7 @@ switch (yykind)
         break;
 
       case symbol_kind::S_fn_decl: // fn_decl
-      case symbol_kind::S_fn_decl_def: // fn_decl_def
-      case symbol_kind::S_fn_decl_fwd: // fn_decl_fwd
-        value.move< ast::FunctionDecl* > (YY_MOVE (s.value));
+        value.move< ast::FnDecl* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_if_stmt: // if_stmt
@@ -4201,9 +4101,8 @@ switch (yykind)
         value.move< ast::ImportDecl* > (YY_MOVE (s.value));
         break;
 
-      case symbol_kind::S_translation_unit: // translation_unit
-      case symbol_kind::S_module: // module
-        value.move< ast::Module* > (YY_MOVE (s.value));
+      case symbol_kind::S_load_fn_decl: // load_fn_decl
+        value.move< ast::LoadFnDecl* > (YY_MOVE (s.value));
         break;
 
       case symbol_kind::S_ref_mutability: // ref_mutability
@@ -4215,6 +4114,7 @@ switch (yykind)
         break;
 
       case symbol_kind::S_path_expr: // path_expr
+      case symbol_kind::S_qpath_expr: // qpath_expr
         value.move< ast::PathExpr* > (YY_MOVE (s.value));
         break;
 
@@ -4257,9 +4157,6 @@ switch (yykind)
       case symbol_kind::S_var_stmt_default: // var_stmt_default
       case symbol_kind::S_var_stmt_imm: // var_stmt_imm
       case symbol_kind::S_var_stmt_mut: // var_stmt_mut
-      case symbol_kind::S_var_stmt_static_default: // var_stmt_static_default
-      case symbol_kind::S_var_stmt_static_imm: // var_stmt_static_imm
-      case symbol_kind::S_var_stmt_static_mut: // var_stmt_static_mut
         value.move< ast::VarStmt* > (YY_MOVE (s.value));
         break;
 
@@ -4285,6 +4182,7 @@ switch (yykind)
         break;
 
       case symbol_kind::S_path: // path
+      case symbol_kind::S_qpath: // qpath
         value.move< std::vector<Str> > (YY_MOVE (s.value));
         break;
 
@@ -4299,6 +4197,8 @@ switch (yykind)
 
       case symbol_kind::S_arg_list_opt: // arg_list_opt
       case symbol_kind::S_arg_list: // arg_list
+      case symbol_kind::S_array_elems_opt: // array_elems_opt
+      case symbol_kind::S_array_elems: // array_elems
         value.move< std::vector<ast::Expr*> > (YY_MOVE (s.value));
         break;
 
@@ -4404,15 +4304,17 @@ switch (yykind)
 
 #line 8 "parser/parser_rules.y"
 } // yy
-#line 4408 "parser/parser.hpp"
+#line 4308 "parser/parser.hpp"
 
 
 // "%code provides" blocks.
-#line 38 "parser/parser_rules.y"
+#line 39 "parser/parser_rules.y"
 
-  yy::parser::symbol_type yylex(Scanner& scanner);
+  namespace yy {
+    parser::symbol_type yylex(Scanner& scanner);
+  }
 
-#line 4416 "parser/parser.hpp"
+#line 4318 "parser/parser.hpp"
 
 
 #endif // !YY_YY_PARSER_PARSER_HPP_INCLUDED

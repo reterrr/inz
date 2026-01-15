@@ -20,7 +20,7 @@ namespace sema::pass
         void visit_block_as_kind(ast::BlockStatement* block, scope::ScopeKind kind);
 
         void visit(ast::Module&) override;
-        void visit(ast::FunctionDecl&) override;
+        void visit(ast::FnDecl&) override;
         void visit(ast::BlockStatement&) override;
         void visit(ast::ParamDecl&) override;
         void visit(ast::TypeAliasDecl&) override;

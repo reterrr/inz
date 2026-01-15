@@ -16,10 +16,8 @@
 #include "nodes/stmt/statement.hpp"
 #include "nodes/decl/decl.hpp"
 
-// Include concrete nodes used by factory
 #include "expr/builtin_type_expr.hpp"
 #include "expr/ref_type_expr.hpp"
-#include "nodes/project.hpp"
 #include "nodes/expr/int_literal_expr.hpp"
 #include "nodes/expr/bool_literal_expr.hpp"
 #include "nodes/expr/string_literal_expr.hpp"
@@ -55,8 +53,9 @@
 
 
 #include "nodes/decl/param_decl.hpp"
-#include "nodes/decl/function_decl.hpp"
-#include "nodes/decl/type_alias_decl.hpp"
+#include "nodes/decl/fn_decl.hpp"
+#include "nodes/decl/load_fn_decl.hpp"
+
 #include "nodes/decl/struct_decl.hpp"
 #include "nodes/decl/field_decl.hpp"
 
@@ -96,14 +95,11 @@ namespace ast
         llvm::BumpPtrAllocator alloc_{};
         std::vector<Dtor> dtors_{};
 
-        Project* project = nullptr;
-
         std::size_t node_count_ = 0;
         std::size_t expr_count_ = 0;
         std::size_t stmt_count_ = 0;
         std::size_t decl_count_ = 0;
-        std::size_t type_count_ = 0; // add if you have TypeExpr base
-        std::size_t module_count_ = 0;
+        std::size_t type_count_ = 0;
 
         std::array<std::size_t, static_cast<std::size_t>(NodeKind::Count)> kinds_count_{};
 
@@ -123,7 +119,6 @@ namespace ast
             if constexpr (std::is_base_of_v<Statement, T>) ++stmt_count_;
             if constexpr (std::is_base_of_v<Decl, T>) ++decl_count_;
             if constexpr (std::is_base_of_v<TypeExpr, T>) ++type_count_; // if you have TypeExpr
-            if constexpr (std::is_base_of_v<Module, T>) ++module_count_;
 
             if constexpr (!std::is_trivially_destructible_v<T>)
             {
@@ -138,32 +133,80 @@ namespace ast
 
         void destroy_all()
         {
-            std::for_each(dtors_.rbegin(), dtors_.rend(),
-                          [](const Dtor& dtor) { dtor(); }
-            );
+            for (auto it = dtors_.rbegin(); it != dtors_.rend(); ++it)
+                (*it)();
 
             dtors_.clear();
+
+            // Release arena memory
             alloc_.Reset();
+
+            // Reset counters (optional but sane)
+            node_count_ = expr_count_ = stmt_count_ = decl_count_ = type_count_ = 0;
+            kinds_count_.fill(0);
         }
 
     public:
-        explicit Ast(Project* project)
-            : project(project)
-        {
-        }
-
+        ModulePtr module_ = nullptr;
         Ast() = default;
 
-        ~Ast()
+        // Non-copyable: copying would require deep cloning + pointer fixups.
+        Ast(const Ast&) = delete;
+        Ast& operator=(const Ast&) = delete;
+
+        // Move constructor: must move allocator AND destructor list AND counters.
+        Ast(Ast&& other) noexcept
+            : alloc_(std::move(other.alloc_))
+              , dtors_(std::move(other.dtors_))
+              , node_count_(other.node_count_)
+              , expr_count_(other.expr_count_)
+              , stmt_count_(other.stmt_count_)
+              , decl_count_(other.decl_count_)
+              , type_count_(other.type_count_)
+              , kinds_count_(other.kinds_count_)
+              , module_(other.module_)
+        {
+            // Leave other in a benign state so ~Ast() won't destroy moved nodes.
+            other.node_count_ = other.expr_count_ = other.stmt_count_ = other.decl_count_ = other.type_count_ = 0;
+            other.kinds_count_.fill(0);
+            other.dtors_.clear();
+            other.module_ = nullptr;
+            // other.alloc_ is already in moved-from state; no need to Reset().
+        }
+
+        // Move assignment: destroy current contents, then steal other's.
+        Ast& operator=(Ast&& other) noexcept
+        {
+            if (this == &other) return *this;
+
+            // Free current state
+            destroy_all();
+
+            // Steal
+            alloc_ = std::move(other.alloc_);
+            dtors_ = std::move(other.dtors_);
+            module_ = other.module_;
+
+            node_count_ = other.node_count_;
+            expr_count_ = other.expr_count_;
+            stmt_count_ = other.stmt_count_;
+            decl_count_ = other.decl_count_;
+            type_count_ = other.type_count_;
+            kinds_count_ = other.kinds_count_;
+
+            // Neutralize moved-from
+            other.node_count_ = other.expr_count_ = other.stmt_count_ = other.decl_count_ = other.type_count_ = 0;
+            other.kinds_count_.fill(0);
+            other.dtors_.clear();
+            other.module_ = nullptr;
+
+            return *this;
+        }
+
+        ~Ast() noexcept
         {
             destroy_all();
         }
-
-        [[nodiscard]] Project* get_project() const { return project; }
-
-        void project_add_module(ModulePtr module) const;
-
-        Project* mk_project(std::vector<ModulePtr>&& modules, const lex::Loc& l);
 
         // ========= Expressions =========
         IntLiteralExpr* mk_int_literal_expr(lex::SymId v, std::optional<kl::rt::IntKind> kind, const lex::Loc& loc);
@@ -233,14 +276,15 @@ namespace ast
         ParamDecl* mk_param_decl(lex::SymId name, TypeExpr* typeExpr, const lex::Loc& loc);
 
         // ========= Declarations =========
-        FunctionDecl* mk_fn_decl(lex::SymId name,
+        FnDecl* mk_fn_decl(lex::SymId name,
                                  std::vector<TypeParamDecl*>&& typeParamDecls,
                                  std::vector<ParamDecl*>&& params,
                                  TypeExpr* ret,
                                  BlockStatement* body,
                                  bool isExported,
                                  const lex::Loc& loc);
-
+        LoadFnDecl* mk_load_fn_decl(lex::SymId name, std::vector<ParamDecl*>&& params, TypeExpr* ret, bool isExported,
+                                    const lex::Loc& loc);
         FieldDecl* mk_field_decl(lex::SymId name, TypeExpr* type, Visibility visibility,
                                  const lex::Loc& loc);
         TypeParamDecl* mk_type_param_decl(lex::SymId name, const lex::Loc& loc);
@@ -248,11 +292,11 @@ namespace ast
         StructDecl* mk_struct_decl(lex::SymId name, std::vector<TypeParamDecl*>&& typeParamDecls,
                                    std::vector<FieldDecl*>&& fields, bool isExported, const lex::Loc& loc);
 
-        Module* mk_module(
+        void mk_module(
             PathExpr* pathExpr,
             std::vector<ImportDecl*>&& imports,
-            std::vector<Decl*>&& decls, const lex::Loc& loc);
-
+            std::vector<Decl*>&& decls, const lex::Loc& loc
+        );
 
         ImportDecl* mk_import_decl(PathExpr* pathExpr, std::optional<lex::SymId> alias,
                                    bool is_public, const lex::Loc& loc);
@@ -268,7 +312,6 @@ namespace ast
         [[nodiscard]] std::size_t expr_count() const noexcept { return expr_count_; }
         [[nodiscard]] std::size_t stmt_count() const noexcept { return stmt_count_; }
         [[nodiscard]] std::size_t decl_count() const noexcept { return decl_count_; }
-        [[nodiscard]] std::size_t module_count() const noexcept { return module_count_; }
         [[nodiscard]] std::size_t type_count() const noexcept { return type_count_; }
         [[nodiscard]] std::size_t node_count() const noexcept { return node_count_; }
 

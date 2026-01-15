@@ -10,14 +10,10 @@ tokens:
 
     declarations:
       STRUCT: "struct"
-      TRAIT: "trait"
-      ENUM: "enum"
       FN: "fn"
-      TYPE: "type"
       RETURN: "return"
       MUT: "mut"
       IMM: "imm"
-      STATIC: "static"
       PUB: "pub"
 
     type_kw:
@@ -35,6 +31,7 @@ tokens:
       F64: "f64"
       BOOL: "bool"
       CHAR: "char"
+      VOID: "void"
 
     misc_flow:
       BREAK: "break"
@@ -42,9 +39,9 @@ tokens:
 
     modules:
       IMPORT: "import"
-      EXPORT: "export"
       PACKAGE: "package"
       AS: "as"
+      LOAD: "load"
 
   identifiers:
     IDENTIFIER: "~"
@@ -68,11 +65,10 @@ tokens:
       COMMA: ","
       SMCLN: ";"
       COLON: ":"
-      COLONCOLON: "::"
-      TURBOFISH_S: "::<"
+      COLONCOLON: "::" #
+      TURBOFISH_S: "::<" #
     misc:
       DOT: "."
-      QUESTION: "?"
       ARROW: "->"
 
   operators:
@@ -94,7 +90,3 @@ tokens:
     BOOL_AND: "&&"
     BOOL_OR: "||"
     ASSIGN: "="
-    PLUS_ASSIGN: "+="
-    MIN_ASSIGN: "-="
-    MUL_ASSIGN: "*="
-    DIV_ASSIGN: "/="

@@ -26,6 +26,7 @@ namespace hir
     using UnitId = uint32_t;
     using DiagId = uint32_t;
     using GenericsId = uint32_t;
+    using MethodId = uint32_t;
 
     struct PathEntry
     {

@@ -4,6 +4,7 @@
 
 #ifndef INZ_DEFER_VISIT_HPP
 #define INZ_DEFER_VISIT_HPP
+#include "arena.hpp"
 #include "visitor.hpp"
 
 #include "stmts.hpp"
@@ -15,141 +16,143 @@
 namespace hir
 {
     template <typename It>
-    struct DeferringChildVisitor final : Visitor<It>
+    struct DeferringChildVisitor final : Visitor<It, MetaData>
     {
-        using Visitor<It>::Visitor;
-        using Visitor<It>::visit;
-        using Visitor<It>::it_;
+        using Base = Visitor<It, MetaData>;
+        using Base::Base; // constructor inheritance
+        using Base::visit; // bring overload set
+        using Base::it_;
 
-        // arena leaves
-        void visit(Module& m) override;
-        void visit(Import& i) override;
+        // Implement ONLY the (Node&, MetaData) overrides.
+        void visit(Module& m, MetaData md) override;
+        void visit(Import& i, MetaData md) override;
 
-        void visit(TypeParam&) override
+        void visit(TypeParam&, MetaData) override
         {
+            /* unchanged */
         }
 
-        void visit(Param& p) override;
-        void visit(StructFieldDecl& f) override;
-        void visit(StructFieldInit& f) override;
-        void visit(Block& b) override;
+        // If you truly need a Param wrapper hook, DO NOT mark override unless Param is a VisitSlot leaf.
+        // If Param is only a distributive wrapper (kind-variant), this is a *shadowing* overload:// no override (see note below)
 
-        // decl alternatives
-        void visit(FnDecl& fn) override;
-        void visit(StructDecl& st) override;
-        void visit(TypeAliasDecl& ta) override;
+        void visit(StructFieldDecl& f, MetaData md) override;
+        void visit(StructFieldInit& f, MetaData md) override;
+        void visit(Block& b, MetaData md) override;
 
-        // type alternatives
-        void visit(TypeBuiltin&) override
+        void visit(FnDecl& fn, MetaData md) override;
+        void visit(StructDecl& st, MetaData md) override;
+        void visit(TypeAliasDecl& ta, MetaData md) override;
+
+        void visit(TypeBuiltin&, MetaData) override
         {
+            /* unchanged */
         }
 
-        void visit(TypePath& tp) override;
-        void visit(TypeRef& tr) override;
-        void visit(TypeArray& ta) override;
+        void visit(TypePath& tp, MetaData md) override;
+        void visit(TypeRef& tr, MetaData md) override;
+        void visit(TypeArray& ta, MetaData md) override;
 
-        // expr alternatives
-        void visit(ExprPath& ep) override;
+        void visit(ExprPath& ep, MetaData md) override;
 
-        void visit(ExprLitInt&) override
+        void visit(ExprLitInt&, MetaData) override
         {
+            /* unchanged */
         }
 
-        void visit(ExprLitArray& ea) override;
+        void visit(ExprLitArray& ea, MetaData md) override;
 
-        void visit(ExprLitFloat&) override
+        void visit(ExprLitFloat&, MetaData) override
         {
+            /* unchanged */
         }
 
-        void visit(ExprLitBool&) override
+        void visit(ExprLitBool&, MetaData) override
         {
+            /* unchanged */
         }
 
-        void visit(ExprLitChar&) override
+        void visit(ExprLitChar&, MetaData) override
         {
+            /* unchanged */
         }
 
-        void visit(ExprLitString&) override
+        void visit(ExprLitString&, MetaData) override
         {
+            /* unchanged */
         }
 
-        void visit(ExprUnary& eu) override;
-        void visit(ExprBinary& eb) override;
-        void visit(ExprAssign& ea) override;
-        void visit(ExprCall& ec) override;
-        void visit(ExprIndex& ei) override;
-        void visit(ExprField& ef) override;
-        void visit(ExprLitStruct& es) override;
-        void visit(ExprCast& ec) override;
+        void visit(ExprUnary& eu, MetaData md) override;
+        void visit(ExprBinary& eb, MetaData md) override;
+        void visit(ExprAssign& ea, MetaData md) override;
+        void visit(ExprCall& ec, MetaData md) override;
+        void visit(ExprIndex& ei, MetaData md) override;
+        void visit(ExprField& ef, MetaData md) override;
+        void visit(ExprLitStruct& es, MetaData md) override;
+        void visit(ExprCast& ec, MetaData md) override;
 
-        // stmt alternatives
-        void visit(StmtBlock& sb) override;
-        void visit(StmtIf& si) override;
-        void visit(StmtElseIf& se) override;
-        void visit(StmtElse& se) override;
-        void visit(StmtWhile& sw) override;
-        void visit(StmtDoWhile& sd) override;
+        void visit(StmtBlock& sb, MetaData md) override;
+        void visit(StmtIf& si, MetaData md) override;
+        void visit(StmtElseIf& se, MetaData md) override;
+        void visit(StmtElse& se, MetaData md) override;
+        void visit(StmtWhile& sw, MetaData md) override;
+        void visit(StmtDoWhile& sd, MetaData md) override;
 
-        void visit(StmtBreak&) override
+        void visit(StmtBreak&, MetaData) override
         {
+            /* unchanged */
         }
 
-        void visit(StmtContinue&) override
+        void visit(StmtContinue&, MetaData) override
         {
+            /* unchanged */
         }
 
-        void visit(StmtReturn& sr) override;
-        void visit(StmtVar& sv) override;
-        void visit(StmtExpr& se) override;
+        void visit(StmtReturn& sr, MetaData md) override;
+        void visit(StmtVar& sv, MetaData md) override;
+        void visit(StmtExpr& se, MetaData md) override;
     };
+
 
     // -------- arena nodes --------
 
     template <typename It>
-    void DeferringChildVisitor<It>::visit(Module& m)
+    void DeferringChildVisitor<It>::visit(Module& m, [[maybe_unused]] MetaData md)
     {
-
         it_.defer(It::ContractedEnum::exprs, static_cast<uint32_t>(m.package_path));
 
-        // then imports in source order
         for (auto id : m.imports)
             it_.defer(It::ContractedEnum::imports, static_cast<uint32_t>(id));
 
-        // then decls in source order
         for (auto id : m.decls)
             it_.defer(It::ContractedEnum::decls, static_cast<uint32_t>(id));
     }
 
     template <typename It>
-    void DeferringChildVisitor<It>::visit(Import& i)
+    void DeferringChildVisitor<It>::visit(Import& i, [[maybe_unused]] MetaData md)
     {
         it_.defer(It::ContractedEnum::exprs, static_cast<uint32_t>(i.path));
     }
 
-    template <typename It>
-    void DeferringChildVisitor<It>::visit(Param& p)
-    {
-        it_.defer(It::ContractedEnum::types, static_cast<uint32_t>(p.type));
-    }
 
     template <typename It>
-    void DeferringChildVisitor<It>::visit(StructFieldDecl& f)
+    void DeferringChildVisitor<It>::visit(StructFieldDecl& f, [[maybe_unused]] MetaData md)
     {
         it_.defer(It::ContractedEnum::types, static_cast<uint32_t>(f.type));
     }
 
     template <typename It>
-    void DeferringChildVisitor<It>::visit(StructFieldInit& f)
+    void DeferringChildVisitor<It>::visit(StructFieldInit& f, [[maybe_unused]] MetaData md)
     {
         it_.defer(It::ContractedEnum::exprs, static_cast<uint32_t>(f.value));
     }
 
     template <typename It>
-    void DeferringChildVisitor<It>::visit(Block& b)
+    void DeferringChildVisitor<It>::visit(Block& b, [[maybe_unused]] MetaData md)
     {
         for (auto it = b.stmts.begin(); it != b.stmts.end(); ++it)
             it_.defer(It::ContractedEnum::stmts, static_cast<uint32_t>(*it));
     }
+
 
     // -------- decl alternatives --------
 

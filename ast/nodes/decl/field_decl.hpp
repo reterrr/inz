@@ -8,6 +8,7 @@
 #include "decl.hpp"
 #include "visit/decl_visitor.hpp"
 #include "field_visibility.hpp"
+#include "expr/type_expr.hpp"
 
 namespace ast
 {

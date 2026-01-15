@@ -9,7 +9,7 @@ namespace ast
 {
     enum class TypeExprKind
     {
-        Builtin, Array, Path, Ref, Callable
+        Builtin, Array, Path, Ref
     };
 }
 

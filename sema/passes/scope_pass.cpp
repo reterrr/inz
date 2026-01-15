@@ -106,7 +106,7 @@ namespace sema::pass
         AstIteratorVisitor::visit(decl);
     }
 
-    void ScopeAstVisitor::visit(ast::FunctionDecl& decl)
+    void ScopeAstVisitor::visit(ast::FnDecl& decl)
     {
         ScopeGuard guard{controller_};
         decl.id = controller_.enterScope(decl.name_, scope::ScopeKind::Function);

@@ -1,6 +1,7 @@
 #ifndef SCOPE_STACK_HPP
 #define SCOPE_STACK_HPP
 
+#include <limits>
 #include <stack>
 
 #include "helper.hpp"
@@ -16,9 +17,6 @@ namespace sema
     {
     };
 
-    /**
-     *
-     */
     class ScopeController final
     {
         inline static ScopeId counter = 1;

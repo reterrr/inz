@@ -6,6 +6,7 @@
 #define COMPOUND_STATEMENT_HPP
 #include <token.hpp>
 #include <vector>
+#include <algorithm>
 
 #include "block_stmt_kind.hpp"
 #include "statement.hpp"

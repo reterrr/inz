@@ -14,7 +14,6 @@
 namespace ast::visitor
 {
     struct OverallVisitor :
-        ProjectVisitor,
         DeclVisitor,
         ExprVisitor,
         StmtVisitor,
@@ -22,9 +21,8 @@ namespace ast::visitor
     {
         void visit(ParamDecl&) override;
 
-        void visit(FunctionDecl&) override;
+        void visit(FnDecl&) override;
 
-        void visit(TypeAliasDecl&) override;
 
         void visit(ImportDecl&) override;
 
@@ -42,7 +40,6 @@ namespace ast::visitor
 
         void visit(BinaryExpr&) override;
 
-        void visit(StringLiteralExpr&) override;
 
         void visit(StructLiteralExpr&) override;
 
@@ -78,7 +75,6 @@ namespace ast::visitor
 
         void visit(Module&) override;
 
-        void visit(Project&) override;
         void visit(CastExpr&) override;
         void visit(ArrayTypeExpr&) override;
         void visit(PathTypeExpr&) override;
@@ -90,6 +86,8 @@ namespace ast::visitor
         void visit(ElseIfStatement&) override;
         void visit(ElseStatement&) override;
         void visit(TypeParamDecl&) override;
+        void visit(LoadFnDecl&) override;
+        void visit(StringLiteralExpr &) override;
     };
 }
 

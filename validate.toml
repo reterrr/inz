@@ -1,0 +1,5 @@
+[files]
+files_dir = "./tests"
+
+[link]
+libs = ["/home/yhwach/CLionProjects/inz/kl_linealg/build/liblinealg.so"]

@@ -10,9 +10,6 @@
 
 namespace ast
 {
-    struct Expr;
-    struct BlockStatement;
-
     struct DoWhileStatement final : Statement
     {
         Expr* condition_;

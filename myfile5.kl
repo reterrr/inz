@@ -1,0 +1,868 @@
+package kolya::s::kolya;
+
+import kolya::kolya as klkl;
+import kolka::math::linalg as math;
+
+struct B {
+    a: i32;
+}
+
+fn local_shadowing_and_copies() -> void {
+    v: i32 = 1 as i32;
+    {
+        v: i32 = 2 as i32;    // shadowing
+        w: i32 = v;           // copy from inner v
+    }
+    t: i32 = v;               // copy from outer v
+    return;
+}
+
+fn if_else_elseif_logic() -> void {
+    a: i32 = 3 as i32;
+    b: i32 = 7 as i32;
+
+    // && short-circuit (emit_logical_and)
+    if ((a < b) && (b < (100 as i32))) {
+        x: i32 = 1 as i32;
+    } else if ((a == b) || (a != b)) { // || short-circuit (emit_logical_or)
+        y: i32 = 2 as i32;
+    } else {
+        z: i32 = 3 as i32;
+    }
+
+    // logical_not (emit_unary: !)
+    if (!(a < b)) {
+        q: i32 = 0 as i32;
+    }
+
+    return;
+}
+
+fn while_and_do_while() -> void {
+    mut i: i32 = 0 as i32;
+
+    while (i < (3 as i32)) {
+        // i = i + 1
+        i = i + (1 as i32);
+    }
+
+    do {
+        i = i + (1 as i32);
+    } while (i < (5 as i32));
+
+    return;
+}
+
+fn unary_negation_smoke() -> void {
+    // requires emit_unary(U::negation) => rt_neg(Obj*)
+    x: i32 = 12 as i32;
+    y: i32 = -x;
+    z: i32 = -(-y);
+    return;
+}
+
+fn ref_smoke_mut() -> void {
+    // This function is designed to force:
+    //  - &mut local -> rt_ref_from_slot(slot_addr)
+    //  - *ref load  -> rt_ref_load(ref_obj)
+    //  - *ref store -> rt_ref_store(ref_obj, value_obj)
+
+    mut b: i32 = 12 as i32;
+    mut pepe: i32 = 34 as i32;
+
+    // addr_of_mut
+    mut c: &mut i32 = &mut b;
+
+    // deref store
+    *c = b;
+
+    // rebind ref (slot assignment of Obj* ref object)
+    c = &mut pepe;
+
+    // deref load
+    klawd: i32 = *c;
+
+    // use deref load in expression
+    sum: i32 = (*c) + b;
+
+    // another store through ref
+    *c = sum;
+
+    return;
+}
+
+fn struct_literals_smoke() -> void {
+    // empty struct literal
+    j: S = S{};
+
+    // consume through imported package function (CallExpr -> GlobalFn)
+    klkl::consume_s(j);
+
+    // If your "struct fields + named init" are supported, keep this.
+    // It should drive rt_struct_new + rt_struct_set_field calls.
+    p: klkl::Point = klkl::Point{ x: 1 as i32, y: 2 as i32 };
+    klkl::consume_point(p);
+
+    return;
+}
+
+fn numeric_ops_smoke() -> void {
+    a: i32 = 41 as i32;
+    b: i32 = 2 as i32;
+
+    addv: i32 = a + b;
+    subv: i32 = a - b;
+    mulv: i32 = a * b;
+    divv: i32 = a / b;
+    modv: i32 = a % b;
+
+    // comparisons (Obj*,Obj*) -> i1
+    c1: bool = (a == b);
+    c2: bool = (a != b);
+    c3: bool = (a < b);
+    c4: bool = (a <= b);
+    c5: bool = (a > b);
+    c6: bool = (a >= b);
+
+    // use bools in control flow (unbox if needed)
+    if (c3) {
+        t: i32 = addv;
+    } else {
+        t: i32 = subv;
+    }
+
+    return;
+}
+
+fn float_literals_smoke() -> i32 {
+    // requires Pass7 float lowering + rt_float_from_f32/f64
+    f1: f32 = 1.25 as f32;
+    f2: f64 = 2.5 as f64;
+
+    // just bind/copy to force value flow
+    g1: f32 = f1;
+    g2: f64 = f2;
+
+    return 15;
+}
+
+fn stress_refs() -> void
+{
+    mut i: i32 = 0 as i32;
+
+    while (i < 200000 as i32)
+    {
+        mut a: i32 = i;
+        mut b: i32 = (i + 1 as i32);
+
+        // Create &mut and overwrite it many times.
+        mut r: &mut i32 = &mut a;
+
+        // Mutation through deref.
+        *r = (*r + 1 as i32);
+
+        // Rebind r back and forth: this stresses "assign ref object" ARC.
+        r = &mut b;
+        *r = (*r + 2 as i32);
+
+        r = &mut a;
+        *r = (*r + 3 as i32);
+
+        // Create many temporary refs that should die immediately (ExprStatement path).
+        &mut a;
+        &mut a;
+        &mut b;
+        &mut b;
+
+        // Nested scopes + shadowing (scope teardown correctness).
+        {
+            mut t: &mut i32 = &mut a;
+            *t = (*t + 4 as i32);
+            t = &mut b;
+            *t = (*t + 5 as i32);
+        }
+
+        // Keep loop from being optimized away (also tests print arg is &T).
+        // If print is expensive, you can guard it:
+        if ((i % 50000 as i32) == 0 as i32) {
+            mut v: i32 = a;
+            print::<i32>(&v);
+        }
+
+        i = (i + 1 as i32);
+    }
+}
+
+fn stress_boxes_and_indexing() -> void
+{
+    mut i: i32 = 0 as i32;
+
+    while (i < 20000 as i32)
+    {
+        // Box + &mut Box paths (materialize_value_if_ref for box_set/box_get)
+        mut bx: Box::<i64> = box_new::<i64>(64 as i64);
+
+        // Fill via &mut
+        mut j: i64 = 0 as i64;
+        while (j < 64 as i64)
+        {
+            box_set::<i64>(&mut bx, j, (j + 123 as i64));
+            j = (j + 1 as i64) ;
+        }
+
+        // Read back
+        mut sum: i64 = 0 as i64;
+        j = 0 as i64;
+        while (j < 64 as i64)
+        {
+            mut x: i64 = box_get::<i64>(&mut bx, j);
+            sum = (sum + x) ;
+            j = (j + 1 as i64);
+        }
+
+        // Create/destroy temporary refs to the box slot (must not retain box contents)
+        &mut bx;
+        &mut bx;
+
+        // Optional: drop box explicitly if you want to exercise box_free too:
+        // box_free::<i64>(&mut bx);
+
+        // prevent DCE
+        if ((i % 5000 as i32) == 0 as i32) {
+            mut s_i32: i32 = 0 as i32; // placeholder; adapt if you have i64 print
+            // print::<i32>(&s_i32);
+        }
+
+        i = (i + 1 as i32);
+    }
+}
+
+fn stress_big_arrays() -> void
+{
+    // This matches your 10x10x10 pattern but keeps runtime manageable.
+    // If your array literal lowers to box_new + box_set, this stresses element slot logic.
+
+    mut kkk: i32[10][10][10] = [
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+        [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],
+         [1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]]
+    ];
+
+    mut iii: i32 = 1 as i32;
+
+    // Copy (should be retain/release-balanced if arrays are boxed)
+    mut ii: i32[10][10][10] = kkk;
+
+    // Ref to array (must not retain underlying elements)
+    mut kkk_ref: &i32[10][10][10] = &kkk;
+
+    // Mutate through indexing: stresses rt_box_elem_slot + store barriers.
+    kkk[0][0][iii] = -30 as i32;
+    mut lsls: i32 = kkk[0][0][1];
+    print::<i32>(&lsls);
+
+    // Consume ref in expr statements (temporary refs must not leak)
+    &kkk;
+    &kkk;
+}
+
+pub fn decl() -> void {
+    // keep your original scenario, but with additional operations around it
+
+    // original block
+    mut b: i32 = 12 as i32;
+    mut pepe: i32 = 12 as i32;
+    mut c: &mut i32 = &mut b;
+    mut just_ref: &mut i64;
+    stress_refs();
+        stress_boxes_and_indexing();
+        stress_big_arrays();
+    //awdawd: f32 = 1.2 as f32;
+    /*
+
+    c = &mut pepe;
+    *c = 100 as i32 * *c;
+    klawd: i32 = *c;
+    mut a: i32 = 1 as i32;
+    ll: B = B{a : 10 as i32};
+
+    mut kk: i32 = 1 as i32;
+    mut lll: &mut i32 = &mut kk;
+    jj: i32 = 100 as i32;
+    100 as i32;
+    100 as i32;
+    123 as i32;
+    jj_ref: &i32 = &jj;
+
+    *lll = 100 as i32;
+    print::<i32>(&kk);
+    */
+
+
+
+
+            /*
+
+            mut a: Box::<i64> = box_new::<i64>(10000 as i64);
+                        b: Box::<i64> = box_new::<i64>(100000 as i64);
+                        box_set::<i64>(&mut a, 1 as i64, 100 as i64);
+                        mut r: i64 = box_get::<i64>(&mut a, 1 as i64);
+                        print::<i64>(&r);
+
+            mut kkk: i32[10][10][10] = [
+                [[15 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+            ];*/
+
+            while (1 < 2) {
+                mut kkk: i32[10][10][10] = [
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                    [[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32],[1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32,1 as i32]],
+                ];
+            }
+
+            /*
+            mut ii: i32[10][10][10] = kkk;
+            mut kkk_ref: &i32[10][10][10] = &kkk;
+
+
+            kkk[0][0][1] = -30 as i32;
+            mut lsls: i32 = kkk[0][0][1];
+            print::<i32>(&lsls);
+            */
+
+
+            //unary_negation_smoke();
+            //numeric_ops_smoke();
+            //if_else_elseif_logic();
+            //while_and_do_while();
+            //struct_literals_smoke();
+            //local_shadowing_and_copies();
+            //ref_smoke_mut();
+
+    // extra stress
+
+}
+
+fn s(in: &mut i32, out: &mut i32) -> void {
+    *in = 2 as i32 * *in;
+    *out = *in;
+}
+
+pub fn main() -> void {
+    mut i: i32 = 1 as i32;
+    mut o: i32 = 10 as i32;
+    mut out: i32 = o;
+    /*
+    if (false) {
+        print::<i32>(&o);
+    } else if (true) {
+        o = 16 as i32;
+        print::<i32>(&o);
+    }
+
+    print::<i32>(&o);
+    print::<i32>(&out);
+
+    print::<i32>(&i);
+    i = i + 1 as i32;
+
+    s(&mut i, &mut out);
+
+    print::<i32>(&i);
+
+    print::<i32>(&out);
+
+
+    //decl();
+    mut a: math::MatrixI32 = math::mat_i32_new(2 as i64, 3 as i64);
+    mut b: math::MatrixI32 = math::mat_i32_new(2 as i64, 3 as i64);
+
+    math::mat_i32_set_base(&mut a, 0 as i64, 0 as i64, 1 as i32);
+    math::mat_i32_set_base(&mut a, 0 as i64, 1 as i64, 2 as i32);
+    math::mat_i32_set_base(&mut a, 0 as i64, 2 as i64, 3 as i32);
+    math::mat_i32_set_base(&mut a, 1 as i64, 0 as i64, 4 as i32);
+    math::mat_i32_set_base(&mut a, 1 as i64, 1 as i64, 5 as i32);
+    math::mat_i32_set_base(&mut a, 1 as i64, 2 as i64, 6 as i32);
+
+    // Fill B = [[10,10,10],[1,2,3]]
+    math::mat_i32_set_base(&mut b, 0 as i64, 0 as i64, 10 as i32);
+    math::mat_i32_set_base(&mut b, 0 as i64, 1 as i64, 10 as i32);
+    math::mat_i32_set_base(&mut b, 0 as i64, 2 as i64, 10 as i32);
+    math::mat_i32_set_base(&mut b, 1 as i64, 0 as i64, 1 as i32);
+    math::mat_i32_set_base(&mut b, 1 as i64, 1 as i64, 2 as i32);
+    math::mat_i32_set_base(&mut b, 1 as i64, 2 as i64, 3 as i32);
+
+    mut id3: math::MatrixI32 = math::mat_i32_new(3 as i64, 3 as i64);
+    math::mat_i32_identity_base(&mut id3, 3 as i64);
+
+    // Expected prints: 1, 0, 1
+    mut id00: i32 = math::mat_i32_get_base(&id3, 0 as i64, 0 as i64);
+    print::<i32>(&id00);
+
+    mut id01: i32 = math::mat_i32_get_base(&id3, 0 as i64, 1 as i64);
+    print::<i32>(&id01);
+
+    mut id22: i32 = math::mat_i32_get_base(&id3, 2 as i64, 2 as i64);
+    print::<i32>(&id22);
+
+    // Diagonal extract from A (2x3) => [A00, A11] as 2x1
+    mut diagA: math::MatrixI32 = math::mat_i32_new(2 as i64, 1 as i64);
+    math::mat_i32_diag_extract_base(&mut diagA, &a);
+
+    // Expected prints: 1, 5
+    mut d0: i32 = math::mat_i32_get_base(&diagA, 0 as i64, 0 as i64);
+    print::<i32>(&d0);
+
+    mut d1: i32 = math::mat_i32_get_base(&diagA, 1 as i64, 0 as i64);
+    print::<i32>(&d1);
+
+    // ------------------------------------------------------------
+    // Hadamard + scalar ops (I32)
+    // ------------------------------------------------------------
+    mut out_had: math::MatrixI32 = math::mat_i32_new(2 as i64, 3 as i64);
+    math::mat_i32_hadamard_base(&mut out_had, &a, &b);
+    llll: char = 's';
+    print::<char>(&llll);
+
+    // A .* B where
+    // A = [[1,2,3],[4,5,6]]
+    // B = [[10,10,10],[1,2,3]]
+    // => [[10,20,30],[4,10,18]]
+    // Expected prints: 30, 10
+    mut h02: i32 = math::mat_i32_get_base(&out_had, 0 as i64, 2 as i64);
+    print::<i32>(&h02);
+
+    mut h11: i32 = math::mat_i32_get_base(&out_had, 1 as i64, 1 as i64);
+    print::<i32>(&h11);
+
+    // out_add5 = A + 5
+    mut out_add5: math::MatrixI32 = math::mat_i32_new(2 as i64, 3 as i64);
+    math::mat_i32_add_scalar_base(&mut out_add5, &a, 5 as i32);
+    // Expected print: 8  (A[0,2]=3 -> 3+5=8)
+    mut a02p5: i32 = math::mat_i32_get_base(&out_add5, 0 as i64, 2 as i64);
+    print::<i32>(&a02p5);
+
+    // out_sub1 = A - 1
+    mut out_sub1: math::MatrixI32 = math::mat_i32_new(2 as i64, 3 as i64);
+    math::mat_i32_sub_scalar_base(&mut out_sub1, &a, 1 as i32);
+    // Expected print: 3  (A[1,0]=4 -> 4-1=3)
+    mut a10m1: i32 = math::mat_i32_get_base(&out_sub1, 1 as i64, 0 as i64);
+    print::<i32>(&a10m1);
+
+    // ------------------------------------------------------------
+    // Neg / Abs (I32)
+    // ------------------------------------------------------------
+    mut vi: math::MatrixI32 = math::mat_i32_new(1 as i64, 3 as i64);
+    math::mat_i32_set_base(&mut vi, 0 as i64, 0 as i64, -1 as i32);
+    math::mat_i32_set_base(&mut vi, 0 as i64, 1 as i64, 0 as i32);
+    math::mat_i32_set_base(&mut vi, 0 as i64, 2 as i64, 2 as i32);
+
+    mut vi_abs: math::MatrixI32 = math::mat_i32_new(1 as i64, 3 as i64);
+    math::mat_i32_abs_base(&mut vi_abs, &vi);
+    // Expected prints: 1, 0, 2
+    mut ab0: i32 = math::mat_i32_get_base(&vi_abs, 0 as i64, 0 as i64);
+    print::<i32>(&ab0);
+    mut ab1: i32 = math::mat_i32_get_base(&vi_abs, 0 as i64, 1 as i64);
+    print::<i32>(&ab1);
+    mut ab2: i32 = math::mat_i32_get_base(&vi_abs, 0 as i64, 2 as i64);
+    print::<i32>(&ab2);
+
+    mut vi_neg: math::MatrixI32 = math::mat_i32_new(1 as i64, 3 as i64);
+    math::mat_i32_neg_base(&mut vi_neg, &vi);
+    // Expected prints: 1, 0, -2
+    mut ng0: i32 = math::mat_i32_get_base(&vi_neg, 0 as i64, 0 as i64);
+    print::<i32>(&ng0);
+    mut ng1: i32 = math::mat_i32_get_base(&vi_neg, 0 as i64, 1 as i64);
+    print::<i32>(&ng1);
+    mut ng2: i32 = math::mat_i32_get_base(&vi_neg, 0 as i64, 2 as i64);
+    print::<i32>(&ng2);
+
+    // ------------------------------------------------------------
+    // Reductions (I32) on A = [[1,2,3],[4,5,6]]
+    // ------------------------------------------------------------
+    // sum = 21, min = 1, max = 6, trace = 1+5 = 6
+    mut sA: i64 = math::mat_i32_sum_base(&a);
+    print::<i64>(&sA);
+
+    mut mnA: i32 = math::mat_i32_min_base(&a);
+    print::<i32>(&mnA);
+
+    mut mxA: i32 = math::mat_i32_max_base(&a);
+    print::<i32>(&mxA);
+
+    mut trA: i64 = math::mat_i32_trace_base(&a);
+    print::<i64>(&trA);
+
+    // ============================================================
+    // F64 checks
+    // ============================================================
+
+    // ------------------------------------------------------------
+    // diag_from_vec (F64): v=[1,2,3] -> D is 3x3 diagonal
+    // ------------------------------------------------------------
+    mut vf: math::MatrixF64 = math::mat_f64_new(3 as i64, 1 as i64);
+    math::mat_f64_set_base(&mut vf, 0 as i64, 0 as i64, 1.0 as f64);
+    math::mat_f64_set_base(&mut vf, 1 as i64, 0 as i64, 2.0 as f64);
+    math::mat_f64_set_base(&mut vf, 2 as i64, 0 as i64, 3.0 as f64);
+
+    mut D: math::MatrixF64 = math::mat_f64_new(3 as i64, 3 as i64);
+    math::mat_f64_diag_from_vec_base(&mut D, &vf);
+
+    // Expected prints: 3.0, 0.0
+    mut d22f: f64 = math::mat_f64_get_base(&D, 2 as i64, 2 as i64);
+    print::<f64>(&d22f);
+
+    mut d01f: f64 = math::mat_f64_get_base(&D, 0 as i64, 1 as i64);
+    print::<f64>(&d01f);
+
+    // ------------------------------------------------------------
+    // hadamard_div (F64): [[2,4],[6,8]] ./ [[1,2],[3,4]] => all 2.0
+    // ------------------------------------------------------------
+    mut ha: math::MatrixF64 = math::mat_f64_new(2 as i64, 2 as i64);
+    mut hb: math::MatrixF64 = math::mat_f64_new(2 as i64, 2 as i64);
+
+    math::mat_f64_set_base(&mut ha, 0 as i64, 0 as i64, 2.0 as f64);
+    math::mat_f64_set_base(&mut ha, 0 as i64, 1 as i64, 4.0 as f64);
+    math::mat_f64_set_base(&mut ha, 1 as i64, 0 as i64, 6.0 as f64);
+    math::mat_f64_set_base(&mut ha, 1 as i64, 1 as i64, 8.0 as f64);
+
+    math::mat_f64_set_base(&mut hb, 0 as i64, 0 as i64, 1.0 as f64);
+    math::mat_f64_set_base(&mut hb, 0 as i64, 1 as i64, 2.0 as f64);
+    math::mat_f64_set_base(&mut hb, 1 as i64, 0 as i64, 3.0 as f64);
+    math::mat_f64_set_base(&mut hb, 1 as i64, 1 as i64, 4.0 as f64);
+
+    mut hdiv: math::MatrixF64 = math::mat_f64_new(2 as i64, 2 as i64);
+    math::mat_f64_hadamard_div_base(&mut hdiv, &ha, &hb);
+
+    // Expected prints: 2.0, 2.0
+    mut hd01: f64 = math::mat_f64_get_base(&hdiv, 0 as i64, 1 as i64);
+    print::<f64>(&hd01);
+    mut hd10: f64 = math::mat_f64_get_base(&hdiv, 1 as i64, 0 as i64);
+    print::<f64>(&hd10);
+
+    // ------------------------------------------------------------
+    // Elementwise trig / exp / log / sqrt (use values with exact outputs)
+    // ------------------------------------------------------------
+    mut z1: math::MatrixF64 = math::mat_f64_new(1 as i64, 1 as i64);
+    math::mat_f64_set_base(&mut z1, 0 as i64, 0 as i64, 0.0 as f64);
+
+    mut o1: math::MatrixF64 = math::mat_f64_new(1 as i64, 1 as i64);
+    math::mat_f64_set_base(&mut o1, 0 as i64, 0 as i64, 1.0 as f64);
+
+    mut n9: math::MatrixF64 = math::mat_f64_new(1 as i64, 1 as i64);
+    math::mat_f64_set_base(&mut n9, 0 as i64, 0 as i64, 9.0 as f64);
+
+    mut out_sin: math::MatrixF64 = math::mat_f64_new(1 as i64, 1 as i64);
+    math::mat_f64_sin_base(&mut out_sin, &z1);
+    // Expected: 0.0
+    mut sin0: f64 = math::mat_f64_get_base(&out_sin, 0 as i64, 0 as i64);
+    print::<f64>(&sin0);
+
+    mut out_cos: math::MatrixF64 = math::mat_f64_new(1 as i64, 1 as i64);
+    math::mat_f64_cos_base(&mut out_cos, &z1);
+    // Expected: 1.0
+    mut cos0: f64 = math::mat_f64_get_base(&out_cos, 0 as i64, 0 as i64);
+    print::<f64>(&cos0);
+
+    mut out_exp: math::MatrixF64 = math::mat_f64_new(1 as i64, 1 as i64);
+    math::mat_f64_exp_base(&mut out_exp, &z1);
+    // Expected: 1.0
+    mut exp0: f64 = math::mat_f64_get_base(&out_exp, 0 as i64, 0 as i64);
+    print::<f64>(&exp0);
+
+    mut out_log: math::MatrixF64 = math::mat_f64_new(1 as i64, 1 as i64);
+    math::mat_f64_log_base(&mut out_log, &o1);
+    // Expected: 0.0
+    mut log1: f64 = math::mat_f64_get_base(&out_log, 0 as i64, 0 as i64);
+    print::<f64>(&log1);
+
+    mut out_sqrt: math::MatrixF64 = math::mat_f64_new(1 as i64, 1 as i64);
+    math::mat_f64_sqrt_base(&mut out_sqrt, &n9);
+    // Expected: 3.0
+    mut sqrt9: f64 = math::mat_f64_get_base(&out_sqrt, 0 as i64, 0 as i64);
+    print::<f64>(&sqrt9);
+
+    // ------------------------------------------------------------
+    // clamp / floor / ceil / round
+    // ------------------------------------------------------------
+    mut fx: math::MatrixF64 = math::mat_f64_new(1 as i64, 3 as i64);
+    math::mat_f64_set_base(&mut fx, 0 as i64, 0 as i64, -1.0 as f64);
+    math::mat_f64_set_base(&mut fx, 0 as i64, 1 as i64, 0.5 as f64);
+    math::mat_f64_set_base(&mut fx, 0 as i64, 2 as i64, 2.0 as f64);
+
+    mut fx_cl: math::MatrixF64 = math::mat_f64_new(1 as i64, 3 as i64);
+    math::mat_f64_clamp_base(&mut fx_cl, &fx, 0.0 as f64, 1.0 as f64);
+    // Expected prints: 0.0, 0.5, 1.0
+    mut cl0: f64 = math::mat_f64_get_base(&fx_cl, 0 as i64, 0 as i64);
+    print::<f64>(&cl0);
+    mut cl1: f64 = math::mat_f64_get_base(&fx_cl, 0 as i64, 1 as i64);
+    print::<f64>(&cl1);
+    mut cl2: f64 = math::mat_f64_get_base(&fx_cl, 0 as i64, 2 as i64);
+    print::<f64>(&cl2);
+
+    mut fr: math::MatrixF64 = math::mat_f64_new(1 as i64, 3 as i64);
+    math::mat_f64_set_base(&mut fr, 0 as i64, 0 as i64, 1.2 as f64);
+    math::mat_f64_set_base(&mut fr, 0 as i64, 1 as i64, -1.2 as f64);
+    math::mat_f64_set_base(&mut fr, 0 as i64, 2 as i64, 2.9 as f64);
+
+    mut fr_floor: math::MatrixF64 = math::mat_f64_new(1 as i64, 3 as i64);
+    math::mat_f64_floor_base(&mut fr_floor, &fr);
+    // Expected prints: 1.0, -2.0, 2.0
+    mut f0: f64 = math::mat_f64_get_base(&fr_floor, 0 as i64, 0 as i64);
+    print::<f64>(&f0);
+    mut f1: f64 = math::mat_f64_get_base(&fr_floor, 0 as i64, 1 as i64);
+    print::<f64>(&f1);
+    mut f2: f64 = math::mat_f64_get_base(&fr_floor, 0 as i64, 2 as i64);
+    print::<f64>(&f2);
+
+    mut fr_ceil: math::MatrixF64 = math::mat_f64_new(1 as i64, 3 as i64);
+    math::mat_f64_ceil_base(&mut fr_ceil, &fr);
+    // Expected prints: 2.0, -1.0, 3.0
+    mut c0: f64 = math::mat_f64_get_base(&fr_ceil, 0 as i64, 0 as i64);
+    print::<f64>(&c0);
+    mut c1: f64 = math::mat_f64_get_base(&fr_ceil, 0 as i64, 1 as i64);
+    print::<f64>(&c1);
+    mut c2: f64 = math::mat_f64_get_base(&fr_ceil, 0 as i64, 2 as i64);
+    print::<f64>(&c2);
+
+    mut fr_round: math::MatrixF64 = math::mat_f64_new(1 as i64, 3 as i64);
+    math::mat_f64_round_base(&mut fr_round, &fr);
+    // Expected prints: 1.0, -1.0, 3.0
+    mut r0: f64 = math::mat_f64_get_base(&fr_round, 0 as i64, 0 as i64);
+    print::<f64>(&r0);
+    mut r1: f64 = math::mat_f64_get_base(&fr_round, 0 as i64, 1 as i64);
+    print::<f64>(&r1);
+    mut r2: f64 = math::mat_f64_get_base(&fr_round, 0 as i64, 2 as i64);
+    print::<f64>(&r2);
+
+    // ------------------------------------------------------------
+    // Norms (use matrix with exact Frobenius = 5)
+    // M = [[3,4],[0,0]]
+    // fro = 5, norm1 = 4, norm_inf = 7
+    // ------------------------------------------------------------
+    mut nm: math::MatrixF64 = math::mat_f64_new(2 as i64, 2 as i64);
+    math::mat_f64_set_base(&mut nm, 0 as i64, 0 as i64, 3.0 as f64);
+    math::mat_f64_set_base(&mut nm, 0 as i64, 1 as i64, 4.0 as f64);
+    math::mat_f64_set_base(&mut nm, 1 as i64, 0 as i64, 0.0 as f64);
+    math::mat_f64_set_base(&mut nm, 1 as i64, 1 as i64, 0.0 as f64);
+
+    mut nf: f64 = math::mat_f64_norm_fro_base(&nm);
+    print::<f64>(&nf);
+
+    mut n1: f64 = math::mat_f64_norm1_base(&nm);
+    print::<f64>(&n1);
+
+    mut ni: f64 = math::mat_f64_norm_inf_base(&nm);
+    print::<f64>(&ni);
+
+    // ------------------------------------------------------------
+    // det / inv (F64) on [[1,2],[3,4]]
+    // det = -2
+    // inv = [[-2, 1],[1.5, -0.5]]
+    // ------------------------------------------------------------
+    mut A2: math::MatrixF64 = math::mat_f64_new(2 as i64, 2 as i64);
+    math::mat_f64_set_base(&mut A2, 0 as i64, 0 as i64, 1.0 as f64);
+    math::mat_f64_set_base(&mut A2, 0 as i64, 1 as i64, 2.0 as f64);
+    math::mat_f64_set_base(&mut A2, 1 as i64, 0 as i64, 3.0 as f64);
+    math::mat_f64_set_base(&mut A2, 1 as i64, 1 as i64, 4.0 as f64);
+
+    mut detA2: f64 = math::mat_f64_det_base(&A2);
+    print::<f64>(&detA2);
+
+    mut invA2: math::MatrixF64 = math::mat_f64_new(2 as i64, 2 as i64);
+    math::mat_f64_inv_base(&mut invA2, &A2);
+
+    // Expected prints: -2.0, 1.5
+    mut inv00: f64 = math::mat_f64_get_base(&invA2, 0 as i64, 0 as i64);
+    print::<f64>(&inv00);
+    mut inv10: f64 = math::mat_f64_get_base(&invA2, 1 as i64, 0 as i64);
+    print::<f64>(&inv10);
+
+    // ------------------------------------------------------------
+    // solve (F64): [[3,1],[1,2]] * x = [[9],[8]]  => x = [[2],[3]]
+    // ------------------------------------------------------------
+    mut As: math::MatrixF64 = math::mat_f64_new(2 as i64, 2 as i64);
+    math::mat_f64_set_base(&mut As, 0 as i64, 0 as i64, 3.0 as f64);
+    math::mat_f64_set_base(&mut As, 0 as i64, 1 as i64, 1.0 as f64);
+    math::mat_f64_set_base(&mut As, 1 as i64, 0 as i64, 1.0 as f64);
+    math::mat_f64_set_base(&mut As, 1 as i64, 1 as i64, 2.0 as f64);
+
+    mut Bs: math::MatrixF64 = math::mat_f64_new(2 as i64, 1 as i64);
+    math::mat_f64_set_base(&mut Bs, 0 as i64, 0 as i64, 9.0 as f64);
+    math::mat_f64_set_base(&mut Bs, 1 as i64, 0 as i64, 8.0 as f64);
+
+    mut Xs: math::MatrixF64 = math::mat_f64_new(2 as i64, 1 as i64);
+    math::mat_f64_solve_base(&mut Xs, &As, &Bs);
+
+    // Expected prints: 2.0, 3.0
+    mut x0: f64 = math::mat_f64_get_base(&Xs, 0 as i64, 0 as i64);
+    print::<f64>(&x0);
+    mut x1: f64 = math::mat_f64_get_base(&Xs, 1 as i64, 0 as i64);
+    print::<f64>(&x1);
+
+    // ------------------------------------------------------------
+    // dot (F64): [1,2,3]·[4,5,6] = 32
+    // (vectors are 1x3 here; n×1 also accepted)
+    // ------------------------------------------------------------
+    mut v1: math::MatrixF64 = math::mat_f64_new(1 as i64, 3 as i64);
+    mut v2: math::MatrixF64 = math::mat_f64_new(1 as i64, 3 as i64);
+    math::mat_f64_set_base(&mut v1, 0 as i64, 0 as i64, 1.0 as f64);
+    math::mat_f64_set_base(&mut v1, 0 as i64, 1 as i64, 2.0 as f64);
+    math::mat_f64_set_base(&mut v1, 0 as i64, 2 as i64, 3.0 as f64);
+
+    math::mat_f64_set_base(&mut v2, 0 as i64, 0 as i64, 4.0 as f64);
+    math::mat_f64_set_base(&mut v2, 0 as i64, 1 as i64, 5.0 as f64);
+    math::mat_f64_set_base(&mut v2, 0 as i64, 2 as i64, 6.0 as f64);
+
+    mut dot12: f64 = math::mat_f64_dot_base(&v1, &v2);
+    print::<f64>(&dot12);
+    */
+
+    mut cruel_box: Box::<bool>;
+    cruel_box = box_new::<bool>(1000 as i64);
+    len: i64 = box_len::<bool>(&cruel_box);
+
+    mut a: i64 = 0 as i64;
+    while (a < len) {
+       box_set::<bool>(&mut cruel_box, a, true);
+
+       a = a + 1 as i64;
+    }
+
+    mut j: i64 = 0 as i64;
+
+    while (j < len) {
+       i: bool = box_get::<bool>(&mut cruel_box, j);
+       print::<bool>(&i);
+       j = j + 1 as i64;
+    }
+
+    //print::<i32>(1 as i32);
+    //print::<i32>(&a);
+    cool(1 as i32);
+}
+
+fn bad() -> &i32 {
+    a: i32 = 100 as i32;
+
+    return &a;
+}
+
+fn cool(a: i32) -> void {
+    c: &i32 = bad();
+}
+

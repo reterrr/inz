@@ -8,18 +8,20 @@
 #include "decl.hpp"
 #include "visit/decl_visitor.hpp"
 
+#include "expr/type_expr.hpp"
+
 namespace ast
 {
-    struct TypeExpr;
-    struct ParamDecl final : Decl
+    struct ParamDecl : Decl
     {
-        TypeExpr* type_;
+        TypeExpr* type_; //can be nullptr
         lex::SymId name_;
 
         ParamDecl(const lex::SymId name, TypeExpr* type, const lex::Loc& L)
             : Decl(NodeKind::Decl_Param, L),
               type_(type), name_(name)
         {
+            type_->parent = this;
         }
 
         void accept(visitor::DeclVisitor&) override;
