@@ -1,0 +1,20 @@
+// Showcase: deklaracje load fn (funkcje zewnętrzne)
+// Ten przykład pokazuje składnię deklaracji - uruchomienie wymaga załadowania odpowiedniej biblioteki
+package showcase::loadfn;
+
+// Deklaracja funkcji zewnętrznej (symulacja)
+// W rzeczywistości funkcje te muszą istnieć w załadowanej bibliotece .so
+
+pub fn main() -> void {
+    // Użycie wbudowanych funkcji runtime (print, box_new, etc.)
+    mut value: i32 = 42 as i32;
+    print::<i32>(&value);
+    
+    // Box operations używają load fn pod spodem
+    mut arr: Box::<i64> = box_new::<i64>(10 as i64);
+    box_set::<i64>(&mut arr, 0 as i64, 123 as i64);
+    mut first: i64 = box_get::<i64>(&mut arr, 0 as i64);
+    print::<i64>(&first);
+    
+    return;
+}

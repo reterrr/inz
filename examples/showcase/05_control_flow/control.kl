@@ -1,0 +1,71 @@
+// Showcase: sterowanie przepływem - if/else, while, do-while, break, continue
+package showcase::control;
+
+pub fn main() -> void {
+    // === IF / ELSE IF / ELSE ===
+    a: i32 = 5 as i32;
+    b: i32 = 10 as i32;
+    
+    if (a < b) {
+        mut msg: i32 = 1 as i32;
+        print::<i32>(&msg);
+    } else if (a == b) {
+        mut msg: i32 = 2 as i32;
+        print::<i32>(&msg);
+    } else {
+        mut msg: i32 = 3 as i32;
+        print::<i32>(&msg);
+    }
+    
+    // Operatory logiczne
+    if ((a < b) && (b > (0 as i32))) {
+        mut r: i32 = 100 as i32;
+        print::<i32>(&r);
+    }
+    
+    if ((a > b) || (a < b)) {
+        mut r: i32 = 200 as i32;
+        print::<i32>(&r);
+    }
+    
+    if (!(a == b)) {
+        mut r: i32 = 300 as i32;
+        print::<i32>(&r);
+    }
+    
+    // === WHILE ===
+    mut counter: i32 = 0 as i32;
+    while (counter < (5 as i32)) {
+        print::<i32>(&counter);
+        counter = counter + (1 as i32);
+    }
+    
+    // === DO-WHILE ===
+    mut i: i32 = 0 as i32;
+    do {
+        print::<i32>(&i);
+        i = i + (1 as i32);
+    } while (i < (3 as i32));
+    
+    // === BREAK ===
+    mut j: i32 = 0 as i32;
+    while (j < (100 as i32)) {
+        if (j == (5 as i32)) {
+            break;
+        }
+        print::<i32>(&j);
+        j = j + (1 as i32);
+    }
+    
+    // === CONTINUE ===
+    mut k: i32 = 0 as i32;
+    while (k < (5 as i32)) {
+        k = k + (1 as i32);
+        if (k == (3 as i32)) {
+            continue;
+        }
+        print::<i32>(&k);
+    }
+    
+    return;
+}

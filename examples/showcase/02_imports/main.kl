@@ -1,0 +1,11 @@
+// Showcase: importy i aliasy
+package showcase::imports;
+
+import showcase::imports::utils as u;
+
+pub fn main() -> void {
+    mut x: i32 = 10 as i32;
+    u::double_value(&mut x);
+    print::<i32>(&x);
+    return;
+}

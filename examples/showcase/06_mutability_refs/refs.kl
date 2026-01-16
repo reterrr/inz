@@ -1,0 +1,65 @@
+// Showcase: mutowalność (mut/imm) i referencje (&, &mut)
+package showcase::refs;
+
+// Funkcja przyjmująca referencję niemutowalną
+fn read_value(x: &i32) -> i32 {
+    return *x;
+}
+
+// Funkcja przyjmująca referencję mutowalną
+fn increment(x: &mut i32) -> void {
+    *x = *x + (1 as i32);
+    return;
+}
+
+// Funkcja zamieniająca wartości
+fn swap(a: &mut i32, b: &mut i32) -> void {
+    tmp: i32 = *a;
+    *a = *b;
+    *b = tmp;
+    return;
+}
+
+pub fn main() -> void {
+    // Zmienna niemutowalna (domyślnie)
+    x: i32 = 10 as i32;
+    
+    // Zmienna mutowalna
+    mut y: i32 = 20 as i32;
+    
+    // Tworzenie referencji niemutowalnej
+    x_ref: &i32 = &x;
+    mut val: i32 = read_value(x_ref);
+    print::<i32>(&val);
+    
+    // Tworzenie referencji mutowalnej
+    mut y_ref: &mut i32 = &mut y;
+    
+    // Dereferencja do odczytu
+    mut before: i32 = *y_ref;
+    print::<i32>(&before);
+    
+    // Dereferencja do zapisu
+    *y_ref = 100 as i32;
+    mut after: i32 = *y_ref;
+    print::<i32>(&after);
+    
+    // Użycie w funkcji
+    increment(&mut y);
+    print::<i32>(&y);
+    
+    // Zamiana wartości
+    mut a: i32 = 1 as i32;
+    mut b: i32 = 2 as i32;
+    swap(&mut a, &mut b);
+    print::<i32>(&a);
+    print::<i32>(&b);
+    
+    // Przepięcie referencji
+    mut z: i32 = 50 as i32;
+    y_ref = &mut z;
+    *y_ref = 999 as i32;
+    print::<i32>(&z);
+    
+    return;
+}

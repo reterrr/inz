@@ -1,0 +1,7 @@
+// Showcase: minimalny moduł z deklaracją pakietu
+package showcase::minimal;
+
+// Pusta funkcja main
+pub fn main() -> void {
+    return;
+}

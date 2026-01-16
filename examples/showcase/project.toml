@@ -1,0 +1,13 @@
+# Konfiguracja dla showcase examples
+# Uruchomienie: ./inz z katalogu zawierającego ten plik
+
+[files]
+files_dir = "."
+
+[flags]
+# Preset "no-args" dla normalnego uruchomienia
+# Można nadpisać przez "dump-ast" lub "dump-ir"
+
+[link]
+# Lista bibliotek do załadowania (opcjonalnie)
+# libs = []
