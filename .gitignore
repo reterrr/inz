@@ -28,3 +28,4 @@ lib64
 bin
 hir
 sema
+examples/showcase/_out/

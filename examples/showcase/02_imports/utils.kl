@@ -1,0 +1,11 @@
+// Showcase: moduł pomocniczy do importu
+package showcase::imports::utils;
+
+pub fn double_value(x: &mut i32) -> void {
+    *x = *x * (2 as i32);
+    return;
+}
+
+pub fn add_one(x: i32) -> i32 {
+    return x + (1 as i32);
+}

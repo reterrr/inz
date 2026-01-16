@@ -1,0 +1,42 @@
+// Showcase: tablice (Box) i indeksowanie
+package showcase::arrays;
+
+pub fn main() -> void {
+    // Tworzenie tablicy (Box)
+    mut arr: Box::<i64> = box_new::<i64>(5 as i64);
+    
+    // Wypełnianie tablicy
+    mut i: i64 = 0 as i64;
+    while (i < (5 as i64)) {
+        box_set::<i64>(&mut arr, i, i * (10 as i64));
+        i = i + (1 as i64);
+    }
+    
+    // Odczyt z tablicy
+    mut j: i64 = 0 as i64;
+    while (j < (5 as i64)) {
+        mut val: i64 = box_get::<i64>(&mut arr, j);
+        print::<i64>(&val);
+        j = j + (1 as i64);
+    }
+    
+    // Pobieranie długości
+    len: i64 = box_len::<i64>(&arr);
+    print::<i64>(&len);
+    
+    // Tablica bool
+    mut flags: Box::<bool> = box_new::<bool>(3 as i64);
+    box_set::<bool>(&mut flags, 0 as i64, true);
+    box_set::<bool>(&mut flags, 1 as i64, false);
+    box_set::<bool>(&mut flags, 2 as i64, true);
+    
+    mut f0: bool = box_get::<bool>(&mut flags, 0 as i64);
+    print::<bool>(&f0);
+    
+    // Literał tablicowy (fixed array)
+    mut fixed: i32[3] = [1 as i32, 2 as i32, 3 as i32];
+    mut elem: i32 = fixed[1];
+    print::<i32>(&elem);
+    
+    return;
+}

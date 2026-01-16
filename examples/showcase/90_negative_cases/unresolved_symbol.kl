@@ -1,0 +1,7 @@
+// EXPECTED ERROR: nierozwiązany symbol - funkcja nie istnieje
+package showcase::negative::unresolved_symbol;
+
+pub fn main() -> void {
+    x: i32 = nonexistent_function();
+    return;
+}

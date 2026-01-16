@@ -1,0 +1,12 @@
+// EXPECTED ERROR: zła liczba argumentów wywołania
+package showcase::negative::wrong_arity;
+
+fn takes_two(a: i32, b: i32) -> i32 {
+    return a + b;
+}
+
+pub fn main() -> void {
+    // Wywołanie z jednym argumentem zamiast dwóch
+    x: i32 = takes_two(1 as i32);
+    return;
+}

@@ -1,0 +1,8 @@
+// EXPECTED ERROR: nierozwiązany import - moduł nie istnieje
+package showcase::negative::unresolved_import;
+
+import nonexistent::module as bad;
+
+pub fn main() -> void {
+    return;
+}
