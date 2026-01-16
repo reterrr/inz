@@ -459,21 +459,24 @@ namespace yy { namespace reserved {
       // sig_decl_list
       char dummy19[sizeof (std::vector<ast::Decl*>)];
 
+      // type_array_dims
+      char dummy20[sizeof (std::vector<ast::Expr*>)];
+
       // import_list_opt
       // import_list
-      char dummy20[sizeof (std::vector<ast::ImportDecl*>)];
+      char dummy21[sizeof (std::vector<ast::ImportDecl*>)];
 
       // param_list_opt
       // param_list
-      char dummy21[sizeof (std::vector<ast::ParamDecl*>)];
+      char dummy22[sizeof (std::vector<ast::ParamDecl*>)];
 
       // type_args
       // type_arg_list
-      char dummy22[sizeof (std::vector<ast::TypeExpr*>)];
+      char dummy23[sizeof (std::vector<ast::TypeExpr*>)];
 
       // type_params_opt
       // type_param_list
-      char dummy23[sizeof (std::vector<ast::TypeParamDecl*>)];
+      char dummy24[sizeof (std::vector<ast::TypeParamDecl*>)];
     };
 
     /// The size of the largest semantic type.
@@ -664,10 +667,11 @@ namespace yy { namespace reserved {
         S_ref_type_expr = 75,                    // ref_type_expr
         S_ref_mutability = 76,                   // ref_mutability
         S_type_postfix = 77,                     // type_postfix
-        S_type_primary = 78,                     // type_primary
-        S_builtin_type_expr = 79,                // builtin_type_expr
-        S_path_type_expr = 80,                   // path_type_expr
-        S_const_int_expr = 81                    // const_int_expr
+        S_type_array_dims = 78,                  // type_array_dims
+        S_type_primary = 79,                     // type_primary
+        S_builtin_type_expr = 80,                // builtin_type_expr
+        S_path_type_expr = 81,                   // path_type_expr
+        S_const_int_expr = 82                    // const_int_expr
       };
     };
 
@@ -788,6 +792,10 @@ namespace yy { namespace reserved {
       case symbol_kind::S_sig_decl_list_opt: // sig_decl_list_opt
       case symbol_kind::S_sig_decl_list: // sig_decl_list
         value.move< std::vector<ast::Decl*> > (std::move (that.value));
+        break;
+
+      case symbol_kind::S_type_array_dims: // type_array_dims
+        value.move< std::vector<ast::Expr*> > (std::move (that.value));
         break;
 
       case symbol_kind::S_import_list_opt: // import_list_opt
@@ -1100,6 +1108,20 @@ namespace yy { namespace reserved {
 #endif
 
 #if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, std::vector<ast::Expr*>&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const std::vector<ast::Expr*>& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
       basic_symbol (typename Base::kind_type t, std::vector<ast::ImportDecl*>&& v, location_type&& l)
         : Base (t)
         , value (std::move (v))
@@ -1263,6 +1285,10 @@ switch (yykind)
       case symbol_kind::S_sig_decl_list_opt: // sig_decl_list_opt
       case symbol_kind::S_sig_decl_list: // sig_decl_list
         value.template destroy< std::vector<ast::Decl*> > ();
+        break;
+
+      case symbol_kind::S_type_array_dims: // type_array_dims
+        value.template destroy< std::vector<ast::Expr*> > ();
         break;
 
       case symbol_kind::S_import_list_opt: // import_list_opt
@@ -2522,8 +2548,8 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 111,     ///< Last index in yytable_.
-      yynnts_ = 34,  ///< Number of nonterminal symbols.
+      yylast_ = 112,     ///< Last index in yytable_.
+      yynnts_ = 35,  ///< Number of nonterminal symbols.
       yyfinal_ = 8 ///< Termination state number.
     };
 
@@ -2684,6 +2710,10 @@ switch (yykind)
         value.copy< std::vector<ast::Decl*> > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_type_array_dims: // type_array_dims
+        value.copy< std::vector<ast::Expr*> > (YY_MOVE (that.value));
+        break;
+
       case symbol_kind::S_import_list_opt: // import_list_opt
       case symbol_kind::S_import_list: // import_list
         value.copy< std::vector<ast::ImportDecl*> > (YY_MOVE (that.value));
@@ -2821,6 +2851,10 @@ switch (yykind)
         value.move< std::vector<ast::Decl*> > (YY_MOVE (s.value));
         break;
 
+      case symbol_kind::S_type_array_dims: // type_array_dims
+        value.move< std::vector<ast::Expr*> > (YY_MOVE (s.value));
+        break;
+
       case symbol_kind::S_import_list_opt: // import_list_opt
       case symbol_kind::S_import_list: // import_list
         value.move< std::vector<ast::ImportDecl*> > (YY_MOVE (s.value));
@@ -2908,7 +2942,7 @@ switch (yykind)
 
 #line 17 "parser_rules.y"
 } } // yy::reserved
-#line 2912 "parser.hpp"
+#line 2946 "parser.hpp"
 
 
 // "%code provides" blocks.
@@ -2918,7 +2952,7 @@ switch (yykind)
     parser::symbol_type yylex(Scanner& scanner);
   }
 
-#line 2922 "parser.hpp"
+#line 2956 "parser.hpp"
 
 
 #endif // !YY_YY_PARSER_HPP_INCLUDED

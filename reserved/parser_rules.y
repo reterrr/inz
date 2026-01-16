@@ -196,6 +196,7 @@
 /* types */
 %type <ast::TypeExpr*>                       type_expr
 %type <ast::TypeExpr*>                       type_postfix
+%type <std::vector<ast::Expr*>>              type_array_dims
 %type <ast::TypeExpr*>                       type_primary
 %type <ast::TypeExpr*>                       ret_type_expr
 %type <ast::BuiltinTypeExpr*>                builtin_type_expr
@@ -454,11 +455,31 @@ ref_mutability
   ;
 
 type_postfix
-  : type_primary
-    { $$ = $1; }
-  | type_postfix TOK_LBRACK const_int_expr TOK_RBRACK
-    { $$ = static_cast<ast::TypeExpr*>(ast.mk_array_type_expr($1, $3, combine(@1, @4))); }
-  ;
+  : type_primary type_array_dims
+        {
+          ast::TypeExpr* t = $1;
+
+          if (!$2.empty())
+          {
+            const lex::Loc whole = combine(@1, @2);
+
+            // IMPORTANT: apply dims right-to-left
+            for (auto it = $2.rbegin(); it != $2.rend(); ++it)
+            {
+              t = static_cast<ast::TypeExpr*>(ast.mk_array_type_expr(t, *it, whole));
+            }
+          }
+
+          $$ = t;
+        }
+      ;
+
+type_array_dims
+    : %empty
+        { $$ = std::vector<ast::Expr*>{}; }
+    | type_array_dims TOK_LBRACK const_int_expr TOK_RBRACK
+        { $1.push_back($3); $$ = std::move($1); }
+    ;
 
 type_primary
   : builtin_type_expr
