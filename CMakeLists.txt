@@ -28,24 +28,24 @@ include_directories(
         lexer/generated
 )
 
-#option(ENABLE_ASAN "Enable AddressSanitizer + LeakSanitizer" ON)
-#
-#if(ENABLE_ASAN)
-#    # Works best with Clang. You already force clang++.
-#    add_compile_options(
-#            -O1
-#            -g
-#            -fno-omit-frame-pointer
-#            -fno-optimize-sibling-calls
-#            -fsanitize=address
-#    )
-#    add_link_options(-fsanitize=address)
-#
-#    # LeakSanitizer is included in ASan on Linux/Clang; detect_leaks controls it at runtime.
-#    # If you ever need it explicitly:
-#    # add_compile_options(-fsanitize=leak)
-#    # add_link_options(-fsanitize=leak)
-#endif()
+option(ENABLE_ASAN "Enable AddressSanitizer + LeakSanitizer" ON)
+
+if(ENABLE_ASAN)
+    # Works best with Clang. You already force clang++.
+    add_compile_options(
+            -O1
+            -g
+            -fno-omit-frame-pointer
+            -fno-optimize-sibling-calls
+            -fsanitize=address
+    )
+    add_link_options(-fsanitize=address)
+
+    # LeakSanitizer is included in ASan on Linux/Clang; detect_leaks controls it at runtime.
+    # If you ever need it explicitly:
+    # add_compile_options(-fsanitize=leak)
+    # add_link_options(-fsanitize=leak)
+endif()
 
 add_executable(inz main.cpp
         #        lexer/lexer.cpp
